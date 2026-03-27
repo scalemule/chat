@@ -84,14 +84,23 @@ export function useChat(conversationId?: string) {
   const [error, setError] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
 
-  // Load messages and subscribe
+  // Fetch conversation (populates conversationTypes for channel routing),
+  // load messages, then subscribe with the correct channel prefix.
   useEffect(() => {
     if (!conversationId) return;
 
     setIsLoading(true);
     setError(null);
 
-    client.getMessages(conversationId).then((result) => {
+    let unsub: (() => void) | undefined;
+
+    (async () => {
+      // Fetch conversation first — this auto-populates conversationTypes
+      // so subscribeToConversation uses the correct channel prefix for
+      // large_room and broadcast conversations.
+      await client.getConversation(conversationId);
+
+      const result = await client.getMessages(conversationId);
       if (result.data?.messages) {
         setMessages(result.data.messages);
         setHasMore(result.data.has_more ?? false);
@@ -99,12 +108,12 @@ export function useChat(conversationId?: string) {
         setError(result.error.message);
       }
       setIsLoading(false);
-    });
 
-    const unsub = client.subscribeToConversation(conversationId);
-    client.connect();
+      unsub = client.subscribeToConversation(conversationId);
+      client.connect();
+    })();
 
-    return unsub;
+    return () => unsub?.();
   }, [client, conversationId]);
 
   // Handle realtime messages
@@ -179,7 +188,9 @@ export function useChat(conversationId?: string) {
 
 export function usePresence(conversationId?: string) {
   const { client } = useChatContext();
-  const [members, setMembers] = useState<{ userId: string; userData?: unknown }[]>([]);
+  const [members, setMembers] = useState<
+    { userId: string; status: string; userData?: unknown }[]
+  >([]);
 
   useEffect(() => {
     if (!conversationId) return;
@@ -188,7 +199,13 @@ export function usePresence(conversationId?: string) {
 
     const unsubState = client.on('presence:state', ({ conversationId: convId, members: m }) => {
       if (convId === conversationId) {
-        setMembers(m.map((p) => ({ userId: p.user_id, userData: p.user_data })));
+        setMembers(
+          m.map((p) => ({
+            userId: p.user_id,
+            status: (p as { status?: string }).status ?? 'online',
+            userData: p.user_data,
+          })),
+        );
       }
     });
 
@@ -196,7 +213,7 @@ export function usePresence(conversationId?: string) {
       if (convId === conversationId) {
         setMembers((prev) => {
           if (prev.some((m) => m.userId === userId)) return prev;
-          return [...prev, { userId, userData }];
+          return [...prev, { userId, status: 'online', userData }];
         });
       }
     });
@@ -207,11 +224,25 @@ export function usePresence(conversationId?: string) {
       }
     });
 
+    const unsubUpdate = client.on(
+      'presence:update',
+      ({ conversationId: convId, userId, status, userData }) => {
+        if (convId === conversationId) {
+          setMembers((prev) =>
+            prev.map((m) =>
+              m.userId === userId ? { ...m, status, userData: userData ?? m.userData } : m,
+            ),
+          );
+        }
+      },
+    );
+
     return () => {
       client.leavePresence(conversationId);
       unsubState();
       unsubJoin();
       unsubLeave();
+      unsubUpdate();
     };
   }, [client, conversationId]);
 
