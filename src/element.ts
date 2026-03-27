@@ -89,10 +89,13 @@ class ScaleMuleChatElement extends HTMLElement {
       if (e.key === 'Enter') doSend();
     });
 
-    // Subscribe to conversation and load messages
+    // Fetch conversation (populates channel type routing), then subscribe and load
     if (conversationId) {
-      this.unsub = this.client.subscribeToConversation(conversationId);
-      this.client.connect();
+      this.client.getConversation(conversationId).then(() => {
+        if (!this.client) return;
+        this.unsub = this.client.subscribeToConversation(conversationId);
+        this.client.connect();
+      });
 
       this.client.getMessages(conversationId).then((result) => {
         if (result.data?.messages) {

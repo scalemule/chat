@@ -44,8 +44,12 @@ function bootstrap(): void {
   });
 
   if (conversationId) {
-    client.subscribeToConversation(conversationId);
-    client.connect();
+    // Fetch conversation first to populate channel type routing,
+    // then subscribe with the correct prefix for large_room/broadcast.
+    client.getConversation(conversationId).then(() => {
+      client.subscribeToConversation(conversationId);
+      client.connect();
+    });
   }
 }
 
