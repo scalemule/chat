@@ -26,6 +26,7 @@ export class ChatClient extends EventEmitter<ChatEventMap> {
   private cache: MessageCache;
   private offlineQueue: OfflineQueue;
   private conversationSubs = new Map<string, () => void>();
+  private conversationTypes = new Map<string, Conversation['conversation_type']>();
 
   constructor(config: ChatConfig) {
     super();
@@ -219,13 +220,19 @@ export class ChatClient extends EventEmitter<ChatEventMap> {
   // ============ Presence ============
 
   joinPresence(conversationId: string, userData?: unknown): void {
-    const channel = `conversation:${conversationId}`;
+    const channel = this.channelName(conversationId);
     this.ws.joinPresence(channel, userData);
   }
 
   leavePresence(conversationId: string): void {
-    const channel = `conversation:${conversationId}`;
+    const channel = this.channelName(conversationId);
     this.ws.leavePresence(channel);
+  }
+
+  /** Update presence status (online/away/dnd) without leaving the channel. */
+  updatePresence(conversationId: string, status: 'online' | 'away' | 'dnd', userData?: unknown): void {
+    const channel = this.channelName(conversationId);
+    this.ws.send({ type: 'presence_update', channel, status, user_data: userData });
   }
 
   // ============ Channel Types ============
@@ -234,19 +241,40 @@ export class ChatClient extends EventEmitter<ChatEventMap> {
     return this.http.get<ChannelSettings>(`/v1/chat/channels/${channelId}/settings`);
   }
 
+  /**
+   * Set the conversation type for channel name routing.
+   * Large rooms use `conversation:lr:` prefix to skip MySQL in the realtime service.
+   */
+  setConversationType(conversationId: string, type: Conversation['conversation_type']): void {
+    this.conversationTypes.set(conversationId, type);
+  }
+
   // ============ Realtime Subscriptions ============
 
   subscribeToConversation(conversationId: string): () => void {
     if (this.conversationSubs.has(conversationId)) {
       return this.conversationSubs.get(conversationId)!;
     }
-    const channel = `conversation:${conversationId}`;
+    const channel = this.channelName(conversationId);
     const unsub = this.ws.subscribe(channel);
     this.conversationSubs.set(conversationId, unsub);
     return () => {
       this.conversationSubs.delete(conversationId);
       unsub();
     };
+  }
+
+  /** Build channel name with correct prefix based on conversation type. */
+  private channelName(conversationId: string): string {
+    const type = this.conversationTypes.get(conversationId);
+    switch (type) {
+      case 'large_room':
+        return `conversation:lr:${conversationId}`;
+      case 'broadcast':
+        return `conversation:bc:${conversationId}`;
+      default:
+        return `conversation:${conversationId}`;
+    }
   }
 
   // ============ Cleanup ============
@@ -261,7 +289,8 @@ export class ChatClient extends EventEmitter<ChatEventMap> {
 
   private handleRealtimeMessage(channel: string, data: unknown): void {
     if (!channel.startsWith('conversation:')) return;
-    const conversationId = channel.replace('conversation:', '');
+    // Strip prefix: conversation:{id}, conversation:lr:{id}, conversation:bc:{id}
+    const conversationId = channel.replace(/^conversation:(?:lr:|bc:)?/, '');
     const msg = data as Record<string, unknown>;
 
     if (!msg) return;
@@ -300,6 +329,14 @@ export class ChatClient extends EventEmitter<ChatEventMap> {
         const userId = (msg as { user_id?: string }).user_id;
         if (userId) {
           this.emit('typing:stop', { userId, conversationId });
+        }
+        break;
+      }
+      case 'typing_batch': {
+        // Batched typing from large rooms — emit individual typing events for each user
+        const users = (msg as { users?: string[] }).users ?? [];
+        for (const userId of users) {
+          this.emit('typing', { userId, conversationId });
         }
         break;
       }

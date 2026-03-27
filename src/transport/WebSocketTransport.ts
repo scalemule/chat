@@ -182,7 +182,7 @@ export class WebSocketTransport extends EventEmitter<WsEventMap> {
     }
   }
 
-  private send(data: unknown): void {
+  send(data: unknown): void {
     if (this.ws?.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(data));
     }
