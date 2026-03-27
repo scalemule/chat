@@ -86,12 +86,15 @@ export function useChat(conversationId?: string) {
 
   // Fetch conversation (populates conversationTypes for channel routing),
   // load messages, then subscribe with the correct channel prefix.
+  // Uses AbortController-style cancelled flag to prevent stale subscriptions
+  // if the component unmounts or conversationId changes during async work.
   useEffect(() => {
     if (!conversationId) return;
 
     setIsLoading(true);
     setError(null);
 
+    let cancelled = false;
     let unsub: (() => void) | undefined;
 
     (async () => {
@@ -99,8 +102,11 @@ export function useChat(conversationId?: string) {
       // so subscribeToConversation uses the correct channel prefix for
       // large_room and broadcast conversations.
       await client.getConversation(conversationId);
+      if (cancelled) return;
 
       const result = await client.getMessages(conversationId);
+      if (cancelled) return;
+
       if (result.data?.messages) {
         setMessages(result.data.messages);
         setHasMore(result.data.has_more ?? false);
@@ -113,7 +119,10 @@ export function useChat(conversationId?: string) {
       client.connect();
     })();
 
-    return () => unsub?.();
+    return () => {
+      cancelled = true;
+      unsub?.();
+    };
   }, [client, conversationId]);
 
   // Handle realtime messages
@@ -195,7 +204,15 @@ export function usePresence(conversationId?: string) {
   useEffect(() => {
     if (!conversationId) return;
 
-    client.joinPresence(conversationId);
+    let cancelled = false;
+
+    // Fetch conversation first to populate conversationTypes,
+    // then join presence with the correct channel prefix.
+    (async () => {
+      await client.getConversation(conversationId);
+      if (cancelled) return;
+      client.joinPresence(conversationId);
+    })();
 
     const unsubState = client.on('presence:state', ({ conversationId: convId, members: m }) => {
       if (convId === conversationId) {
@@ -238,6 +255,7 @@ export function usePresence(conversationId?: string) {
     );
 
     return () => {
+      cancelled = true;
       client.leavePresence(conversationId);
       unsubState();
       unsubJoin();
