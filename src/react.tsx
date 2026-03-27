@@ -1,0 +1,287 @@
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  useCallback,
+  type ReactNode,
+} from 'react';
+import { ChatClient } from './core/ChatClient';
+import type {
+  ChatConfig,
+  ChatMessage,
+  ConnectionStatus,
+  Conversation,
+  ApiResponse,
+  SendMessageOptions,
+  GetMessagesOptions,
+  MessagesResponse,
+} from './types';
+
+// ============ Context ============
+
+interface ChatContextValue {
+  client: ChatClient;
+}
+
+const ChatContext = createContext<ChatContextValue | null>(null);
+
+function useChatContext(): ChatContextValue {
+  const ctx = useContext(ChatContext);
+  if (!ctx) throw new Error('useChatContext must be used within a ChatProvider');
+  return ctx;
+}
+
+// ============ Provider ============
+
+interface ChatProviderProps {
+  config: ChatConfig;
+  children: ReactNode;
+}
+
+export function ChatProvider({ config, children }: ChatProviderProps): React.JSX.Element {
+  const [client] = useState(() => new ChatClient(config));
+
+  useEffect(() => {
+    return () => {
+      client.destroy();
+    };
+  }, [client]);
+
+  return <ChatContext.Provider value={{ client }}>{children}</ChatContext.Provider>;
+}
+
+// ============ Hooks ============
+
+export function useConnection(): { status: ConnectionStatus; connect: () => void; disconnect: () => void } {
+  const { client } = useChatContext();
+  const [status, setStatus] = useState<ConnectionStatus>(client.status);
+
+  useEffect(() => {
+    return client.on('connected', () => setStatus('connected'));
+  }, [client]);
+
+  useEffect(() => {
+    return client.on('disconnected', () => setStatus('disconnected'));
+  }, [client]);
+
+  useEffect(() => {
+    return client.on('reconnecting', () => setStatus('reconnecting'));
+  }, [client]);
+
+  return {
+    status,
+    connect: () => client.connect(),
+    disconnect: () => client.disconnect(),
+  };
+}
+
+export function useChat(conversationId?: string) {
+  const { client } = useChatContext();
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(false);
+
+  // Load messages and subscribe
+  useEffect(() => {
+    if (!conversationId) return;
+
+    setIsLoading(true);
+    setError(null);
+
+    client.getMessages(conversationId).then((result) => {
+      if (result.data?.messages) {
+        setMessages(result.data.messages);
+        setHasMore(result.data.has_more ?? false);
+      } else if (result.error) {
+        setError(result.error.message);
+      }
+      setIsLoading(false);
+    });
+
+    const unsub = client.subscribeToConversation(conversationId);
+    client.connect();
+
+    return unsub;
+  }, [client, conversationId]);
+
+  // Handle realtime messages
+  useEffect(() => {
+    if (!conversationId) return;
+
+    return client.on('message', ({ message, conversationId: convId }) => {
+      if (convId === conversationId) {
+        setMessages((prev) => {
+          if (prev.some((m) => m.id === message.id)) return prev;
+          return [...prev, message];
+        });
+      }
+    });
+  }, [client, conversationId]);
+
+  // Handle message updates
+  useEffect(() => {
+    if (!conversationId) return;
+
+    return client.on('message:updated', ({ message, conversationId: convId }) => {
+      if (convId === conversationId) {
+        setMessages((prev) => prev.map((m) => (m.id === message.id ? message : m)));
+      }
+    });
+  }, [client, conversationId]);
+
+  // Handle message deletions
+  useEffect(() => {
+    if (!conversationId) return;
+
+    return client.on('message:deleted', ({ messageId, conversationId: convId }) => {
+      if (convId === conversationId) {
+        setMessages((prev) => prev.filter((m) => m.id !== messageId));
+      }
+    });
+  }, [client, conversationId]);
+
+  const sendMessage = useCallback(
+    async (content: string, options?: Partial<SendMessageOptions>) => {
+      if (!conversationId) return;
+      return client.sendMessage(conversationId, { content, ...options });
+    },
+    [client, conversationId],
+  );
+
+  const loadMore = useCallback(async () => {
+    if (!conversationId || !messages.length) return;
+    const oldestId = messages[0]?.id;
+    const result = await client.getMessages(conversationId, { before: oldestId });
+    if (result.data?.messages) {
+      setMessages((prev) => [...result.data!.messages, ...prev]);
+      setHasMore(result.data.has_more ?? false);
+    }
+  }, [client, conversationId, messages]);
+
+  const markRead = useCallback(async () => {
+    if (!conversationId) return;
+    await client.markRead(conversationId);
+  }, [client, conversationId]);
+
+  return {
+    messages,
+    isLoading,
+    error,
+    hasMore,
+    sendMessage,
+    loadMore,
+    markRead,
+  };
+}
+
+export function usePresence(conversationId?: string) {
+  const { client } = useChatContext();
+  const [members, setMembers] = useState<{ userId: string; userData?: unknown }[]>([]);
+
+  useEffect(() => {
+    if (!conversationId) return;
+
+    client.joinPresence(conversationId);
+
+    const unsubState = client.on('presence:state', ({ conversationId: convId, members: m }) => {
+      if (convId === conversationId) {
+        setMembers(m.map((p) => ({ userId: p.user_id, userData: p.user_data })));
+      }
+    });
+
+    const unsubJoin = client.on('presence:join', ({ conversationId: convId, userId, userData }) => {
+      if (convId === conversationId) {
+        setMembers((prev) => {
+          if (prev.some((m) => m.userId === userId)) return prev;
+          return [...prev, { userId, userData }];
+        });
+      }
+    });
+
+    const unsubLeave = client.on('presence:leave', ({ conversationId: convId, userId }) => {
+      if (convId === conversationId) {
+        setMembers((prev) => prev.filter((m) => m.userId !== userId));
+      }
+    });
+
+    return () => {
+      client.leavePresence(conversationId);
+      unsubState();
+      unsubJoin();
+      unsubLeave();
+    };
+  }, [client, conversationId]);
+
+  return { members };
+}
+
+export function useTyping(conversationId?: string) {
+  const { client } = useChatContext();
+  const [typingUsers, setTypingUsers] = useState<string[]>([]);
+  const typingTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+
+  useEffect(() => {
+    if (!conversationId) return;
+
+    const unsubTyping = client.on('typing', ({ conversationId: convId, userId }) => {
+      if (convId !== conversationId) return;
+      setTypingUsers((prev) => (prev.includes(userId) ? prev : [...prev, userId]));
+
+      // Auto-clear after 3s
+      const existing = typingTimers.current.get(userId);
+      if (existing) clearTimeout(existing);
+      typingTimers.current.set(
+        userId,
+        setTimeout(() => {
+          setTypingUsers((prev) => prev.filter((id) => id !== userId));
+          typingTimers.current.delete(userId);
+        }, 3000),
+      );
+    });
+
+    const unsubStop = client.on('typing:stop', ({ conversationId: convId, userId }) => {
+      if (convId !== conversationId) return;
+      setTypingUsers((prev) => prev.filter((id) => id !== userId));
+      const timer = typingTimers.current.get(userId);
+      if (timer) {
+        clearTimeout(timer);
+        typingTimers.current.delete(userId);
+      }
+    });
+
+    return () => {
+      unsubTyping();
+      unsubStop();
+      for (const timer of typingTimers.current.values()) {
+        clearTimeout(timer);
+      }
+      typingTimers.current.clear();
+    };
+  }, [client, conversationId]);
+
+  const sendTyping = useCallback(
+    (isTyping = true) => {
+      if (!conversationId) return;
+      client.sendTyping(conversationId, isTyping);
+    },
+    [client, conversationId],
+  );
+
+  return { typingUsers, sendTyping };
+}
+
+// Re-export core types
+export { ChatClient } from './core/ChatClient';
+export type {
+  ChatConfig,
+  ChatMessage,
+  ConnectionStatus,
+  Conversation,
+  ApiResponse,
+  SendMessageOptions,
+  GetMessagesOptions,
+  MessagesResponse,
+} from './types';
