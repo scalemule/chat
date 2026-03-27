@@ -14,6 +14,7 @@ interface WsEventMap {
   'presence:state': { channel: string; members: PresenceMember[] };
   'presence:join': { channel: string; user: PresenceMember };
   'presence:leave': { channel: string; userId: string };
+  'presence:update': { channel: string; userId: string; status: string; userData?: unknown };
   error: { message: string };
 }
 
@@ -210,6 +211,14 @@ export class WebSocketTransport extends EventEmitter<WsEventMap> {
           break;
         case 'presence_leave':
           this.emit('presence:leave', { channel: msg.channel, userId: msg.user_id });
+          break;
+        case 'presence_update':
+          this.emit('presence:update', {
+            channel: msg.channel,
+            userId: msg.user_id,
+            status: msg.status,
+            userData: msg.user_data,
+          });
           break;
         case 'error':
           this.emit('error', { message: msg.message ?? 'Unknown error' });

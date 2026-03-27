@@ -75,18 +75,23 @@ export class ChatClient extends EventEmitter<ChatEventMap> {
     });
 
     this.ws.on('presence:state', ({ channel, members }) => {
-      const conversationId = channel.replace('conversation:', '');
+      const conversationId = channel.replace(/^conversation:(?:lr:|bc:)?/, '');
       this.emit('presence:state', { conversationId, members });
     });
 
     this.ws.on('presence:join', ({ channel, user }) => {
-      const conversationId = channel.replace('conversation:', '');
+      const conversationId = channel.replace(/^conversation:(?:lr:|bc:)?/, '');
       this.emit('presence:join', { userId: user.user_id, conversationId, userData: user.user_data });
     });
 
     this.ws.on('presence:leave', ({ channel, userId }) => {
-      const conversationId = channel.replace('conversation:', '');
+      const conversationId = channel.replace(/^conversation:(?:lr:|bc:)?/, '');
       this.emit('presence:leave', { userId, conversationId });
+    });
+
+    this.ws.on('presence:update', ({ channel, userId, status, userData }) => {
+      const conversationId = channel.replace(/^conversation:(?:lr:|bc:)?/, '');
+      this.emit('presence:update', { userId, conversationId, status, userData });
     });
 
     this.ws.on('error', ({ message }) => {
@@ -115,7 +120,9 @@ export class ChatClient extends EventEmitter<ChatEventMap> {
   // ============ Conversations ============
 
   async createConversation(options: CreateConversationOptions): Promise<ApiResponse<Conversation>> {
-    return this.http.post<Conversation>('/v1/chat/conversations', options);
+    const result = await this.http.post<Conversation>('/v1/chat/conversations', options);
+    if (result.data) this.trackConversationType(result.data);
+    return result;
   }
 
   async listConversations(options?: ListConversationsOptions): Promise<ApiResponse<Conversation[]>> {
@@ -123,11 +130,21 @@ export class ChatClient extends EventEmitter<ChatEventMap> {
     if (options?.page) params.set('page', String(options.page));
     if (options?.per_page) params.set('per_page', String(options.per_page));
     const qs = params.toString();
-    return this.http.get<Conversation[]>(`/v1/chat/conversations${qs ? '?' + qs : ''}`);
+    const result = await this.http.get<Conversation[]>(`/v1/chat/conversations${qs ? '?' + qs : ''}`);
+    if (result.data) result.data.forEach((c) => this.trackConversationType(c));
+    return result;
   }
 
   async getConversation(id: string): Promise<ApiResponse<Conversation>> {
-    return this.http.get<Conversation>(`/v1/chat/conversations/${id}`);
+    const result = await this.http.get<Conversation>(`/v1/chat/conversations/${id}`);
+    if (result.data) this.trackConversationType(result.data);
+    return result;
+  }
+
+  private trackConversationType(conversation: Conversation): void {
+    if (conversation.conversation_type !== 'direct' && conversation.conversation_type !== 'group') {
+      this.conversationTypes.set(conversation.id, conversation.conversation_type);
+    }
   }
 
   // ============ Messages ============
@@ -291,27 +308,30 @@ export class ChatClient extends EventEmitter<ChatEventMap> {
     if (!channel.startsWith('conversation:')) return;
     // Strip prefix: conversation:{id}, conversation:lr:{id}, conversation:bc:{id}
     const conversationId = channel.replace(/^conversation:(?:lr:|bc:)?/, '');
-    const msg = data as Record<string, unknown>;
+    const raw = data as Record<string, unknown>;
 
-    if (!msg) return;
+    if (!raw) return;
 
-    const event = (msg as { event?: string }).event ?? (msg as { type?: string }).type;
+    // The broadcast handler wraps messages as { event, data }.
+    // Unwrap the envelope to get the event name and inner payload.
+    const event = (raw.event as string) ?? (raw.type as string);
+    const payload = (raw.data as Record<string, unknown>) ?? raw;
 
     switch (event) {
       case 'new_message': {
-        const message = msg as unknown as ChatMessage;
+        const message = payload as unknown as ChatMessage;
         this.cache.addMessage(conversationId, message);
         this.emit('message', { message, conversationId });
         break;
       }
       case 'message_edited': {
-        const message = msg as unknown as ChatMessage;
+        const message = payload as unknown as ChatMessage;
         this.cache.updateMessage(conversationId, message);
         this.emit('message:updated', { message, conversationId });
         break;
       }
       case 'message_deleted': {
-        const messageId = (msg as { message_id?: string }).message_id ?? (msg as { id?: string }).id;
+        const messageId = (payload as { message_id?: string }).message_id ?? (payload as { id?: string }).id;
         if (messageId) {
           this.cache.removeMessage(conversationId, messageId as string);
           this.emit('message:deleted', { messageId: messageId as string, conversationId });
@@ -319,14 +339,14 @@ export class ChatClient extends EventEmitter<ChatEventMap> {
         break;
       }
       case 'user_typing': {
-        const userId = (msg as { user_id?: string }).user_id;
+        const userId = (payload as { user_id?: string }).user_id;
         if (userId) {
           this.emit('typing', { userId, conversationId });
         }
         break;
       }
       case 'user_stopped_typing': {
-        const userId = (msg as { user_id?: string }).user_id;
+        const userId = (payload as { user_id?: string }).user_id;
         if (userId) {
           this.emit('typing:stop', { userId, conversationId });
         }
@@ -334,15 +354,15 @@ export class ChatClient extends EventEmitter<ChatEventMap> {
       }
       case 'typing_batch': {
         // Batched typing from large rooms — emit individual typing events for each user
-        const users = (msg as { users?: string[] }).users ?? [];
+        const users = (payload as { users?: string[] }).users ?? [];
         for (const userId of users) {
           this.emit('typing', { userId, conversationId });
         }
         break;
       }
       case 'messages_read': {
-        const userId = (msg as { user_id?: string }).user_id;
-        const lastReadAt = (msg as { last_read_at?: string }).last_read_at;
+        const userId = (payload as { user_id?: string }).user_id;
+        const lastReadAt = (payload as { last_read_at?: string }).last_read_at;
         if (userId && lastReadAt) {
           this.emit('read', { userId, conversationId, lastReadAt });
         }

@@ -117,6 +117,7 @@ export interface ChatEventMap {
   'typing:stop': { userId: string; conversationId: string };
   'presence:join': { userId: string; conversationId: string; userData?: unknown };
   'presence:leave': { userId: string; conversationId: string };
+  'presence:update': { userId: string; conversationId: string; status: string; userData?: unknown };
   'presence:state': { conversationId: string; members: PresenceMember[] };
   'read': { userId: string; conversationId: string; lastReadAt: string };
   'reaction': { reaction: ChatReaction; conversationId: string };
