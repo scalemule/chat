@@ -28,6 +28,8 @@ function bootstrap(): void {
     window.parent.postMessage({ type: 'connected' }, '*');
   });
 
+  let disconnected = false;
+
   // Listen for commands from parent
   window.addEventListener('message', (event) => {
     const { method, args } = event.data ?? {};
@@ -38,6 +40,7 @@ function bootstrap(): void {
         }
         break;
       case 'disconnect':
+        disconnected = true;
         client.disconnect();
         break;
     }
@@ -47,6 +50,7 @@ function bootstrap(): void {
     // Fetch conversation first to populate channel type routing,
     // then subscribe with the correct prefix for large_room/broadcast.
     client.getConversation(conversationId).then(() => {
+      if (disconnected) return;
       client.subscribeToConversation(conversationId);
       client.connect();
     });

@@ -89,10 +89,13 @@ class ScaleMuleChatElement extends HTMLElement {
       if (e.key === 'Enter') doSend();
     });
 
-    // Fetch conversation (populates channel type routing), then subscribe and load
+    // Fetch conversation (populates channel type routing), then subscribe and load.
+    // Capture the client reference so we can detect reinitialization.
+    const clientAtInit = this.client;
     if (conversationId) {
       this.client.getConversation(conversationId).then(() => {
-        if (!this.client) return;
+        // If the element was reinitialized, this.client is a new instance — bail out.
+        if (this.client !== clientAtInit) return;
         this.unsub = this.client.subscribeToConversation(conversationId);
         this.client.connect();
       });
