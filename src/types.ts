@@ -45,6 +45,9 @@ export interface Conversation {
   participant_count?: number;
   last_message_at?: string;
   unread_count?: number;
+  last_message_preview?: string;
+  last_message_sender_id?: string;
+  counterparty_user_id?: string;
   created_at: string;
   participants?: Participant[];
 }
@@ -63,8 +66,15 @@ export interface ChatMessage {
   sender_type?: string;
   sender_agent_model?: string;
   attachments?: Attachment[];
+  reactions?: ReactionSummary[];
   is_edited: boolean;
   created_at: string;
+}
+
+export interface ReactionSummary {
+  emoji: string;
+  count: number;
+  user_ids: string[];
 }
 
 export interface Attachment {
@@ -146,6 +156,7 @@ export interface ChatEventMap {
   'reaction': { reaction: ChatReaction; conversationId: string };
   'room_upgraded': { conversationId: string; newType: 'large_room' };
   'delivery': { messageId: string; status: 'sent' | 'delivered' | 'read' };
+  'inbox:update': { conversationId: string; messageId: string; senderId: string; preview: string };
   'error': { code: string; message: string };
 }
 
@@ -164,6 +175,12 @@ export interface SendMessageOptions {
 export interface ListConversationsOptions {
   page?: number;
   per_page?: number;
+  conversation_type?: 'direct' | 'group' | 'broadcast' | 'ephemeral' | 'large_room';
+}
+
+export interface UnreadTotalResponse {
+  unread_conversations: number;
+  unread_messages: number;
 }
 
 export interface GetMessagesOptions {

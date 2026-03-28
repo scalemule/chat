@@ -322,6 +322,96 @@ export function useTyping(conversationId?: string) {
   return { typingUsers, sendTyping };
 }
 
+// ============ useConversations Hook ============
+
+export function useConversations(options?: { conversationType?: string }) {
+  const { client } = useChatContext();
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const fetchConversations = useCallback(async () => {
+    const result = await client.listConversations({
+      conversation_type: options?.conversationType as Conversation['conversation_type'],
+    });
+    if (result.data) {
+      setConversations(result.data);
+    }
+    setIsLoading(false);
+  }, [client, options?.conversationType]);
+
+  // Initial fetch
+  useEffect(() => {
+    fetchConversations();
+  }, [fetchConversations]);
+
+  // Listen for inbox:update events — debounced re-fetch
+  useEffect(() => {
+    return client.on('inbox:update', () => {
+      if (refreshTimer.current) clearTimeout(refreshTimer.current);
+      refreshTimer.current = setTimeout(() => {
+        fetchConversations();
+      }, 500);
+    });
+  }, [client, fetchConversations]);
+
+  // Listen for read events — update unread_count locally
+  useEffect(() => {
+    return client.on('read', ({ conversationId }) => {
+      setConversations((prev) =>
+        prev.map((c) => (c.id === conversationId ? { ...c, unread_count: 0 } : c)),
+      );
+    });
+  }, [client]);
+
+  useEffect(() => {
+    return () => {
+      if (refreshTimer.current) clearTimeout(refreshTimer.current);
+    };
+  }, []);
+
+  return { conversations, isLoading, refresh: fetchConversations };
+}
+
+// ============ useUnreadCount Hook ============
+
+export function useUnreadCount() {
+  const { client } = useChatContext();
+  const [totalUnread, setTotalUnread] = useState(0);
+
+  // Fetch initial count from dedicated endpoint
+  useEffect(() => {
+    (async () => {
+      const result = await client.getUnreadTotal();
+      if (result.data) {
+        setTotalUnread(result.data.unread_messages);
+      }
+    })();
+  }, [client]);
+
+  // Increment on inbox:update (new message in any conversation)
+  useEffect(() => {
+    return client.on('inbox:update', () => {
+      setTotalUnread((prev) => prev + 1);
+    });
+  }, [client]);
+
+  // Reset for a conversation on read
+  useEffect(() => {
+    return client.on('read', () => {
+      // Re-fetch to get accurate count since we don't know how many were unread
+      (async () => {
+        const result = await client.getUnreadTotal();
+        if (result.data) {
+          setTotalUnread(result.data.unread_messages);
+        }
+      })();
+    });
+  }, [client]);
+
+  return { totalUnread };
+}
+
 // Re-export core types
 export { ChatClient } from './core/ChatClient';
 export type {
@@ -333,4 +423,7 @@ export type {
   SendMessageOptions,
   GetMessagesOptions,
   MessagesResponse,
+  ReactionSummary,
+  UnreadTotalResponse,
+  ListConversationsOptions,
 } from './types';

@@ -21,6 +21,7 @@ import type {
   ReadStatus,
   SendMessageOptions,
   ChannelSettings,
+  UnreadTotalResponse,
 } from '../types';
 
 export class ChatClient extends EventEmitter<ChatEventMap> {
@@ -123,7 +124,11 @@ export class ChatClient extends EventEmitter<ChatEventMap> {
   // ============ Conversations ============
 
   async createConversation(options: CreateConversationOptions): Promise<ApiResponse<Conversation>> {
-    const result = await this.http.post<Conversation>('/v1/chat/conversations', options);
+    const body = {
+      ...options,
+      conversation_type: options.conversation_type ?? 'direct',
+    };
+    const result = await this.http.post<Conversation>('/v1/chat/conversations', body);
     if (result.data) this.trackConversationType(result.data);
     return result;
   }
@@ -132,6 +137,7 @@ export class ChatClient extends EventEmitter<ChatEventMap> {
     const params = new URLSearchParams();
     if (options?.page) params.set('page', String(options.page));
     if (options?.per_page) params.set('per_page', String(options.per_page));
+    if (options?.conversation_type) params.set('conversation_type', options.conversation_type);
     const qs = params.toString();
     const result = await this.http.get<Conversation[]>(`/v1/chat/conversations${qs ? '?' + qs : ''}`);
     if (result.data) result.data.forEach((c) => this.trackConversationType(c));
@@ -184,6 +190,12 @@ export class ChatClient extends EventEmitter<ChatEventMap> {
     );
 
     if (result.data?.messages) {
+      // Server returns DESC for initial/before queries. Normalize to chronological (oldest first)
+      // so all consumers (React hook, web component) get consistent ordering.
+      if (!options?.after) {
+        result.data.messages = result.data.messages.slice().reverse();
+      }
+
       if (!options?.before && !options?.after) {
         // Initial load — replace cache
         this.cache.setMessages(conversationId, result.data.messages);
@@ -209,6 +221,16 @@ export class ChatClient extends EventEmitter<ChatEventMap> {
 
   async addReaction(messageId: string, emoji: string): Promise<ApiResponse<void>> {
     return this.http.post<void>(`/v1/chat/messages/${messageId}/reactions`, { emoji });
+  }
+
+  async removeReaction(messageId: string, emoji: string): Promise<ApiResponse<void>> {
+    return this.http.del<void>(`/v1/chat/messages/${messageId}/reactions/${encodeURIComponent(emoji)}`);
+  }
+
+  // ============ Unread Count ============
+
+  async getUnreadTotal(): Promise<ApiResponse<UnreadTotalResponse>> {
+    return this.http.get<UnreadTotalResponse>('/v1/chat/conversations/unread-total');
   }
 
   // ============ Typing & Read Receipts ============
@@ -362,7 +384,40 @@ export class ChatClient extends EventEmitter<ChatEventMap> {
   // ============ Private ============
 
   private handleRealtimeMessage(channel: string, data: unknown): void {
-    if (!channel.startsWith('conversation:')) return;
+    if (channel.startsWith('conversation:')) {
+      this.handleConversationMessage(channel, data);
+      return;
+    }
+    if (channel.startsWith('private:')) {
+      this.handlePrivateMessage(data);
+      return;
+    }
+  }
+
+  private handlePrivateMessage(data: unknown): void {
+    const raw = data as Record<string, unknown>;
+    if (!raw) return;
+
+    const event = (raw.event as string) ?? (raw.type as string);
+    const payload = (raw.data as Record<string, unknown>) ?? raw;
+
+    switch (event) {
+      case 'new_message': {
+        const conversationId = payload.conversation_id as string;
+        const messageId = (payload.id as string) ?? (payload.message_id as string);
+        const senderId = payload.sender_id as string;
+        const preview = (payload.content as string) ?? '';
+        if (conversationId) {
+          // Emit distinct inbox event — NOT 'message' to avoid double-counting
+          // with conversation-channel events in useChat
+          this.emit('inbox:update', { conversationId, messageId, senderId, preview });
+        }
+        break;
+      }
+    }
+  }
+
+  private handleConversationMessage(channel: string, data: unknown): void {
     // Strip prefix: conversation:{id}, conversation:lr:{id}, conversation:bc:{id}
     const conversationId = channel.replace(/^conversation:(?:lr:|bc:)?/, '');
     const raw = data as Record<string, unknown>;

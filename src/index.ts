@@ -20,6 +20,8 @@ export type {
   MessagesResponse,
   Participant,
   PresenceMember,
+  ReactionSummary,
   ReadStatus,
   SendMessageOptions,
+  UnreadTotalResponse,
 } from './types';
