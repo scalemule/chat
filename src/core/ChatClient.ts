@@ -9,9 +9,12 @@ import type {
   ChatConfig,
   ChatEventMap,
   ChatMessage,
+  ChannelWithSettings,
   ConnectionStatus,
   Conversation,
   CreateConversationOptions,
+  CreateEphemeralChannelOptions,
+  CreateLargeRoomOptions,
   GetMessagesOptions,
   ListConversationsOptions,
   MessagesResponse,
@@ -266,6 +269,60 @@ export class ChatClient extends EventEmitter<ChatEventMap> {
     this.conversationTypes.set(conversationId, type);
   }
 
+  // ============ Channel Methods ============
+
+  /**
+   * Find an active ephemeral or large_room channel by linked session ID.
+   * Returns null (not an error) if no active channel exists.
+   */
+  async findChannelBySessionId(linkedSessionId: string): Promise<ChannelWithSettings | null> {
+    const result = await this.http.get<ChannelWithSettings>(
+      `/v1/chat/channels/by-session?linked_session_id=${encodeURIComponent(linkedSessionId)}`
+    );
+    if (result.error?.status === 404) return null;
+    if (result.data) {
+      this.conversationTypes.set(result.data.id, result.data.channel_type as Conversation['conversation_type']);
+    }
+    return result.data;
+  }
+
+  /**
+   * Self-join an ephemeral or large_room channel. Idempotent.
+   */
+  async joinChannel(channelId: string): Promise<ApiResponse<{ participant_id: string; role: string; joined_at: string }>> {
+    return this.http.post(`/v1/chat/channels/${channelId}/join`, {});
+  }
+
+  /**
+   * Create an ephemeral channel tied to a session (e.g., a video snap).
+   */
+  async createEphemeralChannel(options: CreateEphemeralChannelOptions): Promise<ApiResponse<ChannelWithSettings>> {
+    const result = await this.http.post<ChannelWithSettings>('/v1/chat/channels/ephemeral', options);
+    if (result.data) {
+      this.conversationTypes.set(result.data.id, 'ephemeral');
+    }
+    return result;
+  }
+
+  /**
+   * Create a large room channel (high-concurrency, skips MySQL tracking in realtime).
+   */
+  async createLargeRoom(options: CreateLargeRoomOptions): Promise<ApiResponse<ChannelWithSettings>> {
+    const result = await this.http.post<ChannelWithSettings>('/v1/chat/channels/large-room', options);
+    if (result.data) {
+      this.conversationTypes.set(result.data.id, 'large_room');
+    }
+    return result;
+  }
+
+  /**
+   * Get the global concurrent subscriber count for a conversation.
+   */
+  async getSubscriberCount(conversationId: string): Promise<number> {
+    const result = await this.http.get<{ count: number }>(`/v1/chat/conversations/${conversationId}/subscriber-count`);
+    return result.data?.count ?? 0;
+  }
+
   // ============ Realtime Subscriptions ============
 
   subscribeToConversation(conversationId: string): () => void {
@@ -365,6 +422,23 @@ export class ChatClient extends EventEmitter<ChatEventMap> {
         const lastReadAt = (payload as { last_read_at?: string }).last_read_at;
         if (userId && lastReadAt) {
           this.emit('read', { userId, conversationId, lastReadAt });
+        }
+        break;
+      }
+      case 'room_upgraded': {
+        const newType = (payload as { new_type?: string }).new_type;
+        if (newType === 'large_room') {
+          // Update conversation type for channel routing
+          this.conversationTypes.set(conversationId, 'large_room');
+          // Unsubscribe from old channel and re-subscribe with new prefix
+          const oldUnsub = this.conversationSubs.get(conversationId);
+          if (oldUnsub) {
+            oldUnsub();
+            this.conversationSubs.delete(conversationId);
+            // Re-subscribe with new large_room prefix
+            this.subscribeToConversation(conversationId);
+          }
+          this.emit('room_upgraded', { conversationId, newType: 'large_room' });
         }
         break;
       }

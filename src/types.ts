@@ -104,6 +104,29 @@ export interface ChannelSettings {
   slow_mode_seconds?: number;
 }
 
+export interface ChannelWithSettings {
+  id: string;
+  channel_type: string;
+  name?: string;
+  created_at: string;
+  linked_session_id?: string;
+  expires_at?: string;
+  participant_count: number;
+}
+
+export interface CreateEphemeralChannelOptions {
+  linked_session_id: string;
+  name?: string;
+  ttl_minutes?: number;
+}
+
+export interface CreateLargeRoomOptions {
+  name: string;
+  linked_session_id?: string;
+  max_participants?: number;
+  slow_mode_seconds?: number;
+}
+
 // ============ Event Map ============
 
 export interface ChatEventMap {
@@ -121,6 +144,7 @@ export interface ChatEventMap {
   'presence:state': { conversationId: string; members: PresenceMember[] };
   'read': { userId: string; conversationId: string; lastReadAt: string };
   'reaction': { reaction: ChatReaction; conversationId: string };
+  'room_upgraded': { conversationId: string; newType: 'large_room' };
   'delivery': { messageId: string; status: 'sent' | 'delivered' | 'read' };
   'error': { code: string; message: string };
 }
