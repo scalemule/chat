@@ -176,7 +176,6 @@ export class WebSocketTransport extends EventEmitter<WsEventMap> {
       const response = await fetch(this.ticketUrl, {
         method: 'POST',
         headers,
-        credentials: 'include',
       });
       if (!response.ok) return null;
       const json = await response.json();

@@ -62,7 +62,6 @@ export class HttpTransport {
         headers,
         body: body ? JSON.stringify(body) : undefined,
         signal: controller.signal,
-        credentials: 'include',
       });
 
       clearTimeout(timeoutId);
