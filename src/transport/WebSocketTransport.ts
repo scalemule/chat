@@ -20,6 +20,7 @@ interface WsEventMap {
 
 export interface WebSocketTransportConfig {
   baseUrl: string;
+  wsUrl?: string;
   apiKey?: string;
   getToken?: () => Promise<string | null>;
   reconnect?: {
@@ -53,7 +54,9 @@ export class WebSocketTransport extends EventEmitter<WsEventMap> {
 
     const baseUrl = config.baseUrl.replace(/\/$/, '');
     this.ticketUrl = `${baseUrl}/v1/realtime/ws/ticket`;
-    this.wsBaseUrl = baseUrl.replace(/^http/, 'ws') + '/v1/realtime/ws';
+    // Use wsUrl for WebSocket connection if provided, otherwise derive from baseUrl
+    const wsBase = config.wsUrl ? config.wsUrl.replace(/\/$/, '') : baseUrl;
+    this.wsBaseUrl = wsBase.replace(/^http/, 'ws') + '/v1/realtime/ws';
   }
 
   getStatus(): ConnectionStatus {

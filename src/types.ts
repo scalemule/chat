@@ -4,6 +4,7 @@ export interface ChatConfig {
   apiKey?: string;
   embedToken?: string;
   apiBaseUrl?: string;
+  wsUrl?: string;
   applicationId?: string;
   userId?: string;
   sessionToken?: string;
@@ -39,7 +40,7 @@ export interface ApiError {
 
 export interface Conversation {
   id: string;
-  conversation_type: 'direct' | 'group' | 'broadcast' | 'ephemeral' | 'large_room';
+  conversation_type: 'direct' | 'group' | 'broadcast' | 'ephemeral' | 'large_room' | 'support';
   name?: string;
   created_by?: string;
   participant_count?: number;
@@ -157,6 +158,8 @@ export interface ChatEventMap {
   'room_upgraded': { conversationId: string; newType: 'large_room' };
   'delivery': { messageId: string; status: 'sent' | 'delivered' | 'read' };
   'inbox:update': { conversationId: string; messageId: string; senderId: string; preview: string };
+  'support:new': { conversationId: string; visitorName?: string };
+  'support:assigned': { conversationId: string; visitorName?: string; visitorEmail?: string };
   'error': { code: string; message: string };
 }
 
@@ -175,7 +178,7 @@ export interface SendMessageOptions {
 export interface ListConversationsOptions {
   page?: number;
   per_page?: number;
-  conversation_type?: 'direct' | 'group' | 'broadcast' | 'ephemeral' | 'large_room';
+  conversation_type?: 'direct' | 'group' | 'broadcast' | 'ephemeral' | 'large_room' | 'support';
 }
 
 export interface UnreadTotalResponse {

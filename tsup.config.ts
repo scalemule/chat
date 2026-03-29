@@ -33,4 +33,12 @@ export default defineConfig([
     sourcemap: false,
     minify: true,
   },
+  // Support widget bundle (CDN-deployable IIFE for customer websites)
+  {
+    entry: { 'support-widget': 'src/widget/index.ts' },
+    format: ['iife'],
+    globalName: 'ScaleMuleSupportWidget',
+    sourcemap: false,
+    minify: true,
+  },
 ]);

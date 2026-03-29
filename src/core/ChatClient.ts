@@ -45,6 +45,7 @@ export class ChatClient extends EventEmitter<ChatEventMap> {
 
     this.ws = new WebSocketTransport({
       baseUrl,
+      wsUrl: config.wsUrl,
       apiKey: config.apiKey,
       getToken: config.getToken ?? (config.sessionToken ? () => Promise.resolve(config.sessionToken!) : undefined),
       reconnect: config.reconnect,
@@ -79,22 +80,22 @@ export class ChatClient extends EventEmitter<ChatEventMap> {
     });
 
     this.ws.on('presence:state', ({ channel, members }) => {
-      const conversationId = channel.replace(/^conversation:(?:lr:|bc:)?/, '');
+      const conversationId = channel.replace(/^conversation:(?:lr:|bc:|support:)?/, '');
       this.emit('presence:state', { conversationId, members });
     });
 
     this.ws.on('presence:join', ({ channel, user }) => {
-      const conversationId = channel.replace(/^conversation:(?:lr:|bc:)?/, '');
+      const conversationId = channel.replace(/^conversation:(?:lr:|bc:|support:)?/, '');
       this.emit('presence:join', { userId: user.user_id, conversationId, userData: user.user_data });
     });
 
     this.ws.on('presence:leave', ({ channel, userId }) => {
-      const conversationId = channel.replace(/^conversation:(?:lr:|bc:)?/, '');
+      const conversationId = channel.replace(/^conversation:(?:lr:|bc:|support:)?/, '');
       this.emit('presence:leave', { userId, conversationId });
     });
 
     this.ws.on('presence:update', ({ channel, userId, status, userData }) => {
-      const conversationId = channel.replace(/^conversation:(?:lr:|bc:)?/, '');
+      const conversationId = channel.replace(/^conversation:(?:lr:|bc:|support:)?/, '');
       this.emit('presence:update', { userId, conversationId, status, userData });
     });
 
@@ -368,6 +369,8 @@ export class ChatClient extends EventEmitter<ChatEventMap> {
         return `conversation:lr:${conversationId}`;
       case 'broadcast':
         return `conversation:bc:${conversationId}`;
+      case 'support':
+        return `conversation:support:${conversationId}`;
       default:
         return `conversation:${conversationId}`;
     }
@@ -414,12 +417,29 @@ export class ChatClient extends EventEmitter<ChatEventMap> {
         }
         break;
       }
+      case 'support:new_conversation': {
+        const conversationId = payload.conversation_id as string;
+        const visitorName = payload.visitor_name as string | undefined;
+        if (conversationId) {
+          this.emit('support:new', { conversationId, visitorName });
+        }
+        break;
+      }
+      case 'support:assigned': {
+        const conversationId = payload.conversation_id as string;
+        const visitorName = payload.visitor_name as string | undefined;
+        const visitorEmail = payload.visitor_email as string | undefined;
+        if (conversationId) {
+          this.emit('support:assigned', { conversationId, visitorName, visitorEmail });
+        }
+        break;
+      }
     }
   }
 
   private handleConversationMessage(channel: string, data: unknown): void {
     // Strip prefix: conversation:{id}, conversation:lr:{id}, conversation:bc:{id}
-    const conversationId = channel.replace(/^conversation:(?:lr:|bc:)?/, '');
+    const conversationId = channel.replace(/^conversation:(?:lr:|bc:|support:)?/, '');
     const raw = data as Record<string, unknown>;
 
     if (!raw) return;

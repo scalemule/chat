@@ -1,4 +1,6 @@
 export { ChatClient } from './core/ChatClient';
+export { SupportClient } from './support';
+export type { SupportConversation, SupportClientConfig } from './support';
 export { CHAT_VERSION } from './version';
 export type {
   ApiError,

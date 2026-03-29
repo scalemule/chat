@@ -52,6 +52,13 @@ export function ChatProvider({ config, children }: ChatProviderProps): React.JSX
   return <ChatContext.Provider value={{ client }}>{children}</ChatContext.Provider>;
 }
 
+// ============ Client Access ============
+
+/** Direct access to the ChatClient instance for custom event subscriptions (e.g., support:new). */
+export function useChatClient(): ChatClient {
+  return useChatContext().client;
+}
+
 // ============ Hooks ============
 
 export function useConnection(): { status: ConnectionStatus; connect: () => void; disconnect: () => void } {
