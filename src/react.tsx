@@ -77,11 +77,10 @@ export function useConnection(): { status: ConnectionStatus; connect: () => void
     return client.on('reconnecting', () => setStatus('reconnecting'));
   }, [client]);
 
-  return {
-    status,
-    connect: () => client.connect(),
-    disconnect: () => client.disconnect(),
-  };
+  const connect = useCallback(() => client.connect(), [client]);
+  const disconnect = useCallback(() => client.disconnect(), [client]);
+
+  return { status, connect, disconnect };
 }
 
 export function useChat(conversationId?: string) {
