@@ -29,6 +29,8 @@ class SupportWidget {
   private unreadCount = 0;
   private eventCleanups: Array<() => void> = [];
   private eventsSubscribed = false;
+  private pollInterval: ReturnType<typeof setInterval> | null = null;
+  private lastMessageCount = 0;
 
   constructor(apiKey: string, apiBaseUrl?: string) {
     this.client = new SupportClient({ apiKey, apiBaseUrl });
@@ -177,6 +179,8 @@ class SupportWidget {
       this.renderChatView();
       await this.loadMessages();
       this.subscribeToEvents();
+      // Restart polling (may have been stopped by minimize)
+      this.startPolling();
     } else {
       this.renderPreChatForm();
     }
@@ -184,6 +188,7 @@ class SupportWidget {
 
   private minimize(): void {
     this.isOpen = false;
+    this.stopPolling();
     if (this.panelEl) {
       this.panelEl.classList.add('sm-hidden');
     }
@@ -263,44 +268,59 @@ class SupportWidget {
     }
   }
 
-  // ============ Real-time ============
+  // ============ Real-time (polling fallback) ============
 
   private subscribeToEvents(): void {
     if (!this.conversation || this.eventsSubscribed) return;
     this.eventsSubscribed = true;
 
-    const chat = this.client.chat;
-    const convId = this.conversation.conversation_id;
+    // Start polling for new messages every 3 seconds.
+    // This is the reliable delivery path — WebSocket is a future enhancement.
+    this.startPolling();
+  }
 
-    chat.connect();
-    chat.subscribeToConversation(convId);
+  private startPolling(): void {
+    if (this.pollInterval) return;
 
-    const unsub1 = chat.on('message', ({ message, conversationId }) => {
-      if (conversationId !== convId) return;
-      // Skip own messages (already optimistically appended)
-      if (message.sender_id === this.client.visitorUserId) return;
-      this.appendMessage(message);
+    this.pollInterval = setInterval(async () => {
+      await this.pollForNewMessages();
+    }, 3000);
+  }
 
+  private stopPolling(): void {
+    if (this.pollInterval) {
+      clearInterval(this.pollInterval);
+      this.pollInterval = null;
+    }
+  }
+
+  private async pollForNewMessages(): Promise<void> {
+    if (!this.conversation || !this.messagesEl) return;
+
+    try {
+      const result = await this.client.chat.getMessages(this.conversation.conversation_id, {
+        limit: 50,
+      });
+      if (!result.data?.messages) return;
+
+      const messages = result.data.messages;
+      if (messages.length === this.lastMessageCount) return;
+
+      // New messages arrived — re-render all messages
+      this.lastMessageCount = messages.length;
+      this.messagesEl.innerHTML = '';
+      for (const msg of messages) {
+        this.appendMessage(msg);
+      }
+
+      // Update unread badge if minimized
       if (!this.isOpen) {
         this.unreadCount++;
         this.updateBadge();
       }
-    });
-
-    const unsub2 = chat.on('typing', ({ conversationId }) => {
-      if (conversationId !== convId || !this.typingEl) return;
-      this.typingEl.textContent = 'Support is typing...';
-      setTimeout(() => {
-        if (this.typingEl) this.typingEl.textContent = '';
-      }, 3000);
-    });
-
-    const unsub3 = chat.on('typing:stop', ({ conversationId }) => {
-      if (conversationId !== convId || !this.typingEl) return;
-      this.typingEl.textContent = '';
-    });
-
-    this.eventCleanups.push(unsub1, unsub2, unsub3);
+    } catch {
+      // Polling failure — will retry next interval
+    }
   }
 
   // ============ Message rendering ============
@@ -339,6 +359,7 @@ class SupportWidget {
       });
       if (result.data) {
         this.messagesEl.innerHTML = '';
+        this.lastMessageCount = result.data.messages.length;
         for (const msg of result.data.messages) {
           this.appendMessage(msg);
         }
