@@ -1,6 +1,13 @@
 export { ChatClient } from './core/ChatClient';
 export { SupportClient } from './support';
-export type { SupportConversation, SupportClientConfig } from './support';
+export { ChatController } from './shared/ChatController';
+export type {
+  SupportConversation,
+  SupportClientConfig,
+  SupportWidgetConfig,
+  SupportWidgetPreChatField,
+} from './support';
+export type { ChatControllerState } from './shared/ChatController';
 export { CHAT_VERSION } from './version';
 export type {
   ApiError,
@@ -19,9 +26,11 @@ export type {
   CreateLargeRoomOptions,
   GetMessagesOptions,
   ListConversationsOptions,
+  MessageEditedEvent,
   MessagesResponse,
   Participant,
   PresenceMember,
+  ReactionEvent,
   ReactionSummary,
   ReadStatus,
   SendMessageOptions,
