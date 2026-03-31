@@ -14,6 +14,7 @@ import type {
   ConnectionStatus,
   Conversation,
   ApiResponse,
+  ReadStatus,
   SendMessageOptions,
   GetMessagesOptions,
   MessagesResponse,
@@ -23,6 +24,7 @@ import type {
 
 interface ChatContextValue {
   client: ChatClient;
+  config: ChatConfig;
 }
 
 const ChatContext = createContext<ChatContextValue | null>(null);
@@ -49,7 +51,7 @@ export function ChatProvider({ config, children }: ChatProviderProps): React.JSX
     };
   }, [client]);
 
-  return <ChatContext.Provider value={{ client }}>{children}</ChatContext.Provider>;
+  return <ChatContext.Provider value={{ client, config }}>{children}</ChatContext.Provider>;
 }
 
 // ============ Client Access ============
@@ -57,6 +59,10 @@ export function ChatProvider({ config, children }: ChatProviderProps): React.JSX
 /** Direct access to the ChatClient instance for custom event subscriptions (e.g., support:new). */
 export function useChatClient(): ChatClient {
   return useChatContext().client;
+}
+
+export function useChatConfig(): ChatConfig {
+  return useChatContext().config;
 }
 
 // ============ Hooks ============
@@ -86,6 +92,7 @@ export function useConnection(): { status: ConnectionStatus; connect: () => void
 export function useChat(conversationId?: string) {
   const { client } = useChatContext();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [readStatuses, setReadStatuses] = useState<ReadStatus[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
@@ -119,6 +126,13 @@ export function useChat(conversationId?: string) {
       } else if (result.error) {
         setError(result.error.message);
       }
+
+      const readStatusResult = await client.getReadStatus(conversationId);
+      if (cancelled) return;
+      if (readStatusResult.data?.statuses) {
+        setReadStatuses(readStatusResult.data.statuses);
+      }
+
       setIsLoading(false);
 
       unsub = client.subscribeToConversation(conversationId);
@@ -137,10 +151,7 @@ export function useChat(conversationId?: string) {
 
     return client.on('message', ({ message, conversationId: convId }) => {
       if (convId === conversationId) {
-        setMessages((prev) => {
-          if (prev.some((m) => m.id === message.id)) return prev;
-          return [...prev, message];
-        });
+        setMessages([...client.getCachedMessages(conversationId)]);
       }
     });
   }, [client, conversationId]);
@@ -151,7 +162,7 @@ export function useChat(conversationId?: string) {
 
     return client.on('message:updated', ({ message, conversationId: convId }) => {
       if (convId === conversationId) {
-        setMessages((prev) => prev.map((m) => (m.id === message.id ? message : m)));
+        setMessages([...client.getCachedMessages(conversationId)]);
       }
     });
   }, [client, conversationId]);
@@ -162,8 +173,37 @@ export function useChat(conversationId?: string) {
 
     return client.on('message:deleted', ({ messageId, conversationId: convId }) => {
       if (convId === conversationId) {
-        setMessages((prev) => prev.filter((m) => m.id !== messageId));
+        setMessages([...client.getCachedMessages(conversationId)]);
       }
+    });
+  }, [client, conversationId]);
+
+  useEffect(() => {
+    if (!conversationId) return;
+
+    return client.on('reaction', ({ conversationId: convId }) => {
+      if (convId === conversationId) {
+        setMessages([...client.getCachedMessages(conversationId)]);
+      }
+    });
+  }, [client, conversationId]);
+
+  useEffect(() => {
+    if (!conversationId) return;
+
+    return client.on('read', ({ conversationId: convId, userId, lastReadAt }) => {
+      if (convId !== conversationId) return;
+
+      setReadStatuses((prev) => {
+        const existingIndex = prev.findIndex((status) => status.user_id === userId);
+        if (existingIndex < 0) {
+          return [...prev, { user_id: userId, last_read_at: lastReadAt }];
+        }
+
+        return prev.map((status) =>
+          status.user_id === userId ? { ...status, last_read_at: lastReadAt } : status,
+        );
+      });
     });
   }, [client, conversationId]);
 
@@ -185,18 +225,143 @@ export function useChat(conversationId?: string) {
     }
   }, [client, conversationId, messages]);
 
+  const editMessage = useCallback(
+    async (messageId: string, content: string) => {
+      const result = await client.editMessage(messageId, content);
+      if (result.error) {
+        setError(result.error.message);
+      }
+      return result;
+    },
+    [client],
+  );
+
+  const deleteMessage = useCallback(
+    async (messageId: string) => {
+      const result = await client.deleteMessage(messageId);
+      if (result.error) {
+        setError(result.error.message);
+      }
+      return result;
+    },
+    [client],
+  );
+
+  const addReaction = useCallback(
+    async (messageId: string, emoji: string) => {
+      const result = await client.addReaction(messageId, emoji);
+      if (result.error) {
+        setError(result.error.message);
+      }
+      return result;
+    },
+    [client],
+  );
+
+  const removeReaction = useCallback(
+    async (messageId: string, emoji: string) => {
+      const result = await client.removeReaction(messageId, emoji);
+      if (result.error) {
+        setError(result.error.message);
+      }
+      return result;
+    },
+    [client],
+  );
+
+  const uploadAttachment = useCallback(
+    async (file: File | Blob, onProgress?: (percent: number) => void, signal?: AbortSignal) => {
+      const result = await client.uploadAttachment(file, onProgress, signal);
+      if (result.error) {
+        setError(result.error.message);
+      }
+      return result;
+    },
+    [client],
+  );
+
+  const refreshAttachmentUrl = useCallback(
+    async (messageId: string, fileId: string) => {
+      const result = await client.refreshAttachmentUrl(messageId, fileId);
+      if (result.error) {
+        setError(result.error.message);
+      }
+      return result;
+    },
+    [client],
+  );
+
+  const reportMessage = useCallback(
+    async (
+      messageId: string,
+      reason: 'spam' | 'harassment' | 'hate' | 'violence' | 'other',
+      description?: string,
+    ) => {
+      const result = await client.reportMessage(messageId, reason, description);
+      if (result.error) {
+        setError(result.error.message);
+      }
+      return result;
+    },
+    [client],
+  );
+
+  const muteConversation = useCallback(
+    async (mutedUntil?: string) => {
+      if (!conversationId) return;
+      const result = await client.muteConversation(conversationId, mutedUntil);
+      if (result.error) {
+        setError(result.error.message);
+      }
+      return result;
+    },
+    [client, conversationId],
+  );
+
+  const unmuteConversation = useCallback(async () => {
+    if (!conversationId) return;
+    const result = await client.unmuteConversation(conversationId);
+    if (result.error) {
+      setError(result.error.message);
+    }
+    return result;
+  }, [client, conversationId]);
+
+  const getReadStatus = useCallback(async () => {
+    if (!conversationId) return;
+    const result = await client.getReadStatus(conversationId);
+    if (result.data?.statuses) {
+      setReadStatuses(result.data.statuses);
+    } else if (result.error) {
+      setError(result.error.message);
+    }
+    return result;
+  }, [client, conversationId]);
+
   const markRead = useCallback(async () => {
     if (!conversationId) return;
     await client.markRead(conversationId);
-  }, [client, conversationId]);
+    await getReadStatus();
+  }, [client, conversationId, getReadStatus]);
 
   return {
     messages,
+    readStatuses,
     isLoading,
     error,
     hasMore,
     sendMessage,
     loadMore,
+    editMessage,
+    deleteMessage,
+    addReaction,
+    removeReaction,
+    uploadAttachment,
+    refreshAttachmentUrl,
+    reportMessage,
+    muteConversation,
+    unmuteConversation,
+    getReadStatus,
     markRead,
   };
 }
@@ -418,6 +583,15 @@ export function useUnreadCount() {
   return { totalUnread };
 }
 
+export {
+  ChatInput,
+  ChatMessageItem,
+  ChatMessageList,
+  ChatThread,
+  ConversationList,
+  EmojiPicker,
+} from './react-components';
+
 // Re-export core types
 export { ChatClient } from './core/ChatClient';
 export type {
@@ -429,7 +603,9 @@ export type {
   SendMessageOptions,
   GetMessagesOptions,
   MessagesResponse,
+  ReadStatus,
   ReactionSummary,
   UnreadTotalResponse,
   ListConversationsOptions,
 } from './types';
+export type { ChatTheme } from './react-components';
