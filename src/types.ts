@@ -46,6 +46,7 @@ export interface Conversation {
   participant_count?: number;
   last_message_at?: string;
   unread_count?: number;
+  is_muted?: boolean;
   last_message_preview?: string;
   last_message_sender_id?: string;
   counterparty_user_id?: string;
@@ -97,6 +98,29 @@ export interface ChatReaction {
   message_id: string;
   user_id: string;
   emoji: string;
+  action?: 'added' | 'removed';
+  timestamp?: string;
+}
+
+export interface MessageEditedEvent {
+  id?: string;
+  message_id: string;
+  conversation_id: string;
+  content?: string;
+  new_content?: string;
+  editor_user_id?: string;
+  is_edited?: boolean;
+  updated_at?: string;
+  timestamp?: string;
+}
+
+export interface ReactionEvent {
+  message_id: string;
+  conversation_id?: string;
+  user_id: string;
+  emoji: string;
+  action: 'added' | 'removed';
+  timestamp?: string;
 }
 
 export interface PresenceMember {
@@ -145,7 +169,7 @@ export interface ChatEventMap {
   disconnected: void;
   reconnecting: { attempt: number };
   'message': { message: ChatMessage; conversationId: string };
-  'message:updated': { message: ChatMessage; conversationId: string };
+  'message:updated': { message: ChatMessage; conversationId: string; update?: MessageEditedEvent };
   'message:deleted': { messageId: string; conversationId: string };
   'typing': { userId: string; conversationId: string };
   'typing:stop': { userId: string; conversationId: string };
@@ -154,7 +178,7 @@ export interface ChatEventMap {
   'presence:update': { userId: string; conversationId: string; status: string; userData?: unknown };
   'presence:state': { conversationId: string; members: PresenceMember[] };
   'read': { userId: string; conversationId: string; lastReadAt: string };
-  'reaction': { reaction: ChatReaction; conversationId: string };
+  'reaction': { reaction: ChatReaction; conversationId: string; action: 'added' | 'removed' };
   'room_upgraded': { conversationId: string; newType: 'large_room' };
   'delivery': { messageId: string; status: 'sent' | 'delivered' | 'read' };
   'inbox:update': { conversationId: string; messageId: string; senderId: string; preview: string };
@@ -205,4 +229,22 @@ export interface MessagesResponse {
   has_more?: boolean;
   oldest_id?: string;
   newest_id?: string;
+}
+
+export interface PresignedUploadResponse {
+  file_id: string;
+  upload_url: string;
+  completion_token: string;
+  expires_at: string;
+  method?: string;
+}
+
+export interface UploadCompleteResponse {
+  file_id: string;
+  filename: string;
+  size_bytes: number;
+  content_type: string;
+  url: string;
+  already_completed: boolean;
+  scan_queued: boolean;
 }

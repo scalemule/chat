@@ -1,233 +1,636 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
-import type { ChatMessage } from '../types';
-import { EmojiPicker } from './EmojiPicker';
+import type { ChatMessage, Attachment } from '../types';
+import { EmojiPickerTrigger } from './EmojiPicker';
+import { ReactionBar } from './ReactionBar';
 import { formatMessageTime } from './utils';
+
+/** Hook that lazily fetches a presigned URL for an attachment */
+function useAttachmentUrl(
+  fileId: string,
+  hasUrl: boolean,
+  fetcher?: (fileId: string) => Promise<string>,
+) {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (hasUrl || !fileId || !fetcher) return;
+    fetcher(fileId)
+      .then((viewUrl) => {
+        if (viewUrl) setUrl(viewUrl);
+      })
+      .catch(() => {});
+  }, [fileId, hasUrl, fetcher]);
+  return url;
+}
+
+interface UserProfile {
+  display_name: string;
+  username?: string;
+  avatar_url?: string;
+}
 
 interface ChatMessageItemProps {
   message: ChatMessage;
   currentUserId?: string;
+  conversationId?: string;
+  profile?: UserProfile;
   onAddReaction?: (messageId: string, emoji: string) => void | Promise<void>;
   onRemoveReaction?: (messageId: string, emoji: string) => void | Promise<void>;
-  onReport?: (messageId: string) => void | Promise<void>;
+  onEdit?: (messageId: string, content: string) => void | Promise<void>;
+  onDelete?: (messageId: string) => void | Promise<void>;
+  onReport?: (messageId: string) => void;
+  onFetchAttachmentUrl?: (fileId: string) => Promise<string>;
+  isOwnMessage?: boolean;
   highlight?: boolean;
 }
 
-function renderAttachment(messageId: string, attachment: NonNullable<ChatMessage['attachments']>[number]) {
-  const key = `${messageId}:${attachment.file_id}`;
-  const url = attachment.presigned_url;
+/** Renders a single attachment -- fetches presigned URL on demand if missing */
+function AttachmentRenderer({
+  att,
+  fetcher,
+}: {
+  att: Attachment;
+  fetcher?: (fileId: string) => Promise<string>;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const fetchedUrl = useAttachmentUrl(att.file_id, !!att.presigned_url, fetcher);
+  const viewUrl = att.presigned_url || fetchedUrl;
 
-  if (!url) {
+  const isImage = att.mime_type?.startsWith('image/');
+  const isVideo = att.mime_type?.startsWith('video/');
+  const isAudio = att.mime_type?.startsWith('audio/');
+
+  if (isImage && viewUrl) {
+    return (
+      <>
+        <img
+          src={viewUrl}
+          alt={att.file_name}
+          loading="lazy"
+          onClick={() => setExpanded(true)}
+          style={{
+            display: 'block',
+            maxHeight: 240,
+            maxWidth: '100%',
+            objectFit: 'contain',
+            cursor: 'pointer',
+            borderRadius: 8,
+          }}
+        />
+        {expanded && (
+          <div
+            onClick={() => setExpanded(false)}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              zIndex: 9999,
+              background: 'rgba(0, 0, 0, 0.8)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: 16,
+              cursor: 'pointer',
+            }}
+          >
+            <img
+              src={viewUrl}
+              alt={att.file_name}
+              style={{
+                maxWidth: '100%',
+                maxHeight: '100%',
+                objectFit: 'contain',
+                borderRadius: 8,
+              }}
+            />
+          </div>
+        )}
+      </>
+    );
+  }
+
+  if (isVideo && viewUrl) {
+    return (
+      <video
+        src={viewUrl}
+        controls
+        preload="metadata"
+        poster={att.thumbnail_url}
+        style={{
+          display: 'block',
+          maxHeight: 240,
+          maxWidth: '100%',
+          borderRadius: 8,
+        }}
+      />
+    );
+  }
+
+  if (isAudio && viewUrl) {
+    return (
+      <audio
+        src={viewUrl}
+        controls
+        style={{ display: 'block', width: '100%', marginTop: 4 }}
+      />
+    );
+  }
+
+  if (isImage && !viewUrl) {
     return (
       <div
-        key={key}
         style={{
-          padding: '10px 12px',
-          borderRadius: 12,
-          background: 'rgba(255,255,255,0.16)',
-          fontSize: 13,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          padding: '8px 12px',
+          fontSize: 12,
+          color: 'var(--sm-muted-text, #6b7280)',
+          background: 'var(--sm-surface-muted, #f8fafc)',
+          borderRadius: 8,
         }}
       >
-        {attachment.file_name}
+        <div
+          style={{
+            width: 16,
+            height: 16,
+            border: '2px solid var(--sm-border-color, #e5e7eb)',
+            borderTopColor: 'var(--sm-primary, #2563eb)',
+            borderRadius: 999,
+            animation: 'sm-spin 0.8s linear infinite',
+          }}
+        />
+        Loading image...
       </div>
     );
   }
 
-  if (attachment.mime_type.startsWith('image/')) {
-    return (
-      <img
-        key={key}
-        src={url}
-        alt={attachment.file_name}
-        loading="lazy"
-        style={{
-          display: 'block',
-          maxWidth: '100%',
-          borderRadius: 12,
-          marginTop: 8,
-        }}
-      />
-    );
-  }
-
-  if (attachment.mime_type.startsWith('video/')) {
-    return (
-      <video
-        key={key}
-        controls
-        src={url}
-        style={{
-          display: 'block',
-          width: '100%',
-          maxWidth: 320,
-          borderRadius: 12,
-          marginTop: 8,
-        }}
-      />
-    );
-  }
-
-  if (attachment.mime_type.startsWith('audio/')) {
-    return (
-      <audio
-        key={key}
-        controls
-        src={url}
-        style={{
-          display: 'block',
-          width: '100%',
-          marginTop: 8,
-        }}
-      />
-    );
-  }
-
+  // Generic file attachment
   return (
-    <a
-      key={key}
-      href={url}
-      target="_blank"
-      rel="noreferrer"
+    <div
       style={{
-        display: 'inline-block',
-        marginTop: 8,
-        color: 'inherit',
-        fontSize: 13,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        padding: '8px 12px',
+        fontSize: 14,
+        color: 'var(--sm-text-color, #111827)',
+        background: 'var(--sm-surface-muted, #f8fafc)',
+        borderRadius: 8,
+        border: '1px solid var(--sm-border-color, #e5e7eb)',
       }}
     >
-      {attachment.file_name}
-    </a>
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+      >
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+        <polyline points="14 2 14 8 20 8" />
+      </svg>
+      {viewUrl ? (
+        <a
+          href={viewUrl}
+          target="_blank"
+          rel="noreferrer"
+          style={{ color: 'inherit', textDecoration: 'underline' }}
+        >
+          {att.file_name}
+        </a>
+      ) : (
+        att.file_name
+      )}
+    </div>
   );
 }
 
 export function ChatMessageItem({
   message,
   currentUserId,
+  conversationId,
+  profile,
   onAddReaction,
   onRemoveReaction,
+  onEdit,
+  onDelete,
   onReport,
+  onFetchAttachmentUrl,
+  isOwnMessage: isOwnMessageProp,
   highlight = false,
 }: ChatMessageItemProps): React.JSX.Element {
-  const [showPicker, setShowPicker] = useState(false);
-  const isOwn = Boolean(currentUserId && message.sender_id === currentUserId);
+  const [showActions, setShowActions] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editContent, setEditContent] = useState(message.content);
+
+  const isOwn =
+    isOwnMessageProp !== undefined
+      ? isOwnMessageProp
+      : Boolean(currentUserId && message.sender_id === currentUserId);
+
+  const displayName = profile?.display_name ?? 'User';
+  const username = profile?.username;
+  const avatarUrl = profile?.avatar_url;
+  const initials = displayName.charAt(0).toUpperCase();
   const canReact = Boolean(onAddReaction || onRemoveReaction);
 
-  const reactionEntries = useMemo(() => message.reactions ?? [], [message.reactions]);
+  function handleToggleReaction(emoji: string) {
+    const hasReacted = message.reactions?.some(
+      (r) =>
+        r.emoji === emoji && currentUserId && r.user_ids.includes(currentUserId),
+    );
+    if (hasReacted) {
+      void onRemoveReaction?.(message.id, emoji);
+    } else {
+      void onAddReaction?.(message.id, emoji);
+    }
+  }
+
+  function handleSaveEdit() {
+    if (editContent.trim() && editContent !== message.content) {
+      void onEdit?.(message.id, editContent.trim());
+    }
+    setEditing(false);
+  }
+
+  // System messages
+  if (message.message_type === 'system') {
+    return (
+      <div
+        style={{
+          textAlign: 'center',
+          fontSize: 12,
+          color: 'var(--sm-muted-text, #6b7280)',
+          padding: '8px 0',
+          fontStyle: 'italic',
+        }}
+      >
+        {message.content}
+      </div>
+    );
+  }
 
   return (
     <div
       style={{
         display: 'flex',
-        flexDirection: 'column',
-        alignItems: isOwn ? 'flex-end' : 'flex-start',
-        gap: 6,
+        justifyContent: isOwn ? 'flex-end' : 'flex-start',
+        padding: '3px 16px',
+        position: 'relative',
       }}
+      onMouseEnter={() => setShowActions(true)}
+      onMouseLeave={() => setShowActions(false)}
     >
-      <div
-        style={{
-          maxWidth: 'min(82%, 560px)',
-          padding: message.attachments?.length ? 10 : '10px 12px',
-          borderRadius: 'var(--sm-border-radius, 16px)',
-          background: isOwn ? 'var(--sm-own-bubble, #2563eb)' : 'var(--sm-other-bubble, #f3f4f6)',
-          color: isOwn ? 'var(--sm-own-text, #fff)' : 'var(--sm-other-text, #111827)',
-          boxShadow: highlight ? '0 0 0 2px rgba(37, 99, 235, 0.22)' : 'none',
-          transition: 'box-shadow 0.2s ease',
-        }}
-      >
-        {message.content ? (
-          <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontSize: 14 }}>
-            {message.content}
-          </div>
-        ) : null}
-        {message.attachments?.map((attachment) => renderAttachment(message.id, attachment))}
-      </div>
-
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          color: 'var(--sm-muted-text, #6b7280)',
-          fontSize: 12,
-        }}
-      >
-        <span>{formatMessageTime(message.created_at)}</span>
-        {message.is_edited ? <span>edited</span> : null}
-        {onReport && !isOwn ? (
-          <button
-            type="button"
-            onClick={() => void onReport(message.id)}
-            style={{
-              border: 'none',
-              background: 'transparent',
-              color: 'inherit',
-              cursor: 'pointer',
-              fontSize: 12,
-              padding: 0,
-            }}
-          >
-            Report
-          </button>
-        ) : null}
-        {canReact ? (
-          <button
-            type="button"
-            onClick={() => setShowPicker((value) => !value)}
-            style={{
-              border: 'none',
-              background: 'transparent',
-              color: 'inherit',
-              cursor: 'pointer',
-              fontSize: 12,
-              padding: 0,
-            }}
-          >
-            React
-          </button>
-        ) : null}
-      </div>
-
-      {showPicker && canReact ? (
-        <EmojiPicker
-          onSelect={(emoji) => {
-            setShowPicker(false);
-            void onAddReaction?.(message.id, emoji);
+      {/* Avatar -- other's messages only */}
+      {!isOwn && (
+        <div
+          style={{
+            flexShrink: 0,
+            width: 32,
+            height: 32,
+            borderRadius: 999,
+            background: 'var(--sm-surface-muted, #f3f4f6)',
+            overflow: 'hidden',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: 12,
+            fontWeight: 500,
+            color: 'var(--sm-muted-text, #6b7280)',
+            marginRight: 10,
+            marginTop: 2,
           }}
-        />
-      ) : null}
+        >
+          {avatarUrl ? (
+            <img
+              src={avatarUrl}
+              alt={displayName}
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            />
+          ) : (
+            initials
+          )}
+        </div>
+      )}
 
-      {reactionEntries.length ? (
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {reactionEntries.map((reaction) => {
-            const reacted = Boolean(currentUserId && reaction.user_ids.includes(currentUserId));
-
-            return (
+      {/* Message bubble area */}
+      <div style={{ position: 'relative', maxWidth: '75%', minWidth: 0 }}>
+        {/* Hover actions toolbar */}
+        {showActions && canReact && (
+          <div
+            style={{
+              position: 'absolute',
+              top: -12,
+              [isOwn ? 'right' : 'left']: 4,
+              zIndex: 50,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 2,
+              background: 'var(--sm-surface, #fff)',
+              border: '1px solid var(--sm-border-color, #e5e7eb)',
+              borderRadius: 8,
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+              padding: '2px 4px',
+            }}
+          >
+            <EmojiPickerTrigger
+              onSelect={(emoji) => void onAddReaction?.(message.id, emoji)}
+            />
+            {!isOwn && onReport && (
               <button
-                key={`${message.id}:${reaction.emoji}`}
-                type="button"
                 onClick={() => {
-                  if (reacted) {
-                    void onRemoveReaction?.(message.id, reaction.emoji);
-                    return;
-                  }
-                  void onAddReaction?.(message.id, reaction.emoji);
+                  setShowActions(false);
+                  onReport(message.id);
                 }}
+                type="button"
+                aria-label="Report"
+                title="Report message"
                 style={{
-                  border: reacted ? '1px solid rgba(37, 99, 235, 0.4)' : '1px solid var(--sm-border-color, #e5e7eb)',
-                  background: reacted ? 'rgba(37, 99, 235, 0.08)' : 'var(--sm-surface, #fff)',
-                  color: 'var(--sm-text-color, #111827)',
-                  borderRadius: 999,
-                  padding: '4px 8px',
+                  padding: 6,
+                  border: 'none',
+                  background: 'transparent',
                   cursor: 'pointer',
-                  fontSize: 12,
+                  color: 'var(--sm-muted-text, #6b7280)',
+                  borderRadius: 8,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
                 }}
               >
-                {reaction.emoji} {reaction.count}
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
+                  <line x1="4" y1="22" x2="4" y2="15" />
+                </svg>
               </button>
-            );
-          })}
+            )}
+            {isOwn && onEdit && (
+              <button
+                onClick={() => setEditing(true)}
+                type="button"
+                aria-label="Edit"
+                style={{
+                  padding: 6,
+                  border: 'none',
+                  background: 'transparent',
+                  cursor: 'pointer',
+                  color: 'var(--sm-muted-text, #6b7280)',
+                  borderRadius: 8,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                </svg>
+              </button>
+            )}
+            {isOwn && onDelete && (
+              <button
+                onClick={() => void onDelete(message.id)}
+                type="button"
+                aria-label="Delete"
+                style={{
+                  padding: 6,
+                  border: 'none',
+                  background: 'transparent',
+                  cursor: 'pointer',
+                  color: 'var(--sm-muted-text, #6b7280)',
+                  borderRadius: 8,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <polyline points="3 6 5 6 21 6" />
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                </svg>
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Bubble */}
+        <div
+          style={{
+            borderRadius: 'var(--sm-border-radius, 16px)',
+            ...(isOwn
+              ? { borderBottomRightRadius: 6 }
+              : { borderBottomLeftRadius: 6 }),
+            padding: '8px 14px',
+            background: isOwn
+              ? 'var(--sm-own-bubble-bg, var(--sm-own-bubble, var(--sm-primary, #2563eb)))'
+              : 'var(--sm-other-bubble-bg, var(--sm-other-bubble, #f3f4f6))',
+            color: isOwn
+              ? 'var(--sm-own-bubble-text, var(--sm-own-text, #ffffff))'
+              : 'var(--sm-other-bubble-text, var(--sm-other-text, #111827))',
+            fontSize: 'var(--sm-font-size, 14px)',
+            fontFamily:
+              'var(--sm-font-family, system-ui, -apple-system, sans-serif)',
+            boxShadow: highlight
+              ? '0 0 0 2px rgba(37, 99, 235, 0.22)'
+              : 'none',
+            transition: 'box-shadow 0.2s ease',
+          }}
+        >
+          {/* Sender name + @username -- other's messages only */}
+          {!isOwn && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'baseline',
+                gap: 6,
+                marginBottom: 2,
+              }}
+            >
+              <span
+                style={{
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: 'var(--sm-other-bubble-text, var(--sm-other-text, #111827))',
+                }}
+              >
+                {displayName}
+              </span>
+              {username && (
+                <span
+                  style={{
+                    fontSize: 12,
+                    color: 'var(--sm-muted-text, #9ca3af)',
+                  }}
+                >
+                  @{username}
+                </span>
+              )}
+            </div>
+          )}
+
+          {editing ? (
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input
+                type="text"
+                value={editContent}
+                onChange={(e) => setEditContent(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleSaveEdit();
+                  if (e.key === 'Escape') setEditing(false);
+                }}
+                autoFocus
+                style={{
+                  flex: 1,
+                  fontSize: 14,
+                  border: '1px solid var(--sm-border-color, #e5e7eb)',
+                  borderRadius: 6,
+                  padding: '4px 8px',
+                  outline: 'none',
+                  color: 'var(--sm-text-color, #111827)',
+                  background: 'var(--sm-surface, #fff)',
+                }}
+              />
+              <button
+                onClick={handleSaveEdit}
+                type="button"
+                style={{
+                  fontSize: 12,
+                  fontWeight: 500,
+                  border: 'none',
+                  background: 'transparent',
+                  cursor: 'pointer',
+                  color: isOwn
+                    ? 'rgba(255,255,255,0.7)'
+                    : 'var(--sm-primary, #2563eb)',
+                }}
+              >
+                Save
+              </button>
+              <button
+                onClick={() => setEditing(false)}
+                type="button"
+                style={{
+                  fontSize: 12,
+                  border: 'none',
+                  background: 'transparent',
+                  cursor: 'pointer',
+                  color: isOwn
+                    ? 'rgba(255,255,255,0.7)'
+                    : 'var(--sm-muted-text, #6b7280)',
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          ) : message.content ? (
+            <p
+              style={{
+                margin: 0,
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+              }}
+            >
+              {message.content}
+            </p>
+          ) : null}
+
+          {/* Timestamp + edited */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+              marginTop: 2,
+              justifyContent: isOwn ? 'flex-end' : 'flex-start',
+            }}
+          >
+            <span
+              style={{
+                fontSize: 10,
+                color: isOwn
+                  ? 'rgba(255,255,255,0.6)'
+                  : 'var(--sm-muted-text, #9ca3af)',
+              }}
+            >
+              {formatMessageTime(message.created_at)}
+            </span>
+            {message.is_edited && (
+              <span
+                style={{
+                  fontSize: 10,
+                  fontStyle: 'italic',
+                  color: isOwn
+                    ? 'rgba(255,255,255,0.6)'
+                    : 'var(--sm-muted-text, #9ca3af)',
+                }}
+              >
+                (edited)
+              </span>
+            )}
+          </div>
         </div>
-      ) : null}
+
+        {/* Attachments */}
+        {message.attachments && message.attachments.length > 0 && (
+          <div
+            style={{
+              marginTop: 4,
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 8,
+              justifyContent: isOwn ? 'flex-end' : 'flex-start',
+            }}
+          >
+            {message.attachments.map((att) => (
+              <div
+                key={att.file_id}
+                style={{
+                  borderRadius: 8,
+                  overflow: 'hidden',
+                  maxWidth: 320,
+                }}
+              >
+                <AttachmentRenderer
+                  att={att}
+                  fetcher={onFetchAttachmentUrl}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Reactions */}
+        <ReactionBar
+          reactions={message.reactions ?? []}
+          currentUserId={currentUserId}
+          onToggleReaction={handleToggleReaction}
+        />
+      </div>
     </div>
   );
 }

@@ -7,12 +7,20 @@ import { ChatMessageList } from './ChatMessageList';
 import type { ChatTheme } from './theme';
 import { themeToStyle } from './theme';
 
+interface UserProfile {
+  display_name: string;
+  username?: string;
+  avatar_url?: string;
+}
+
 interface ChatThreadProps {
   conversationId: string;
   theme?: ChatTheme;
   currentUserId?: string;
+  profiles?: Map<string, UserProfile>;
   title?: string;
   subtitle?: string;
+  onFetchAttachmentUrl?: (fileId: string) => Promise<string>;
 }
 
 function inferMessageType(content: string, attachments: Attachment[]): 'text' | 'image' | 'file' {
@@ -27,8 +35,10 @@ export function ChatThread({
   conversationId,
   theme,
   currentUserId,
+  profiles,
   title = 'Chat',
   subtitle,
+  onFetchAttachmentUrl,
 }: ChatThreadProps): React.JSX.Element {
   const client = useChatClient();
   const resolvedUserId = currentUserId ?? client.userId;
@@ -37,8 +47,12 @@ export function ChatThread({
     readStatuses,
     isLoading,
     error,
+    hasMore,
     sendMessage,
+    loadMore,
     markRead,
+    editMessage,
+    deleteMessage,
     addReaction,
     removeReaction,
     reportMessage,
@@ -144,10 +158,19 @@ export function ChatThread({
       <ChatMessageList
         messages={messages}
         currentUserId={resolvedUserId}
-        unreadSince={ownReadStatus}
+        conversationId={conversationId}
+        profiles={profiles}
+        hasMore={hasMore}
+        isLoading={isLoading}
+        onLoadMore={loadMore}
         onAddReaction={(messageId, emoji) => void addReaction(messageId, emoji)}
         onRemoveReaction={(messageId, emoji) => void removeReaction(messageId, emoji)}
+        onEdit={(messageId, content) => void editMessage(messageId, content)}
+        onDelete={(messageId) => void deleteMessage(messageId)}
         onReport={(messageId) => void reportMessage(messageId, 'other')}
+        onFetchAttachmentUrl={onFetchAttachmentUrl}
+        unreadSince={ownReadStatus}
+        onReachBottom={() => void markRead()}
         emptyState={isLoading ? 'Loading messages...' : 'Start the conversation'}
       />
 
@@ -166,7 +189,7 @@ export function ChatThread({
         onSend={async (content, attachments) => {
           await sendMessage(content, {
             attachments,
-            message_type: inferMessageType(content, attachments),
+            message_type: inferMessageType(content, attachments ?? []),
           });
         }}
         onTypingChange={(isTyping) => {

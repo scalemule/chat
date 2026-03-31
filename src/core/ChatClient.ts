@@ -4,11 +4,14 @@ import { OfflineQueue } from './OfflineQueue';
 import { HttpTransport } from '../transport/HttpTransport';
 import { WebSocketTransport } from '../transport/WebSocketTransport';
 import { DEFAULT_API_BASE_URL } from '../constants';
+import { uploadToPresignedUrl } from '../shared/upload';
 import type {
+  Attachment,
   ApiResponse,
   ChatConfig,
   ChatEventMap,
   ChatMessage,
+  ChatReaction,
   ChannelWithSettings,
   ConnectionStatus,
   Conversation,
@@ -17,11 +20,15 @@ import type {
   CreateLargeRoomOptions,
   GetMessagesOptions,
   ListConversationsOptions,
+  MessageEditedEvent,
   MessagesResponse,
+  PresignedUploadResponse,
+  ReactionEvent,
   ReadStatus,
   SendMessageOptions,
   ChannelSettings,
   UnreadTotalResponse,
+  UploadCompleteResponse,
 } from '../types';
 
 export class ChatClient extends EventEmitter<ChatEventMap> {
@@ -31,11 +38,13 @@ export class ChatClient extends EventEmitter<ChatEventMap> {
   private offlineQueue: OfflineQueue;
   private conversationSubs = new Map<string, () => void>();
   private conversationTypes = new Map<string, Conversation['conversation_type']>();
+  private currentUserId?: string;
 
   constructor(config: ChatConfig) {
     super();
 
     const baseUrl = config.apiBaseUrl ?? DEFAULT_API_BASE_URL;
+    this.currentUserId = config.userId;
 
     this.http = new HttpTransport({
       baseUrl,
@@ -110,6 +119,10 @@ export class ChatClient extends EventEmitter<ChatEventMap> {
     return this.ws.getStatus();
   }
 
+  get userId(): string | undefined {
+    return this.currentUserId;
+  }
+
   connect(): void {
     this.ws.connect();
   }
@@ -170,10 +183,16 @@ export class ChatClient extends EventEmitter<ChatEventMap> {
     );
 
     if (result.data) {
-      this.cache.addMessage(conversationId, result.data);
+      const reconciled = this.cache.reconcileOptimisticMessage(conversationId, result.data);
+      this.cache.upsertMessage(conversationId, reconciled);
     } else if (result.error?.status === 0) {
       // Network error — queue for offline delivery
-      this.offlineQueue.enqueue(conversationId, options.content, options.message_type ?? 'text');
+      this.offlineQueue.enqueue(
+        conversationId,
+        options.content,
+        options.message_type ?? 'text',
+        options.attachments,
+      );
     }
 
     return result;
@@ -214,8 +233,76 @@ export class ChatClient extends EventEmitter<ChatEventMap> {
     return this.http.del<void>(`/v1/chat/messages/${messageId}`);
   }
 
+  async uploadAttachment(
+    file: File | Blob,
+    onProgress?: (percent: number) => void,
+    signal?: AbortSignal,
+  ): Promise<ApiResponse<Attachment>> {
+    const filename = typeof File !== 'undefined' && file instanceof File ? file.name : 'attachment';
+    const contentType = file.type || 'application/octet-stream';
+
+    const initResult = await this.http.post<PresignedUploadResponse>('/v1/storage/signed-url/upload', {
+      filename,
+      content_type: contentType,
+      size_bytes: file.size,
+      is_public: false,
+      metadata: {
+        source: 'chat_sdk',
+      },
+    });
+
+    if (initResult.error || !initResult.data) {
+      return { data: null, error: initResult.error };
+    }
+
+    const uploadResult = await uploadToPresignedUrl(
+      initResult.data.upload_url,
+      file,
+      onProgress,
+      signal,
+    );
+
+    if (uploadResult.error) {
+      return { data: null, error: uploadResult.error };
+    }
+
+    const completeResult = await this.http.post<UploadCompleteResponse>('/v1/storage/signed-url/complete', {
+      file_id: initResult.data.file_id,
+      completion_token: initResult.data.completion_token,
+    });
+
+    if (completeResult.error || !completeResult.data) {
+      return { data: null, error: completeResult.error };
+    }
+
+    return {
+      data: {
+        file_id: completeResult.data.file_id,
+        file_name: completeResult.data.filename,
+        file_size: completeResult.data.size_bytes,
+        mime_type: completeResult.data.content_type,
+        presigned_url: completeResult.data.url,
+      },
+      error: null,
+    };
+  }
+
+  async refreshAttachmentUrl(
+    messageId: string,
+    fileId: string,
+  ): Promise<ApiResponse<{ url: string }>> {
+    return this.http.get<{ url: string }>(
+      `/v1/chat/messages/${messageId}/attachment/${fileId}/url`,
+    );
+  }
+
   getCachedMessages(conversationId: string): ChatMessage[] {
     return this.cache.getMessages(conversationId);
+  }
+
+  stageOptimisticMessage(conversationId: string, message: ChatMessage): ChatMessage {
+    this.cache.upsertMessage(conversationId, message);
+    return message;
   }
 
   // ============ Reactions ============
@@ -226,6 +313,30 @@ export class ChatClient extends EventEmitter<ChatEventMap> {
 
   async removeReaction(messageId: string, emoji: string): Promise<ApiResponse<void>> {
     return this.http.del<void>(`/v1/chat/messages/${messageId}/reactions/${encodeURIComponent(emoji)}`);
+  }
+
+  async reportMessage(
+    messageId: string,
+    reason: 'spam' | 'harassment' | 'hate' | 'violence' | 'other',
+    description?: string,
+  ): Promise<ApiResponse<{ reported: boolean }>> {
+    return this.http.post<{ reported: boolean }>(`/v1/chat/messages/${messageId}/report`, {
+      reason,
+      description,
+    });
+  }
+
+  async muteConversation(
+    conversationId: string,
+    mutedUntil?: string,
+  ): Promise<ApiResponse<{ muted: boolean }>> {
+    return this.http.post<{ muted: boolean }>(`/v1/chat/conversations/${conversationId}/mute`, {
+      muted_until: mutedUntil,
+    });
+  }
+
+  async unmuteConversation(conversationId: string): Promise<ApiResponse<{ muted: boolean }>> {
+    return this.http.del<{ muted: boolean }>(`/v1/chat/conversations/${conversationId}/mute`);
   }
 
   // ============ Unread Count ============
@@ -437,6 +548,108 @@ export class ChatClient extends EventEmitter<ChatEventMap> {
     }
   }
 
+  private normalizeMessage(payload: Record<string, unknown>): ChatMessage {
+    return {
+      id: (payload.id as string) ?? (payload.message_id as string) ?? '',
+      content: (payload.content as string) ?? '',
+      message_type: ((payload.message_type as ChatMessage['message_type']) ?? 'text'),
+      sender_id: (payload.sender_id as string) ?? (payload.sender_user_id as string) ?? '',
+      sender_type: payload.sender_type as string | undefined,
+      sender_agent_model: payload.sender_agent_model as string | undefined,
+      attachments: payload.attachments as Attachment[] | undefined,
+      reactions: payload.reactions as ChatMessage['reactions'] | undefined,
+      is_edited: Boolean(payload.is_edited ?? false),
+      created_at:
+        (payload.created_at as string) ??
+        (payload.updated_at as string) ??
+        (payload.timestamp as string) ??
+        new Date().toISOString(),
+    };
+  }
+
+  private buildEditedMessage(conversationId: string, update: MessageEditedEvent): ChatMessage | null {
+    const messageId = update.message_id ?? update.id;
+    if (!messageId) {
+      return null;
+    }
+
+    const existing = this.cache.getMessage(conversationId, messageId);
+    return {
+      id: existing?.id ?? messageId,
+      content: update.content ?? update.new_content ?? existing?.content ?? '',
+      message_type: existing?.message_type ?? 'text',
+      sender_id: existing?.sender_id ?? '',
+      sender_type: existing?.sender_type,
+      sender_agent_model: existing?.sender_agent_model,
+      attachments: existing?.attachments,
+      reactions: existing?.reactions,
+      is_edited: true,
+      created_at:
+        existing?.created_at ??
+        update.updated_at ??
+        update.timestamp ??
+        new Date().toISOString(),
+    };
+  }
+
+  private applyReactionEvent(conversationId: string, reactionEvent: ReactionEvent): ChatReaction {
+    const reaction: ChatReaction = {
+      id: `${reactionEvent.message_id}:${reactionEvent.user_id}:${reactionEvent.emoji}`,
+      message_id: reactionEvent.message_id,
+      user_id: reactionEvent.user_id,
+      emoji: reactionEvent.emoji,
+      action: reactionEvent.action,
+      timestamp: reactionEvent.timestamp,
+    };
+
+    const existingMessage = this.cache.getMessage(conversationId, reactionEvent.message_id);
+    if (!existingMessage) {
+      return reaction;
+    }
+
+    const nextReactions = [...(existingMessage.reactions ?? [])];
+    const reactionIndex = nextReactions.findIndex((entry) => entry.emoji === reactionEvent.emoji);
+
+    if (reactionEvent.action === 'added') {
+      if (reactionIndex >= 0) {
+        const current = nextReactions[reactionIndex];
+        if (!current.user_ids.includes(reactionEvent.user_id)) {
+          const user_ids = [...current.user_ids, reactionEvent.user_id];
+          nextReactions[reactionIndex] = {
+            ...current,
+            user_ids,
+            count: user_ids.length,
+          };
+        }
+      } else {
+        nextReactions.push({
+          emoji: reactionEvent.emoji,
+          count: 1,
+          user_ids: [reactionEvent.user_id],
+        });
+      }
+    } else if (reactionIndex >= 0) {
+      const current = nextReactions[reactionIndex];
+      const user_ids = current.user_ids.filter((userId) => userId !== reactionEvent.user_id);
+      if (user_ids.length === 0) {
+        nextReactions.splice(reactionIndex, 1);
+      } else {
+        nextReactions[reactionIndex] = {
+          ...current,
+          user_ids,
+          count: user_ids.length,
+        };
+      }
+    }
+
+    this.cache.updateMessage(conversationId, {
+      ...existingMessage,
+      reactions: nextReactions,
+    });
+
+    return reaction;
+  }
+
   private handleConversationMessage(channel: string, data: unknown): void {
     // Strip prefix: conversation:{id}, conversation:lr:{id}, conversation:bc:{id}
     const conversationId = channel.replace(/^conversation:(?:lr:|bc:|support:)?/, '');
@@ -451,15 +664,32 @@ export class ChatClient extends EventEmitter<ChatEventMap> {
 
     switch (event) {
       case 'new_message': {
-        const message = payload as unknown as ChatMessage;
-        this.cache.addMessage(conversationId, message);
-        this.emit('message', { message, conversationId });
+        const message = this.normalizeMessage(payload);
+        const reconciled = this.cache.reconcileOptimisticMessage(conversationId, message);
+        this.cache.upsertMessage(conversationId, reconciled);
+        this.emit('message', { message: reconciled, conversationId });
         break;
       }
       case 'message_edited': {
-        const message = payload as unknown as ChatMessage;
-        this.cache.updateMessage(conversationId, message);
-        this.emit('message:updated', { message, conversationId });
+        const update = payload as unknown as MessageEditedEvent;
+        const message = this.buildEditedMessage(conversationId, update);
+        if (message) {
+          this.cache.upsertMessage(conversationId, message);
+          this.emit('message:updated', { message, conversationId, update });
+        }
+        break;
+      }
+      case 'reaction': {
+        const reactionEvent = payload as unknown as ReactionEvent;
+        if (!reactionEvent.message_id || !reactionEvent.user_id || !reactionEvent.emoji) {
+          break;
+        }
+        const reaction = this.applyReactionEvent(conversationId, reactionEvent);
+        this.emit('reaction', {
+          reaction,
+          conversationId,
+          action: reactionEvent.action,
+        });
         break;
       }
       case 'message_deleted': {
@@ -526,6 +756,7 @@ export class ChatClient extends EventEmitter<ChatEventMap> {
       await this.sendMessage(item.conversationId, {
         content: item.content,
         message_type: item.message_type as 'text' | 'image' | 'file',
+        attachments: item.attachments as Attachment[] | undefined,
       });
     }
   }

@@ -13,7 +13,7 @@
  * ```
  */
 import { ChatClient } from './core/ChatClient';
-import type { ChatConfig, ChatEventMap } from './types';
+import type { Attachment, ChatConfig } from './types';
 
 const STORAGE_PREFIX = 'sm_support_';
 
@@ -32,9 +32,31 @@ export interface SupportConversation {
   existing?: boolean;
 }
 
+export interface SupportWidgetPreChatField {
+  key: string;
+  label: string;
+  type: string;
+  required: boolean;
+}
+
+export interface SupportWidgetConfig {
+  title: string;
+  subtitle: string;
+  primary_color: string;
+  position: 'left' | 'right';
+  pre_chat_fields: SupportWidgetPreChatField[];
+  business_hours: Record<string, unknown>;
+  realtime_enabled: boolean;
+  welcome_message: string;
+  offline_message: string;
+  reps_online: boolean;
+  online_count: number;
+}
+
 export interface SupportClientConfig {
   apiKey: string;
   apiBaseUrl?: string;
+  wsUrl?: string;
 }
 
 interface StoredVisitorState {
@@ -47,6 +69,7 @@ export class SupportClient {
   private chatClient: ChatClient | null = null;
   private apiKey: string;
   private apiBaseUrl: string;
+  private wsUrl?: string;
   private storageKey: string;
   private anonymousId: string;
   private refreshToken: string | null = null;
@@ -59,6 +82,7 @@ export class SupportClient {
   constructor(config: SupportClientConfig) {
     this.apiKey = config.apiKey;
     this.apiBaseUrl = config.apiBaseUrl ?? 'https://api.scalemule.com';
+    this.wsUrl = config.wsUrl;
     // Key storage by first 8 chars of API key to avoid cross-app collisions
     this.storageKey = STORAGE_PREFIX + config.apiKey.substring(0, 8);
 
@@ -125,7 +149,11 @@ export class SupportClient {
   /** Start a new support conversation with the first message. */
   async startConversation(
     message: string,
-    meta?: { page_url?: string },
+    meta?: {
+      page_url?: string;
+      attachments?: Attachment[];
+      metadata?: Record<string, unknown>;
+    },
   ): Promise<SupportConversation> {
     if (!this.accessToken) {
       throw new Error('Call initVisitorSession() first');
@@ -144,6 +172,8 @@ export class SupportClient {
         email: this.visitorEmail,
         page_url: meta?.page_url ?? (typeof location !== 'undefined' ? location.href : undefined),
         user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
+        attachments: meta?.attachments,
+        metadata: meta?.metadata,
       }),
     });
 
@@ -187,6 +217,23 @@ export class SupportClient {
     return active ?? null;
   }
 
+  /** Fetch widget configuration and live support availability. */
+  async getWidgetConfig(): Promise<SupportWidgetConfig> {
+    const resp = await fetch(`${this.apiBaseUrl}/v1/chat/support/widget/config`, {
+      headers: {
+        'x-api-key': this.apiKey,
+      },
+    });
+
+    if (!resp.ok) {
+      const body = await resp.text();
+      throw new Error(`Get widget config failed: ${resp.status} ${body}`);
+    }
+
+    const result = await resp.json();
+    return result.data as SupportWidgetConfig;
+  }
+
   /** Get the underlying ChatClient for messaging, events, typing indicators, etc. */
   get chat(): ChatClient {
     if (!this.chatClient) {
@@ -198,6 +245,14 @@ export class SupportClient {
   /** Whether a visitor session has been initialized. */
   get isInitialized(): boolean {
     return this.chatClient !== null;
+  }
+
+  connect(): void {
+    this.chat.connect();
+  }
+
+  disconnect(): void {
+    this.chat.disconnect();
   }
 
   /** The visitor's user ID (available after initVisitorSession). */
@@ -221,6 +276,7 @@ export class SupportClient {
     const config: ChatConfig = {
       apiKey: this.apiKey,
       apiBaseUrl: this.apiBaseUrl,
+      wsUrl: this.wsUrl,
       // Proactive token refresh: check expiry before each request.
       // HttpTransport and WebSocketTransport call getToken() once per request
       // and do NOT retry on 401/null, so the token must be valid when returned.

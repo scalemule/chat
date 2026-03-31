@@ -590,6 +590,9 @@ export {
   ChatThread,
   ConversationList,
   EmojiPicker,
+  EmojiPickerTrigger,
+  ReactionBar,
+  ReportDialog,
 } from './react-components';
 
 // Re-export core types

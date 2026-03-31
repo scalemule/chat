@@ -15,6 +15,10 @@ export class MessageCache {
     return this.cache.get(conversationId) ?? [];
   }
 
+  getMessage(conversationId: string, messageId: string): ChatMessage | undefined {
+    return this.getMessages(conversationId).find((message) => message.id === messageId);
+  }
+
   setMessages(conversationId: string, messages: ChatMessage[]): void {
     this.cache.set(conversationId, messages.slice(0, this.maxMessages));
     this.evictOldConversations();
@@ -34,6 +38,15 @@ export class MessageCache {
     this.cache.set(conversationId, messages);
   }
 
+  upsertMessage(conversationId: string, message: ChatMessage): void {
+    if (this.getMessage(conversationId, message.id)) {
+      this.updateMessage(conversationId, message);
+      return;
+    }
+
+    this.addMessage(conversationId, message);
+  }
+
   updateMessage(conversationId: string, message: ChatMessage): void {
     const messages = this.cache.get(conversationId);
     if (!messages) return;
@@ -41,6 +54,31 @@ export class MessageCache {
     if (idx >= 0) {
       messages[idx] = message;
     }
+  }
+
+  reconcileOptimisticMessage(conversationId: string, message: ChatMessage): ChatMessage {
+    const messages = this.cache.get(conversationId);
+    if (!messages) return message;
+
+    const incomingAttachmentIds = (message.attachments ?? []).map((attachment) => attachment.file_id).sort();
+    const pendingIndex = messages.findIndex((cached) => {
+      if (!cached.id.startsWith('pending-')) return false;
+      if (cached.sender_id !== message.sender_id) return false;
+      if (cached.content !== message.content) return false;
+
+      const cachedAttachmentIds = (cached.attachments ?? [])
+        .map((attachment) => attachment.file_id)
+        .sort();
+
+      if (cachedAttachmentIds.length !== incomingAttachmentIds.length) return false;
+      return cachedAttachmentIds.every((fileId, index) => fileId === incomingAttachmentIds[index]);
+    });
+
+    if (pendingIndex >= 0) {
+      messages[pendingIndex] = message;
+    }
+
+    return message;
   }
 
   removeMessage(conversationId: string, messageId: string): void {
