@@ -286,6 +286,7 @@ export const WIDGET_STYLES = `
   display: flex;
   flex-direction: column;
   background: #f8fafc;
+  position: relative;
 }
 
 .sm-chat-shell.sm-dragging {
@@ -371,8 +372,8 @@ export const WIDGET_STYLES = `
 }
 
 .sm-msg-visitor .sm-msg-bubble {
-  background: var(--sm-primary);
-  color: var(--sm-primary-text);
+  background: var(--sm-visitor-bubble);
+  color: var(--sm-visitor-text);
   border-bottom-right-radius: 6px;
 }
 
@@ -628,6 +629,26 @@ export const WIDGET_STYLES = `
 
 .sm-footer a:hover {
   text-decoration: underline;
+}
+
+.sm-drag-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(37, 99, 235, 0.08);
+  border: 2px dashed var(--sm-primary);
+  border-radius: 12px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--sm-primary);
+  pointer-events: none;
+  z-index: 10;
+}
+
+.sm-chat-shell.sm-dragging .sm-drag-overlay {
+  display: flex;
 }
 
 @media (max-width: 440px) {

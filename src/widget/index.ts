@@ -24,6 +24,7 @@ import * as storage from './storage';
 interface SupportWidgetOptions {
   color?: string;
   position?: 'left' | 'right';
+  title?: string;
 }
 
 interface PendingAttachment {
@@ -35,6 +36,22 @@ interface PendingAttachment {
 }
 
 const REACTION_EMOJIS = ['👍', '❤️', '😂', '🎉', '😮', '👀'];
+
+const ATTACHMENT_SIZE_LIMITS: Record<string, number> = {
+  'image/': 10 * 1024 * 1024,  // 10 MB
+  'video/': 25 * 1024 * 1024,  // 25 MB
+  'audio/': 5 * 1024 * 1024,   // 5 MB
+};
+
+function validateFileSize(file: File): string | null {
+  for (const [prefix, limit] of Object.entries(ATTACHMENT_SIZE_LIMITS)) {
+    if (file.type.startsWith(prefix) && file.size > limit) {
+      const limitMB = limit / (1024 * 1024);
+      return `${file.name} exceeds ${limitMB}MB limit`;
+    }
+  }
+  return null;
+}
 
 const DEFAULT_WIDGET_CONFIG: SupportWidgetConfig = {
   title: 'Support',
@@ -257,6 +274,7 @@ class SupportWidget {
       this.config = {
         ...DEFAULT_WIDGET_CONFIG,
         ...remoteConfig,
+        title: this.options.title ?? remoteConfig.title ?? DEFAULT_WIDGET_CONFIG.title,
         primary_color:
           this.options.color ?? remoteConfig.primary_color ?? DEFAULT_WIDGET_CONFIG.primary_color,
         position: this.options.position ?? remoteConfig.position ?? DEFAULT_WIDGET_CONFIG.position,
@@ -264,6 +282,7 @@ class SupportWidget {
     } catch {
       this.config = {
         ...DEFAULT_WIDGET_CONFIG,
+        title: this.options.title ?? DEFAULT_WIDGET_CONFIG.title,
         primary_color: this.options.color ?? DEFAULT_WIDGET_CONFIG.primary_color,
         position: this.options.position ?? DEFAULT_WIDGET_CONFIG.position,
       };
@@ -457,6 +476,7 @@ class SupportWidget {
       this.bodyEl.dataset.view = 'chat';
       this.bodyEl.innerHTML = `
         <div class="sm-chat-shell" id="sm-chat-shell">
+          <div class="sm-drag-overlay" id="sm-drag-overlay">Drop files here</div>
           <div class="sm-messages" id="sm-messages"></div>
           <div class="sm-typing" id="sm-typing"></div>
           <div class="sm-upload-list" id="sm-upload-list"></div>
@@ -883,6 +903,8 @@ class SupportWidget {
 
       const state = await this.controller.init({ realtime: true, presence: true });
       this.applyRuntimeState(state, captureUnreadMarker);
+      // Start 30s polling as a fallback safety net alongside WebSocket
+      this.startPolling();
       return;
     }
 
@@ -994,7 +1016,7 @@ class SupportWidget {
   }
 
   private async pollForUpdates(): Promise<void> {
-    if (!this.conversation || (this.config.realtime_enabled && !this.realtimeFallbackActive)) return;
+    if (!this.conversation) return;
     await this.loadPollingSnapshot(false);
     if (this.isOpen) {
       await this.markConversationRead();
@@ -1018,6 +1040,12 @@ class SupportWidget {
     }
 
     for (const file of files) {
+      const sizeError = validateFileSize(file);
+      if (sizeError) {
+        this.renderError(sizeError);
+        continue;
+      }
+
       const pendingId = `${file.name}:${file.size}:${Date.now()}:${Math.random().toString(36).slice(2)}`;
       this.pendingAttachments = [
         ...this.pendingAttachments,
@@ -1207,7 +1235,7 @@ class SupportWidget {
     }
     this.typingStopTimer = setTimeout(() => {
       this.controller?.sendTyping(false);
-    }, 2500);
+    }, 2000);
   }
 
   private async markConversationRead(): Promise<void> {
@@ -1284,11 +1312,12 @@ class SupportWidget {
 
   const apiBaseUrl = script.getAttribute('data-api-url') || undefined;
   const color = script.getAttribute('data-color') || undefined;
+  const title = script.getAttribute('data-title') || undefined;
   const positionAttr = script.getAttribute('data-position');
   const position = positionAttr === 'left' || positionAttr === 'right' ? positionAttr : undefined;
 
   const mount = () => {
-    new SupportWidget(apiKey, apiBaseUrl, { color, position });
+    new SupportWidget(apiKey, apiBaseUrl, { color, position, title });
   };
 
   if (document.readyState === 'loading') {
