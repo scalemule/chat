@@ -1,0 +1,62 @@
+/**
+ * shadcn/ui CSS preset for @scalemule/chat.
+ *
+ * Zero-JS way to make the SDK's pre-built React components inherit the host
+ * shadcn/ui theme. Import this once in your global CSS:
+ *
+ * ```css
+ * @import "tailwindcss";
+ * @import "@scalemule/chat/themes/shadcn.css";
+ * ```
+ *
+ * Now reactions, bubbles, borders, and send buttons inside the SDK
+ * components read their colors from the same shadcn variables your own
+ * Button, Card, Input components use.
+ *
+ * ## Dark mode
+ *
+ * Because this preset only reads the shadcn variables (it doesn't set them),
+ * dark mode works automatically. If your host app toggles `.dark` on `<html>`
+ * and shadcn updates `--primary` / `--background` in that scope, the SDK
+ * components follow.
+ *
+ * ## Assumptions
+ *
+ * - Your host app follows shadcn/ui's standard CSS variable naming
+ * - Colors are HSL triplets without `hsl(...)` wrapper (e.g., `--primary: 221 83% 53%`)
+ * - `--radius` is in `rem` or `px`
+ *
+ * This matches the default shadcn `new-york` and `default` themes out of
+ * the box. If your setup diverges, override `--sm-*` tokens directly in
+ * your own CSS.
+ */
+
+:root {
+  /* Primary — shadcn's --primary is HSL triplet, needs hsl() wrapper */
+  --sm-primary: hsl(var(--primary, 221 83% 53%));
+  --sm-own-bubble: hsl(var(--primary, 221 83% 53%));
+  --sm-own-text: hsl(var(--primary-foreground, 0 0% 100%));
+
+  /* Other message bubble — shadcn's secondary */
+  --sm-other-bubble: hsl(var(--secondary, 210 40% 96%));
+  --sm-other-text: hsl(var(--secondary-foreground, 222 47% 11%));
+
+  /* Surfaces — background + muted */
+  --sm-surface: hsl(var(--background, 0 0% 100%));
+  --sm-surface-muted: hsl(var(--muted, 210 40% 98%));
+
+  /* Borders and text */
+  --sm-border-color: hsl(var(--border, 214 32% 91%));
+  --sm-text-color: hsl(var(--foreground, 222 47% 11%));
+  --sm-muted-text: hsl(var(--muted-foreground, 215 16% 47%));
+
+  /* Radius — shadcn's --radius is typically 0.5rem; bubbles get a bit more */
+  --sm-border-radius: calc(var(--radius, 0.5rem) + 0.5rem);
+
+  /* Font — inherit host body font */
+  --sm-font-family: inherit;
+
+  /* Reaction active state — subtle primary tint via color-mix */
+  --sm-reaction-active-bg: hsl(var(--primary, 221 83% 53%) / 0.08);
+  --sm-reaction-active-border: hsl(var(--primary, 221 83% 53%) / 0.4);
+}

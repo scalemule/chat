@@ -11,6 +11,13 @@
 - Host apps can override the primary palette via Tailwind v4 `@theme { --color-primary-500: ... }` with no further config
 - Pre-built components (ReactionBar, EmojiPicker, ChatMessageItem, ChannelList, SearchBar, SupportInbox, etc.) inherit the host theme automatically
 
+**shadcn/ui theme preset** (`@scalemule/chat/themes/shadcn`)
+- New `shadcnTheme` export (ChatTheme object mapping to shadcn's `hsl(var(--primary))` convention)
+- New CSS file: `@scalemule/chat/themes/shadcn.css` — zero-JS import path
+- Reads shadcn's standard variables: `--primary`, `--primary-foreground`, `--secondary`, `--background`, `--muted`, `--border`, `--foreground`, `--muted-foreground`, `--radius`
+- **Dark mode works automatically** — the preset only reads shadcn variables, so when `.dark` flips them, SDK components follow
+- Combines naturally with `ChatInput.renderSendButton` to drop in a shadcn `<Button>` — MIGRATION.md has the recipe
+
 **Render-prop escape hatches** — host apps can now customize slots inside pre-built components without forking them:
 - `ChatMessageItem.renderAvatar?: (profile, message) => ReactNode` — replace the default 32px circle avatar
 - `ChatMessageItem.renderAttachment?: (attachment) => ReactNode` — replace the default image/video/audio/file renderer
@@ -31,7 +38,7 @@ These are Phase 2 deliverables of the v0.1.0 completion plan. See [`docs/YOUSNAP
 
 ### Tests
 
-- 53 automated tests passing (48 previous + 5 new tailwindTheme tests)
+- 58 automated tests passing (48 previous + 5 tailwindTheme + 5 shadcnTheme tests)
 - React component test suite with `@testing-library/react` coverage for escape hatches is coming in Phase 3
 
 ---

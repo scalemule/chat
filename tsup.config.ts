@@ -9,6 +9,7 @@ export default defineConfig([
       react: 'src/react.tsx',
       iframe: 'src/iframe.ts',
       'themes/tailwind': 'src/themes/tailwind.ts',
+      'themes/shadcn': 'src/themes/shadcn.ts',
     },
     format: ['esm', 'cjs'],
     dts: true,

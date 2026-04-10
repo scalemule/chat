@@ -96,6 +96,46 @@ The CSS `var()` fallback chain is standard CSS and works in v3 too — you just 
 }
 ```
 
+### shadcn/ui users — use the shadcn preset instead
+
+If your host app uses shadcn/ui (very common in the Next.js 15 ecosystem), use the dedicated shadcn preset. shadcn stores colors as bare HSL triplets and wraps them in `hsl(var(--primary))` — this preset reads those variables directly, including dark mode:
+
+```css
+/* app/globals.css */
+@import "tailwindcss";
+@import "@scalemule/chat/themes/shadcn.css";
+```
+
+Or via JS:
+
+```tsx
+import { ChatProvider } from '@scalemule/chat/react';
+import { shadcnTheme } from '@scalemule/chat/themes/shadcn';
+
+<ChatProvider config={chatConfig} theme={shadcnTheme}>
+  {children}
+</ChatProvider>
+```
+
+The SDK components now read from `--primary`, `--secondary`, `--background`, `--muted`, `--border`, `--foreground`, `--muted-foreground`, and `--radius` — the same variables shadcn's own `Button`, `Card`, `Input` components use. Your `.dark` class toggles both at once.
+
+Combine with `renderSendButton` to drop in a shadcn `<Button>`:
+
+```tsx
+import { ChatInput } from '@scalemule/chat/react';
+import { Button } from '@/components/ui/button';
+import { Send } from 'lucide-react';
+
+<ChatInput
+  onSend={handleSend}
+  renderSendButton={({ canSend, disabled, onSend }) => (
+    <Button onClick={onSend} disabled={disabled || !canSend} size="icon">
+      <Send className="h-4 w-4" />
+    </Button>
+  )}
+/>
+```
+
 ---
 
 ## 0b. Customizing component slots with render props

@@ -32,7 +32,13 @@
       "import": "./dist/themes/tailwind.js",
       "require": "./dist/themes/tailwind.cjs"
     },
-    "./themes/tailwind.css": "./dist/themes/tailwind.css"
+    "./themes/tailwind.css": "./dist/themes/tailwind.css",
+    "./themes/shadcn": {
+      "types": "./dist/themes/shadcn.d.ts",
+      "import": "./dist/themes/shadcn.js",
+      "require": "./dist/themes/shadcn.cjs"
+    },
+    "./themes/shadcn.css": "./dist/themes/shadcn.css"
   },
   "files": [
     "dist",
@@ -44,7 +50,7 @@
   "scripts": {
     "build": "tsup && npm run build:types && npm run build:assets && npm run check:budgets",
     "build:types": "tsc --emitDeclarationOnly --project tsconfig.json",
-    "build:assets": "mkdir -p dist/themes && cp src/themes/tailwind.css dist/themes/tailwind.css",
+    "build:assets": "mkdir -p dist/themes && cp src/themes/tailwind.css dist/themes/tailwind.css && cp src/themes/shadcn.css dist/themes/shadcn.css",
     "check:budgets": "node ./scripts/check-bundle-budgets.mjs",
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit",
