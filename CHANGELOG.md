@@ -38,8 +38,11 @@ These are Phase 2 deliverables of the v0.1.0 completion plan. See [`docs/YOUSNAP
 
 ### Tests
 
-- 58 automated tests passing (48 previous + 5 tailwindTheme + 5 shadcnTheme tests)
-- React component test suite with `@testing-library/react` coverage for escape hatches is coming in Phase 3
+- 76 automated tests passing (48 pre-plan + 10 theme + 18 React component tests)
+- New `@testing-library/react` suite covers render-prop escape hatches (`ChatMessageItem.renderAvatar` / `renderAttachment` / `getProfile`, `ChatMessageList.renderMessage`, `ChatInput.renderSendButton`) and SupportInbox smoke tests (tab rendering, getInbox wiring, live event subscriptions)
+- `vitest.config.ts` now includes a setup file that stubs missing jsdom APIs (`scrollIntoView`, `IntersectionObserver`, `ResizeObserver`) and registers RTL's `afterEach(cleanup)` hook
+- Dev deps added: `@testing-library/react@^16`, `@testing-library/dom@^10`
+- Remaining React components (ChannelList, ChannelBrowser, ChannelHeader, SearchBar, SearchResults, RepStatusToggle, ConversationList, CallButton/Controls/Overlay, ChatThread, EmojiPicker, ReactionBar, ReportDialog) need ChatProvider context mocking — deferred to post-v0.1.0
 
 ---
 
