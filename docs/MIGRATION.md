@@ -98,6 +98,113 @@ The CSS `var()` fallback chain is standard CSS and works in v3 too — you just 
 
 ---
 
+## 0b. Customizing component slots with render props
+
+Theming handles colors, fonts, and border radius. For structural changes — custom avatars, a lightbox for attachments, a design-system send button — use the render-prop escape hatches.
+
+### Custom avatar on `<ChatMessageItem>`
+
+```tsx
+import { ChatMessageItem } from '@scalemule/chat/react';
+import { Avatar } from '@/components/ui/avatar'; // your design system
+
+<ChatMessageItem
+  message={msg}
+  currentUserId={currentUserId}
+  renderAvatar={(profile, message) => (
+    <Avatar
+      src={profile?.avatar_url}
+      fallback={profile?.display_name?.charAt(0)}
+      href={`/u/${message.sender_id}`}
+    />
+  )}
+/>
+```
+
+### Custom attachment renderer (e.g., app-wide media lightbox)
+
+```tsx
+<ChatMessageItem
+  message={msg}
+  currentUserId={currentUserId}
+  renderAttachment={(att) => (
+    <MyMediaCard
+      fileId={att.file_id}
+      mimeType={att.mime_type}
+      onClick={() => openLightbox(att)}
+    />
+  )}
+/>
+```
+
+### Profile lookup from a store
+
+When you already have a profile store (Zustand, Redux, a plain Map), you don't need to pass `profile` on every message — pass a resolver instead:
+
+```tsx
+const profiles = useProfileStore((s) => s.profiles); // Map<userId, Profile>
+
+<ChatMessageList
+  messages={messages}
+  currentUserId={currentUserId}
+  getProfile={(userId) => profiles.get(userId)}
+/>
+```
+
+Works on both `<ChatMessageItem>` and `<ChatMessageList>`. When both `profile` and `getProfile` are provided, the explicit `profile` prop wins.
+
+### Replace the entire message item
+
+If you want full control over the message bubble but still want the list-level features (date dividers, unread divider, scroll-to-bottom pill), use `renderMessage` on `<ChatMessageList>`:
+
+```tsx
+<ChatMessageList
+  messages={messages}
+  currentUserId={currentUserId}
+  profiles={profileMap}
+  renderMessage={(msg, ctx) => (
+    <MyBubble
+      message={msg}
+      isOwn={ctx.isOwnMessage}
+      highlight={ctx.highlight}
+      profile={ctx.profile}
+    />
+  )}
+/>
+```
+
+### Custom send button
+
+```tsx
+import { ChatInput } from '@scalemule/chat/react';
+import { Button } from '@/components/ui/button'; // shadcn Button
+
+<ChatInput
+  onSend={handleSend}
+  renderSendButton={({ canSend, disabled, onSend }) => (
+    <Button
+      onClick={onSend}
+      disabled={disabled || !canSend}
+      size="icon"
+      variant="default"
+    >
+      <SendIcon className="h-4 w-4" />
+    </Button>
+  )}
+/>
+```
+
+### Why render props instead of "just fork the component"?
+
+You keep:
+- All future SDK bug fixes and feature additions automatically on upgrade
+- All the state management (edit mode, attachment upload, typing indicators, scroll sync)
+- All the event wiring to `ChatClient`
+
+You only write the visual bits your design system requires. This is why the YouSnaps migration (see `docs/YOUSNAPS_MIGRATION_NOTES.md`) needed these escape hatches before swapping its Tailwind-themed `ChatMessageItem`.
+
+---
+
 ## 1. Named channels
 
 The backend now supports Slack-style named channels alongside the existing `direct`, `group`, `large_room`, `broadcast`, `ephemeral`, and `support` conversation types.

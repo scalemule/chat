@@ -6,6 +6,7 @@ export { ChannelHeader } from './ChannelHeader';
 export { ChannelList } from './ChannelList';
 export { ChatInput } from './ChatInput';
 export { ChatMessageItem } from './ChatMessageItem';
+export type { UserProfile } from './ChatMessageItem';
 export { ChatMessageList } from './ChatMessageList';
 export { ChatThread } from './ChatThread';
 export { ConversationList } from './ConversationList';
