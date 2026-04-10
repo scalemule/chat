@@ -132,13 +132,13 @@ describe('ChatMessageItem — render-prop escape hatches', () => {
         file_id: 'att-1',
         file_name: 'photo.jpg',
         mime_type: 'image/jpeg',
-        size: 1024,
+        file_size: 1024,
       } as Attachment,
       {
         file_id: 'att-2',
         file_name: 'doc.pdf',
         mime_type: 'application/pdf',
-        size: 2048,
+        file_size: 2048,
       } as Attachment,
     ];
     const message = buildMessage({ attachments });

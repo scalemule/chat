@@ -18,6 +18,21 @@
 - **Dark mode works automatically** — the preset only reads shadcn variables, so when `.dark` flips them, SDK components follow
 - Combines naturally with `ChatInput.renderSendButton` to drop in a shadcn `<Button>` — MIGRATION.md has the recipe
 
+**Admin dashboard components** (`@scalemule/chat/react/admin`) — new subpath entry
+- `<WidgetConfigEditor repClient={...} />` — 3-tab editor (Appearance / Content / Behavior) for the support widget config, wired to `RepClient.getWidgetConfig` / `updateWidgetConfig`. Save button only activates after edits; Reset button clears draft; error state surfaces API failures.
+- `<VisitorContextPanel repClient={...} conversationId={...} />` — sidebar showing visitor identity, page URL (hostname + path), browser/OS summary, conversation status, and assigned rep. Subscribes to `inbox:update` for live refresh. Gracefully shows "Anonymous visitor" and "Unknown" placeholders when visitor fields are sparse.
+- **Split entry point:** Admin components are NOT in the main `@scalemule/chat/react` bundle — they ship via `@scalemule/chat/react/admin`. This keeps customer-facing chat apps from paying for admin dashboard code they don't use. Main React ESM stayed at 142.26 KB (no regression); new admin ESM is 20.5 KB.
+
+```tsx
+// Rep dashboard recipe
+import { SupportInbox } from '@scalemule/chat/react';
+import { WidgetConfigEditor, VisitorContextPanel } from '@scalemule/chat/react/admin';
+
+<SupportInbox repClient={repClient} onSelectConversation={...} />
+<VisitorContextPanel repClient={repClient} conversationId={selected} />
+<WidgetConfigEditor repClient={repClient} onSaved={() => toast('Saved')} />
+```
+
 **Render-prop escape hatches** — host apps can now customize slots inside pre-built components without forking them:
 - `ChatMessageItem.renderAvatar?: (profile, message) => ReactNode` — replace the default 32px circle avatar
 - `ChatMessageItem.renderAttachment?: (attachment) => ReactNode` — replace the default image/video/audio/file renderer
@@ -38,9 +53,9 @@ These are Phase 2 deliverables of the v0.1.0 completion plan. See [`docs/YOUSNAP
 
 ### Tests
 
-- 76 automated tests passing (48 pre-plan + 10 theme + 18 React component tests)
-- New `@testing-library/react` suite covers render-prop escape hatches (`ChatMessageItem.renderAvatar` / `renderAttachment` / `getProfile`, `ChatMessageList.renderMessage`, `ChatInput.renderSendButton`) and SupportInbox smoke tests (tab rendering, getInbox wiring, live event subscriptions)
-- `vitest.config.ts` now includes a setup file that stubs missing jsdom APIs (`scrollIntoView`, `IntersectionObserver`, `ResizeObserver`) and registers RTL's `afterEach(cleanup)` hook
+- **89 automated tests passing** (48 pre-plan + 10 theme + 18 escape-hatch/SupportInbox + 13 admin component tests)
+- `@testing-library/react` suite covers render-prop escape hatches, SupportInbox wiring, WidgetConfigEditor (load, tab switch, save diff, unsaved-edits preservation, save-button gating), VisitorContextPanel (empty state, visitor fields, URL formatting, UA parsing, live event subscription, sparse-data fallbacks)
+- `vitest.config.ts` includes a setup file that stubs missing jsdom APIs (`scrollIntoView`, `IntersectionObserver`, `ResizeObserver`) and registers RTL's `afterEach(cleanup)` hook
 - Dev deps added: `@testing-library/react@^16`, `@testing-library/dom@^10`
 - Remaining React components (ChannelList, ChannelBrowser, ChannelHeader, SearchBar, SearchResults, RepStatusToggle, ConversationList, CallButton/Controls/Overlay, ChatThread, EmojiPicker, ReactionBar, ReportDialog) need ChatProvider context mocking — deferred to post-v0.1.0
 

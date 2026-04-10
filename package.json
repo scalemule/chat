@@ -17,6 +17,11 @@
       "import": "./dist/react.js",
       "require": "./dist/react.cjs"
     },
+    "./react/admin": {
+      "types": "./dist/react-admin.d.ts",
+      "import": "./dist/react-admin.js",
+      "require": "./dist/react-admin.cjs"
+    },
     "./element": {
       "types": "./dist/element.d.ts",
       "import": "./dist/element.js",

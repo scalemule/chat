@@ -7,6 +7,7 @@ export default defineConfig([
       index: 'src/index.ts',
       element: 'src/element.ts',
       react: 'src/react.tsx',
+      'react-admin': 'src/react-admin.ts',
       iframe: 'src/iframe.ts',
       'themes/tailwind': 'src/themes/tailwind.ts',
       'themes/shadcn': 'src/themes/shadcn.ts',

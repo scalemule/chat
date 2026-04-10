@@ -60,7 +60,8 @@ describe('ChatInput — renderSendButton escape hatch', () => {
     fireEvent.change(textarea, { target: { value: 'hi there' } });
 
     // After typing, the latest call to renderSendButton should have canSend=true
-    const lastCall = renderSendButton.mock.calls.at(-1);
+    const calls = renderSendButton.mock.calls;
+    const lastCall = calls[calls.length - 1];
     expect(lastCall?.[0].canSend).toBe(true);
   });
 
