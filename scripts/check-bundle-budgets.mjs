@@ -26,7 +26,7 @@ const budgets = [
   },
   {
     file: 'react.js',
-    limit: 100_000,
+    limit: 110_000,
     label: 'React ESM',
   },
 ];

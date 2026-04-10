@@ -13,7 +13,7 @@ export default defineConfig([
     dts: true,
     sourcemap: false,
     clean: true,
-    external: ['react', 'react-dom'],
+    external: ['react', 'react-dom', 'livekit-client', '@livekit/components-react', '@livekit/components-styles'],
     treeshake: true,
     splitting: true,
   },
