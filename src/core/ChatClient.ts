@@ -8,17 +8,21 @@ import { uploadToPresignedUrl } from '../shared/upload';
 import type {
   Attachment,
   ApiResponse,
+  ChannelListItem,
   ChatConfig,
   ChatEventMap,
   ChatMessage,
   ChatReaction,
+  ChatSearchResponse,
   ChannelWithSettings,
   ConnectionStatus,
   Conversation,
+  CreateChannelOptions,
   CreateConversationOptions,
   CreateEphemeralChannelOptions,
   CreateLargeRoomOptions,
   GetMessagesOptions,
+  ListChannelsOptions,
   ListConversationsOptions,
   MessageEditedEvent,
   MessagesResponse,
@@ -225,8 +229,12 @@ export class ChatClient extends EventEmitter<ChatEventMap> {
     return result;
   }
 
-  async editMessage(messageId: string, content: string): Promise<ApiResponse<void>> {
-    return this.http.patch<void>(`/v1/chat/messages/${messageId}`, { content });
+  async editMessage(messageId: string, content: string, attachments?: Attachment[]): Promise<ApiResponse<void>> {
+    const body: Record<string, unknown> = { content };
+    if (attachments !== undefined) {
+      body.attachments = attachments;
+    }
+    return this.http.patch<void>(`/v1/chat/messages/${messageId}`, body);
   }
 
   async deleteMessage(messageId: string): Promise<ApiResponse<void>> {
@@ -421,10 +429,14 @@ export class ChatClient extends EventEmitter<ChatEventMap> {
   }
 
   /**
-   * Self-join an ephemeral or large_room channel. Idempotent.
+   * Join any channel (ephemeral, large room, or named). Idempotent.
    */
   async joinChannel(channelId: string): Promise<ApiResponse<{ participant_id: string; role: string; joined_at: string }>> {
-    return this.http.post(`/v1/chat/channels/${channelId}/join`, {});
+    const result = await this.http.post<{ participant_id: string; role: string; joined_at: string }>(`/v1/chat/channels/${channelId}/join`, {});
+    if (result.data) {
+      this.emit('channel:changed');
+    }
+    return result;
   }
 
   /**
@@ -455,6 +467,66 @@ export class ChatClient extends EventEmitter<ChatEventMap> {
   async getSubscriberCount(conversationId: string): Promise<number> {
     const result = await this.http.get<{ count: number }>(`/v1/chat/conversations/${conversationId}/subscriber-count`);
     return result.data?.count ?? 0;
+  }
+
+  // ============ Named Channels (Slack-style) ============
+
+  /**
+   * Create a named channel with optional visibility and description.
+   */
+  async createChannel(options: CreateChannelOptions): Promise<ApiResponse<Conversation>> {
+    const result = await this.http.post<Conversation>('/v1/chat/channels', options);
+    if (result.data) {
+      this.conversationTypes.set(result.data.id, 'channel');
+      this.emit('channel:changed');
+    }
+    return result;
+  }
+
+  /**
+   * List/search discoverable channels. Returns public channels and private channels
+   * you are a member of, with an `is_member` flag on each.
+   */
+  async listChannels(options?: ListChannelsOptions): Promise<ApiResponse<ChannelListItem[]>> {
+    const params = new URLSearchParams();
+    if (options?.search) params.set('search', options.search);
+    if (options?.visibility) params.set('visibility', options.visibility);
+    const qs = params.toString();
+    return this.http.get<ChannelListItem[]>(`/v1/chat/channels${qs ? '?' + qs : ''}`);
+  }
+
+  /**
+   * Leave a named channel. Unsubscribes from realtime events and presence,
+   * removes the channel from local tracking, and emits 'channel:changed'.
+   */
+  async leaveChannel(channelId: string): Promise<ApiResponse<void>> {
+    const result = await this.http.post<void>(`/v1/chat/channels/${channelId}/leave`, {});
+    if (!result.error) {
+      // Unsubscribe from conversation WS channel
+      const unsub = this.conversationSubs.get(channelId);
+      if (unsub) {
+        unsub();
+        this.conversationSubs.delete(channelId);
+      }
+      // Leave presence
+      this.leavePresence(channelId);
+      // Remove from type tracking
+      this.conversationTypes.delete(channelId);
+      this.emit('channel:changed');
+    }
+    return result;
+  }
+
+  // ============ Search ============
+
+  /**
+   * Search messages within a conversation using full-text search (OpenSearch-backed).
+   * Returns scored results with highlighted excerpts.
+   */
+  async searchMessages(conversationId: string, query: string, limit?: number): Promise<ApiResponse<ChatSearchResponse>> {
+    const body: Record<string, unknown> = { query };
+    if (limit !== undefined) body.limit = limit;
+    return this.http.post<ChatSearchResponse>(`/v1/chat/conversations/${conversationId}/search`, body);
   }
 
   // ============ Realtime Subscriptions ============
@@ -581,7 +653,7 @@ export class ChatClient extends EventEmitter<ChatEventMap> {
       sender_id: existing?.sender_id ?? '',
       sender_type: existing?.sender_type,
       sender_agent_model: existing?.sender_agent_model,
-      attachments: existing?.attachments,
+      attachments: update.new_attachments ?? existing?.attachments,
       reactions: existing?.reactions,
       is_edited: true,
       created_at:

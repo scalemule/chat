@@ -36,7 +36,7 @@ interface ChatMessageItemProps {
   profile?: UserProfile;
   onAddReaction?: (messageId: string, emoji: string) => void | Promise<void>;
   onRemoveReaction?: (messageId: string, emoji: string) => void | Promise<void>;
-  onEdit?: (messageId: string, content: string) => void | Promise<void>;
+  onEdit?: (messageId: string, content: string, attachments?: Attachment[]) => void | Promise<void>;
   onDelete?: (messageId: string) => void | Promise<void>;
   onReport?: (messageId: string) => void;
   onFetchAttachmentUrl?: (fileId: string) => Promise<string>;
@@ -224,6 +224,7 @@ export function ChatMessageItem({
   const [showActions, setShowActions] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editContent, setEditContent] = useState(message.content);
+  const [editAttachments, setEditAttachments] = useState<Attachment[]>(message.attachments ?? []);
 
   const isOwn =
     isOwnMessageProp !== undefined
@@ -249,8 +250,20 @@ export function ChatMessageItem({
   }
 
   function handleSaveEdit() {
-    if (editContent.trim() && editContent !== message.content) {
-      void onEdit?.(message.id, editContent.trim());
+    const originalAttachmentIds = new Set((message.attachments ?? []).map((a) => a.file_id));
+    const editAttachmentIds = new Set(editAttachments.map((a) => a.file_id));
+    const attachmentsChanged =
+      originalAttachmentIds.size !== editAttachmentIds.size ||
+      [...originalAttachmentIds].some((id) => !editAttachmentIds.has(id));
+    const contentChanged = editContent.trim() !== message.content;
+    const hasContent = editContent.trim() || editAttachments.length > 0;
+
+    if (hasContent && (contentChanged || attachmentsChanged)) {
+      void onEdit?.(
+        message.id,
+        editContent.trim(),
+        attachmentsChanged ? editAttachments : undefined,
+      );
     }
     setEditing(false);
   }
@@ -517,59 +530,99 @@ export function ChatMessageItem({
           )}
 
           {editing ? (
-            <div style={{ display: 'flex', gap: 8 }}>
-              <input
-                type="text"
-                value={editContent}
-                onChange={(e) => setEditContent(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleSaveEdit();
-                  if (e.key === 'Escape') setEditing(false);
-                }}
-                autoFocus
-                style={{
-                  flex: 1,
-                  fontSize: 14,
-                  border: '1px solid var(--sm-border-color, #e5e7eb)',
-                  borderRadius: 6,
-                  padding: '4px 8px',
-                  outline: 'none',
-                  color: 'var(--sm-text-color, #111827)',
-                  background: 'var(--sm-surface, #fff)',
-                }}
-              />
-              <button
-                onClick={handleSaveEdit}
-                type="button"
-                style={{
-                  fontSize: 12,
-                  fontWeight: 500,
-                  border: 'none',
-                  background: 'transparent',
-                  cursor: 'pointer',
-                  color: isOwn
-                    ? 'rgba(255,255,255,0.7)'
-                    : 'var(--sm-primary, #2563eb)',
-                }}
-              >
-                Save
-              </button>
-              <button
-                onClick={() => setEditing(false)}
-                type="button"
-                style={{
-                  fontSize: 12,
-                  border: 'none',
-                  background: 'transparent',
-                  cursor: 'pointer',
-                  color: isOwn
-                    ? 'rgba(255,255,255,0.7)'
-                    : 'var(--sm-muted-text, #6b7280)',
-                }}
-              >
-                Cancel
-              </button>
-            </div>
+            <>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input
+                  type="text"
+                  value={editContent}
+                  onChange={(e) => setEditContent(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleSaveEdit();
+                    if (e.key === 'Escape') setEditing(false);
+                  }}
+                  autoFocus
+                  style={{
+                    flex: 1,
+                    fontSize: 14,
+                    border: '1px solid var(--sm-border-color, #e5e7eb)',
+                    borderRadius: 6,
+                    padding: '4px 8px',
+                    outline: 'none',
+                    color: 'var(--sm-text-color, #111827)',
+                    background: 'var(--sm-surface, #fff)',
+                  }}
+                />
+                <button
+                  onClick={handleSaveEdit}
+                  type="button"
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 500,
+                    border: 'none',
+                    background: 'transparent',
+                    cursor: 'pointer',
+                    color: isOwn
+                      ? 'rgba(255,255,255,0.7)'
+                      : 'var(--sm-primary, #2563eb)',
+                  }}
+                >
+                  Save
+                </button>
+                <button
+                  onClick={() => setEditing(false)}
+                  type="button"
+                  style={{
+                    fontSize: 12,
+                    border: 'none',
+                    background: 'transparent',
+                    cursor: 'pointer',
+                    color: isOwn
+                      ? 'rgba(255,255,255,0.7)'
+                      : 'var(--sm-muted-text, #6b7280)',
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+              {editAttachments.length > 0 ? (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+                  {editAttachments.map((att) => (
+                    <div
+                      key={att.file_id}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        padding: '2px 8px',
+                        borderRadius: 4,
+                        fontSize: 12,
+                        background: isOwn ? 'rgba(255,255,255,0.15)' : 'var(--sm-surface-muted, #f3f4f6)',
+                        color: isOwn ? 'rgba(255,255,255,0.8)' : 'var(--sm-muted-text, #6b7280)',
+                      }}
+                    >
+                      <span style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {att.file_name}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setEditAttachments((prev) => prev.filter((a) => a.file_id !== att.file_id))}
+                        style={{
+                          border: 'none',
+                          background: 'transparent',
+                          cursor: 'pointer',
+                          padding: 0,
+                          fontSize: 14,
+                          lineHeight: 1,
+                          color: 'inherit',
+                        }}
+                      >
+                        &times;
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </>
           ) : message.content ? (
             <p
               style={{

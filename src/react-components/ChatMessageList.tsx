@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 
-import type { ChatMessage } from '../types';
+import type { Attachment, ChatMessage } from '../types';
 import { ChatMessageItem } from './ChatMessageItem';
 
 interface UserProfile {
@@ -19,7 +19,7 @@ interface ChatMessageListProps {
   onLoadMore?: () => void;
   onAddReaction?: (messageId: string, emoji: string) => void | Promise<void>;
   onRemoveReaction?: (messageId: string, emoji: string) => void | Promise<void>;
-  onEdit?: (messageId: string, content: string) => void | Promise<void>;
+  onEdit?: (messageId: string, content: string, attachments?: Attachment[]) => void | Promise<void>;
   onDelete?: (messageId: string) => void | Promise<void>;
   onReport?: (messageId: string) => void;
   onFetchAttachmentUrl?: (fileId: string) => Promise<string>;

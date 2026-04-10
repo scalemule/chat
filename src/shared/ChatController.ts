@@ -137,6 +137,20 @@ export class ChatController extends EventEmitter<ChatControllerEvents> {
     }
   }
 
+  async editMessage(messageId: string, content: string, attachments?: Attachment[]): Promise<void> {
+    const result = await this.client.editMessage(messageId, content, attachments);
+    if (result.error) {
+      throw new Error(result.error.message);
+    }
+  }
+
+  async deleteMessage(messageId: string): Promise<void> {
+    const result = await this.client.deleteMessage(messageId);
+    if (result.error) {
+      throw new Error(result.error.message);
+    }
+  }
+
   stageOptimisticMessage(message: ChatMessage): ChatMessage {
     const staged = this.client.stageOptimisticMessage(this.conversationId, message);
     this.patchState({
