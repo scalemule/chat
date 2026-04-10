@@ -98,7 +98,12 @@ function ChannelsLayout() {
         {selectedId && selectedChannel && (
           <>
             <div className="border-b p-4 flex items-center gap-4">
-              <ChannelHeader channel={selectedChannel} />
+              <ChannelHeader
+                channelId={selectedChannel.id}
+                name={selectedChannel.name ?? undefined}
+                description={selectedChannel.description ?? undefined}
+                memberCount={selectedChannel.member_count}
+              />
               <div className="ml-auto w-80">
                 <SearchBar conversationId={selectedId} />
               </div>
@@ -112,8 +117,13 @@ function ChannelsLayout() {
 }
 
 export default function Page() {
+  // Theming via CSS import in app/globals.css:
+  //   @import "tailwindcss";
+  //   @import "@scalemule/chat/themes/tailwind.css";
+  // ChatProvider does NOT accept a theme prop — themes apply per-component
+  // or globally via the CSS import (recommended).
   return (
-    <ChatProvider config={chatConfig} theme={tailwindTheme}>
+    <ChatProvider config={chatConfig}>
       <ChannelsLayout />
     </ChatProvider>
   );
@@ -184,8 +194,12 @@ export default function RepDashboard() {
   if (!repClientRef.current) return <div>Initializing...</div>;
   const repClient = repClientRef.current;
 
+  // Theming via CSS import in app/globals.css:
+  //   @import "tailwindcss";
+  //   @import "@scalemule/chat/themes/shadcn.css";
+  // Dark mode toggles automatically when the host app toggles .dark.
   return (
-    <ChatProvider config={{ apiBaseUrl: API_BASE, getToken: () => '' }} theme={shadcnTheme}>
+    <ChatProvider config={{ apiBaseUrl: API_BASE, getToken: () => '' }}>
       <div className="flex h-screen">
         {/* Left: inbox + controls */}
         <aside className="w-72 border-r flex flex-col">

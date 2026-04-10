@@ -9,18 +9,25 @@
  *
  * ## Usage (Tailwind v4)
  *
+ * **Recommended:** import the CSS preset in your global stylesheet. This
+ * sets the `--sm-*` variables on `:root` globally so every SDK component
+ * inherits the theme with no per-component prop passing:
+ *
+ * ```css
+ * @import "tailwindcss";
+ * @import "@scalemule/chat/themes/tailwind.css";
+ * ```
+ *
+ * **Alternative (per-component):** pass `theme={tailwindTheme}` to any
+ * SDK component that accepts a `theme?: ChatTheme` prop. `ChatProvider`
+ * does NOT accept a theme prop — themes are applied per-component or
+ * globally via the CSS import above.
+ *
  * ```tsx
- * // _app.tsx or layout.tsx
- * import { ChatProvider } from '@scalemule/chat/react';
+ * import { ChannelList } from '@scalemule/chat/react';
  * import { tailwindTheme } from '@scalemule/chat/themes/tailwind';
  *
- * export default function Layout({ children }) {
- *   return (
- *     <ChatProvider config={chatConfig} theme={tailwindTheme}>
- *       {children}
- *     </ChatProvider>
- *   );
- * }
+ * <ChannelList theme={tailwindTheme} onSelect={...} />
  * ```
  *
  * ## Defining a custom primary color (Tailwind v4)

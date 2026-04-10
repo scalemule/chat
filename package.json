@@ -59,6 +59,7 @@
     "check:budgets": "node ./scripts/check-bundle-budgets.mjs",
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit",
+    "check:examples": "tsc --noEmit --project tsconfig.examples.json",
     "lint": "eslint src/",
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest"
