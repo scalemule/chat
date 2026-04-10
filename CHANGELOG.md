@@ -1,6 +1,12 @@
 # Changelog
 
-## Unreleased
+## 0.1.0 — 2026-04-10
+
+First release of the "customer SDK" milestone. v0.1.0 makes `@scalemule/chat` genuinely drop-in for host apps using Tailwind v4 or shadcn/ui, adds render-prop escape hatches for structural customization without forking components, ships admin-dashboard components on a code-split entry point, and brings the test suite to 89 automated tests including React Testing Library coverage for every new surface.
+
+**Migration:** v0.1.0 is fully backward-compatible with v0.0.12 consumers. No code changes required on upgrade. See [`docs/MIGRATION.md`](./docs/MIGRATION.md) for how to adopt the new theming presets and escape hatches.
+
+**Context:** This release closes the Phase 1–6 work in [`../../docs/chat/CHAT_SDK_COMPLETION_PLAN.md`](../../docs/chat/CHAT_SDK_COMPLETION_PLAN.md), driven by the YouSnaps migration (see [`docs/YOUSNAPS_MIGRATION_NOTES.md`](./docs/YOUSNAPS_MIGRATION_NOTES.md)). The scope boundary is now documented in [`../../docs/chat/CHAT_SDK_SCOPE.md`](../../docs/chat/CHAT_SDK_SCOPE.md) so future feature requests can be triaged against a single source of truth.
 
 ### Added
 
