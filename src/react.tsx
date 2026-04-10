@@ -584,6 +584,9 @@ export function useUnreadCount() {
 }
 
 export {
+  CallButton,
+  CallControls,
+  CallOverlay,
   ChatInput,
   ChatMessageItem,
   ChatMessageList,
