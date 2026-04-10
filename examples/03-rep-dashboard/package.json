@@ -1,0 +1,19 @@
+{
+  "name": "@scalemule/chat-example-rep-dashboard",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Minimal example: support rep dashboard with inbox, claim/resolve, widget config editor",
+  "scripts": {
+    "build": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@scalemule/chat": "file:../..",
+    "react": "^18.0.0 || ^19.0.0",
+    "react-dom": "^18.0.0 || ^19.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.0.0",
+    "@types/react-dom": "^18.0.0",
+    "typescript": "^5.4.0"
+  }
+}

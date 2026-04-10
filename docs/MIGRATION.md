@@ -29,21 +29,20 @@ In your `app/globals.css` (Next.js 15) or equivalent:
 
 That's it. Every `ReactionBar`, `EmojiPicker`, `ChatMessageItem`, `ChannelList`, `SearchBar`, `SupportInbox`, etc. now inherits your Tailwind theme's `--color-primary-*`, grays, `--radius-2xl`, and `--font-sans` automatically.
 
-### Option B — JS import with ChatProvider
+### Option B — JS import per component
+
+`ChatProvider` does NOT accept a `theme` prop; themes are applied per-component (or globally via the CSS import above). Pass `theme={tailwindTheme}` to any SDK component that accepts it:
 
 ```tsx
-// app/layout.tsx
-import { ChatProvider } from '@scalemule/chat/react';
+// app/channels/page.tsx
+import { ChannelList, ChatThread } from '@scalemule/chat/react';
 import { tailwindTheme } from '@scalemule/chat/themes/tailwind';
 
-export default function RootLayout({ children }) {
-  return (
-    <ChatProvider config={chatConfig} theme={tailwindTheme}>
-      {children}
-    </ChatProvider>
-  );
-}
+<ChannelList theme={tailwindTheme} onSelect={...} />
+<ChatThread conversationId={selectedId} theme={tailwindTheme} />
 ```
+
+For most apps, **Option A (CSS import) is cleaner** — a single line in your global stylesheet and every SDK component inherits the theme without per-component props. Use Option B only for scoped theme overrides (e.g., a rep dashboard in a different palette from the main app).
 
 ### Customizing your primary color
 
@@ -109,15 +108,14 @@ If your host app uses shadcn/ui (very common in the Next.js 15 ecosystem), use t
 Or via JS:
 
 ```tsx
-import { ChatProvider } from '@scalemule/chat/react';
+// Per-component (ChatProvider does NOT accept a theme prop)
+import { SupportInbox } from '@scalemule/chat/react';
 import { shadcnTheme } from '@scalemule/chat/themes/shadcn';
 
-<ChatProvider config={chatConfig} theme={shadcnTheme}>
-  {children}
-</ChatProvider>
+<SupportInbox repClient={repClient} theme={shadcnTheme} />
 ```
 
-The SDK components now read from `--primary`, `--secondary`, `--background`, `--muted`, `--border`, `--foreground`, `--muted-foreground`, and `--radius` — the same variables shadcn's own `Button`, `Card`, `Input` components use. Your `.dark` class toggles both at once.
+The SDK components now read from `--primary`, `--secondary`, `--background`, `--muted`, `--border`, `--foreground`, `--muted-foreground`, and `--radius` — the same variables shadcn's own `Button`, `Card`, `Input` components use. Your `.dark` class toggles both at once. Again, the CSS import (`@import "@scalemule/chat/themes/shadcn.css"`) is the cleaner path for app-wide theming.
 
 Combine with `renderSendButton` to drop in a shadcn `<Button>`:
 
