@@ -7,19 +7,23 @@
  *
  * ## Usage
  *
- * ```tsx
- * import { ChatProvider } from '@scalemule/chat/react';
- * import { shadcnTheme } from '@scalemule/chat/themes/shadcn';
- *
- * <ChatProvider config={chatConfig} theme={shadcnTheme}>
- *   {children}
- * </ChatProvider>
- * ```
- *
- * Or, zero-JS:
+ * **Recommended (zero JS):** import the CSS preset in your global
+ * stylesheet so every SDK component inherits the shadcn theme including
+ * dark mode:
  *
  * ```css
  * @import "@scalemule/chat/themes/shadcn.css";
+ * ```
+ *
+ * **Alternative (per-component JS):** pass `theme={shadcnTheme}` to any
+ * SDK component that accepts a `theme?: ChatTheme` prop. `ChatProvider`
+ * does NOT accept a theme prop.
+ *
+ * ```tsx
+ * import { SupportInbox } from '@scalemule/chat/react';
+ * import { shadcnTheme } from '@scalemule/chat/themes/shadcn';
+ *
+ * <SupportInbox repClient={repClient} theme={shadcnTheme} />
  * ```
  *
  * ## What this inherits from your shadcn theme

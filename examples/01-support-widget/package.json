@@ -1,0 +1,15 @@
+{
+  "name": "@scalemule/chat-example-support-widget",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Minimal example: embed the support widget on any static HTML page",
+  "scripts": {
+    "build": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@scalemule/chat": "file:../.."
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  }
+}

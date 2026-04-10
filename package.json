@@ -1,6 +1,6 @@
 {
   "name": "@scalemule/chat",
-  "version": "0.0.13",
+  "version": "0.0.14",
   "description": "ScaleMule standalone chat SDK — real-time messaging, presence, typing indicators",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -59,6 +59,7 @@
     "check:budgets": "node ./scripts/check-bundle-budgets.mjs",
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit",
+    "check:examples": "tsc --noEmit --project tsconfig.examples.json",
     "lint": "eslint src/",
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest"

@@ -1,5 +1,57 @@
 # Changelog
 
+## 0.0.14 — 2026-04-10
+
+**Cleanup patch — no new features.** Closes the deferred Item B (RTL test coverage gap), Item C (scalemule-app migration decision doc), and Item D (buildable example sub-packages) from the completion plan. Ships as a patch bump per the [versioning policy](../../docs/chat/CHAT_SDK_COMPLETION_PLAN.md#decisions-locked-2026-04-10) — still staying in 0.0.x until the user explicitly cuts 0.1.0.
+
+### Added
+
+**React Testing Library coverage for the remaining 14 components** (+48 tests, 89 → 137 total)
+- `ChannelList`, `ChannelBrowser`, `ChannelHeader`
+- `SearchBar`, `SearchResults`
+- `RepStatusToggle`
+- `CallButton`, `CallControls`, `CallOverlay`
+- `ConversationList`, `ChatThread`
+- `EmojiPicker`, `ReactionBar`, `ReportDialog`
+- Hook-using components use `vi.mock('../../react', async (importOriginal) => ...)` with `importOriginal()` to preserve real `ChatProvider` types while stubbing specific hooks — this is the pattern for any future context-consuming test
+- `CallOverlay` mocks `@livekit/components-react` (dynamic browser-only import that jsdom can't load)
+- `CallButton` stubs `globalThis.navigator.mediaDevices.getUserMedia` (jsdom doesn't implement WebRTC)
+
+**Buildable example sub-packages under `examples/NN-*/`** (+3 directories + shared tsconfig)
+- `examples/01-support-widget/` — `SupportClient` programmatic usage + HTML `<script>` tag recipe
+- `examples/02-channels-app/` — React Slack-style channels app (~120 lines)
+- `examples/03-rep-dashboard/` — React rep dashboard using `@scalemule/chat/react` + `@scalemule/chat/react/admin` (~140 lines)
+- Each example has its own `package.json` with `"@scalemule/chat": "file:../.."`, `tsconfig.json`, and a `README.md`
+- New `tsconfig.examples.json` at the SDK root with path mapping (`@scalemule/chat/*` → `./src/*`) — enables CI-level type checking of all examples via a new `npm run check:examples` script without requiring npm install in each sub-package
+
+### Fixed
+
+**Documentation bugs caught by the new buildable examples** (4 hallucinated API shapes in previously-shipped docs):
+
+- `<ChatProvider theme={...}>` is **not a real API** — `ChatProvider` has no `theme` prop. Themes are applied per-component (via the `theme?: ChatTheme` prop on components that accept it) or globally via the CSS preset import (recommended). Fixed in:
+  - `docs/MIGRATION.md` (Tailwind and shadcn sections)
+  - `examples/README.md` (channels-app and rep-dashboard recipes)
+  - `src/themes/tailwind.ts` JSDoc
+  - `src/themes/shadcn.ts` JSDoc
+  All now recommend the CSS import path as primary and per-component passing as a fallback for scoped overrides.
+- `SupportClient.startConversation` returns `SupportConversation` directly (throws on error), not `{ data, error }`. Fixed example 01.
+- `ChannelListItem.name` and `ChannelListItem.description` are `string | null`, not `string | undefined` — callers need `?? undefined` coercion when passing to `ChannelHeader`. Fixed example 02 and example recipe.
+- `ChatClient` `'message'` event payload is `{ message, conversationId }`, not a bare `ChatMessage`. Fixed example 01.
+
+These were all shipped in 0.0.13 docs; anyone copying from the recipes would have hit them. 0.0.14 is the correction.
+
+### Tests
+
+- **137 automated tests passing** (89 → 137, +48 from Item B)
+- Full suite runs in ~9s including jsdom React component tests
+- `npm run check:examples` added as a type-check-only validator for the examples
+
+### Scope decision (Item C — verified no-op)
+
+After auditing `web/scalemule-app` for local copies of `WidgetConfigEditor` / `VisitorContextPanel` / `RepStatusToggle` to migrate, the conclusion is **do not migrate**. scalemule-app correctly uses `RepClient` from `@scalemule/chat` as the data layer but keeps its local composed UIs because they bundle features beyond the SDK's minimal admin components (API key management, registration flow, deep shadcn integration with `@/components/ui/*`, auth-bound workflows). See `docs/chat/SCALEMULE_APP_INTEGRATION.md` in the meta-repo for the full decision rationale. The SDK's `@scalemule/chat/react/admin` is for a **different audience** — drop-in admin dashboards for customers who don't have their own design system.
+
+---
+
 ## 0.0.13 — 2026-04-10
 
 **Not a 0.1.0 release.** This ships Phase 1–6 of the *milestone toward* 0.1.0 — the theming bridge, render-prop escape hatches, admin components, first RTL test coverage, examples, and scope docs. Staying in 0.0.x because meaningful work is still deferred: RTL coverage for the 12 remaining React components, `web/scalemule-app` migration to `@scalemule/chat/react/admin`, full buildable example sub-packages, and real-world validation beyond the YouSnaps migration. The 0.1.0 cut waits until those land.
