@@ -84,9 +84,49 @@ Any `--sm-*` variable can be overridden on `:root` or a scoped element:
 | `--sm-border-radius` | `--radius-2xl` → `16px` |
 | `--sm-font-family` | `--font-sans` → system stack |
 
+### Bridging a custom design token namespace (IMPORTANT for most real apps)
+
+**The CSS import alone is only sufficient if your host app uses Tailwind v4's standard `--color-primary-*` naming.** Most real apps have their own design token namespace — `--brand-*`, `--theme-*`, `--app-*`, etc. — that does NOT match Tailwind's convention. The preset's fallback chain will not pick these up, and all SDK components will render with the default blue.
+
+**The fix is a small override block in your global CSS, AFTER the preset import**, pointing `--sm-*` at your own tokens:
+
+```css
+/* app/globals.css */
+@import "tailwindcss";
+@import "@scalemule/chat/themes/tailwind.css";
+
+:root {
+  /* Your own brand tokens (unchanged) */
+  --brand-primary: #ef4444;
+  --brand-primary-soft: #fef1ef;
+  --brand-primary-outline: #f3c3bc;
+  --brand-surface: #ffffff;
+  --brand-surface-muted: #fcfaf7;
+  --brand-border: #e5dfd8;
+  --brand-text: #18212f;
+  --brand-text-muted: #5d6676;
+
+  /* Bridge SDK --sm-* tokens to your --brand-* namespace */
+  --sm-primary: var(--brand-primary);
+  --sm-own-bubble: var(--brand-primary);
+  --sm-other-bubble: var(--brand-surface-muted);
+  --sm-surface: var(--brand-surface);
+  --sm-surface-muted: var(--brand-surface-muted);
+  --sm-border-color: var(--brand-border);
+  --sm-text-color: var(--brand-text);
+  --sm-muted-text: var(--brand-text-muted);
+  --sm-reaction-active-bg: var(--brand-primary-soft);
+  --sm-reaction-active-border: var(--brand-primary-outline);
+}
+```
+
+CSS cascade rules mean these overrides win over the preset's default fallback chain (they come later on `:root`). Every SDK component now inherits your brand palette with no per-component prop passing.
+
+This pattern was validated on YouSnaps during the 0.0.14 adoption — see [`YOUSNAPS_0.0.14_ADOPTION_NOTES.md`](./YOUSNAPS_0.0.14_ADOPTION_NOTES.md) for the full walkthrough and commit references.
+
 ### Tailwind v3 users
 
-The CSS `var()` fallback chain is standard CSS and works in v3 too — you just don't get the automatic `--color-*` inheritance because Tailwind v3 doesn't emit those variables. Define `--sm-primary` etc. directly in your global CSS:
+The CSS `var()` fallback chain is standard CSS and works in v3 too — you just don't get the automatic `--color-*` inheritance because Tailwind v3 doesn't emit those variables. Define `--sm-primary` etc. directly in your global CSS (same pattern as the design-token-namespace bridging above):
 
 ```css
 :root {
@@ -231,6 +271,48 @@ import { Button } from '@/components/ui/button'; // shadcn Button
   )}
 />
 ```
+
+### Report dialog ownership (`onReport` is a pure callback)
+
+`ChatMessageItem.onReport` is a callback, not a dialog trigger. When the user clicks the "report" button in the hover toolbar, the SDK calls `onReport(messageId)` — it does **not** render a `ReportDialog` internally. The host app owns the dialog lifecycle, which lets you wire report submission into your own proxy / CSRF / validation flow.
+
+The standard pattern: hold `reportingMessageId` in local state, open the SDK's `ReportDialog` as a sibling when set, and pass an `onSubmit` that hits your backend:
+
+```tsx
+import { useState } from 'react';
+import { ChatMessageItem, ReportDialog } from '@scalemule/chat/react';
+
+function MessageItemWrapper(props) {
+  const [reportingMessageId, setReportingMessageId] = useState<string | null>(null);
+
+  async function handleReportSubmit({ messageId, reason, description }) {
+    const res = await fetch('/api/chat/report', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...csrfHeaders() },
+      body: JSON.stringify({ messageId, reason, details: description }),
+    });
+    if (!res.ok) throw new Error('Report submission failed');
+  }
+
+  return (
+    <>
+      <ChatMessageItem
+        {...props}
+        onReport={(messageId) => setReportingMessageId(messageId)}
+      />
+      {reportingMessageId && (
+        <ReportDialog
+          messageId={reportingMessageId}
+          onSubmit={handleReportSubmit}
+          onClose={() => setReportingMessageId(null)}
+        />
+      )}
+    </>
+  );
+}
+```
+
+This is the pattern YouSnaps uses for its CSRF-proxied `/api/chat/report` endpoint. See [`YOUSNAPS_0.0.14_ADOPTION_NOTES.md`](./YOUSNAPS_0.0.14_ADOPTION_NOTES.md) for the live code in context.
 
 ### Why render props instead of "just fork the component"?
 
