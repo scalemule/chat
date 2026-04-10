@@ -1,6 +1,6 @@
 {
   "name": "@scalemule/chat",
-  "version": "0.0.12",
+  "version": "0.0.13",
   "description": "ScaleMule standalone chat SDK — real-time messaging, presence, typing indicators",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -17,6 +17,11 @@
       "import": "./dist/react.js",
       "require": "./dist/react.cjs"
     },
+    "./react/admin": {
+      "types": "./dist/react-admin.d.ts",
+      "import": "./dist/react-admin.js",
+      "require": "./dist/react-admin.cjs"
+    },
     "./element": {
       "types": "./dist/element.d.ts",
       "import": "./dist/element.js",
@@ -26,7 +31,19 @@
       "types": "./dist/iframe.d.ts",
       "import": "./dist/iframe.js",
       "require": "./dist/iframe.cjs"
-    }
+    },
+    "./themes/tailwind": {
+      "types": "./dist/themes/tailwind.d.ts",
+      "import": "./dist/themes/tailwind.js",
+      "require": "./dist/themes/tailwind.cjs"
+    },
+    "./themes/tailwind.css": "./dist/themes/tailwind.css",
+    "./themes/shadcn": {
+      "types": "./dist/themes/shadcn.d.ts",
+      "import": "./dist/themes/shadcn.js",
+      "require": "./dist/themes/shadcn.cjs"
+    },
+    "./themes/shadcn.css": "./dist/themes/shadcn.css"
   },
   "files": [
     "dist",
@@ -36,8 +53,9 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsup && npm run build:types && npm run check:budgets",
+    "build": "tsup && npm run build:types && npm run build:assets && npm run check:budgets",
     "build:types": "tsc --emitDeclarationOnly --project tsconfig.json",
+    "build:assets": "mkdir -p dist/themes && cp src/themes/tailwind.css dist/themes/tailwind.css && cp src/themes/shadcn.css dist/themes/shadcn.css",
     "check:budgets": "node ./scripts/check-bundle-budgets.mjs",
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit",
@@ -46,10 +64,10 @@
     "test:watch": "vitest"
   },
   "peerDependencies": {
-    "react": ">=17.0.0",
-    "react-dom": ">=17.0.0",
+    "@livekit/components-react": ">=2.0.0",
     "livekit-client": ">=2.0.0",
-    "@livekit/components-react": ">=2.0.0"
+    "react": ">=17.0.0",
+    "react-dom": ">=17.0.0"
   },
   "peerDependenciesMeta": {
     "react": {
@@ -68,6 +86,8 @@
   "devDependencies": {
     "@livekit/components-react": "^2.9.20",
     "@livekit/components-styles": "^1.2.0",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/react": "^16.3.2",
     "@types/react": "^18.0.0",
     "@types/react-dom": "^18.0.0",
     "jsdom": "^26.0.0",

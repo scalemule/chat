@@ -1,0 +1,87 @@
+/**
+ * Tailwind v4 CSS preset for @scalemule/chat.
+ *
+ * Sets the SDK's `--sm-*` custom properties on :root using a fallback chain
+ * that inherits from the host Tailwind v4 theme when available.
+ *
+ * ## Usage
+ *
+ * In your global CSS file (e.g., app/globals.css for Next.js 15):
+ *
+ * ```css
+ * @import "tailwindcss";
+ * @import "@scalemule/chat/themes/tailwind.css";
+ * ```
+ *
+ * That's it — all @scalemule/chat React components now inherit your Tailwind
+ * theme's primary color, grays, border radius, and sans font automatically.
+ *
+ * ## Customizing
+ *
+ * Define your Tailwind theme tokens normally:
+ *
+ * ```css
+ * @theme {
+ *   --color-primary-500: #ef4444;
+ *   --color-primary-600: #dc2626;
+ * }
+ * ```
+ *
+ * The fallback chain will pick them up automatically. No further config needed.
+ *
+ * ## Override individual tokens
+ *
+ * ```css
+ * :root {
+ *   --sm-border-radius: 8px;  // tighter radius than default
+ *   --sm-own-bubble: linear-gradient(135deg, #ef4444, #dc2626);  // gradient
+ * }
+ * ```
+ */
+
+:root {
+  /* Primary color — used for own-message bubbles, CTAs, active states */
+  --sm-primary: var(--color-primary-500, var(--color-blue-600, #2563eb));
+
+  /* Own message bubble — defaults to primary */
+  --sm-own-bubble: var(--color-primary-500, var(--color-blue-600, #2563eb));
+  --sm-own-text: var(--color-white, #ffffff);
+
+  /* Other message bubble — neutral */
+  --sm-other-bubble: var(--color-gray-100, #f3f4f6);
+  --sm-other-text: var(--color-gray-900, #111827);
+
+  /* Surfaces */
+  --sm-surface: var(--color-white, #ffffff);
+  --sm-surface-muted: var(--color-gray-50, #f8fafc);
+
+  /* Borders and text */
+  --sm-border-color: var(--color-gray-200, #e5e7eb);
+  --sm-text-color: var(--color-gray-900, #111827);
+  --sm-muted-text: var(--color-gray-500, #6b7280);
+
+  /* Radius — inherits from Tailwind v4 rounded-2xl */
+  --sm-border-radius: var(--radius-2xl, 16px);
+
+  /* Font — inherits from Tailwind v4 font-sans */
+  --sm-font-family: var(
+    --font-sans,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif
+  );
+
+  /* Reaction active state — for ReactionBar (subtle primary tint) */
+  --sm-reaction-active-bg: color-mix(
+    in srgb,
+    var(--sm-primary) 8%,
+    transparent
+  );
+  --sm-reaction-active-border: color-mix(
+    in srgb,
+    var(--sm-primary) 40%,
+    transparent
+  );
+}

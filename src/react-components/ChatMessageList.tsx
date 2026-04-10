@@ -29,6 +29,25 @@ interface ChatMessageListProps {
   isNearBottom?: boolean;
   onReachBottom?: () => void;
   emptyState?: React.ReactNode;
+  /**
+   * Render-prop escape hatch: replace the default `ChatMessageItem` with a
+   * fully custom renderer. Receives the message and computed render context
+   * (own/highlight flags, resolved profile). Use this when you want custom
+   * bubble chrome without losing the list-level features (date dividers,
+   * unread divider, scroll management, load-more).
+   *
+   * When omitted, the default `ChatMessageItem` is used.
+   */
+  renderMessage?: (
+    message: ChatMessage,
+    context: {
+      isOwnMessage: boolean;
+      highlight: boolean;
+      profile: UserProfile | undefined;
+      currentUserId: string | undefined;
+      conversationId: string | undefined;
+    },
+  ) => React.ReactNode;
 }
 
 function getDateLabel(dateStr: string): string {
@@ -73,6 +92,7 @@ export function ChatMessageList({
   isNearBottom: isNearBottomProp,
   onReachBottom,
   emptyState,
+  renderMessage,
 }: ChatMessageListProps): React.JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -350,20 +370,30 @@ export function ChatMessageList({
                   />
                 </div>
               )}
-              <ChatMessageItem
-                message={msg}
-                currentUserId={currentUserId}
-                conversationId={conversationId}
-                profile={profiles?.get(msg.sender_id)}
-                onAddReaction={onAddReaction}
-                onRemoveReaction={onRemoveReaction}
-                onEdit={onEdit}
-                onDelete={onDelete}
-                onReport={onReport}
-                onFetchAttachmentUrl={onFetchAttachmentUrl}
-                isOwnMessage={isOwn}
-                highlight={showUnreadDivider}
-              />
+              {renderMessage ? (
+                renderMessage(msg, {
+                  isOwnMessage: isOwn,
+                  highlight: showUnreadDivider,
+                  profile: profiles?.get(msg.sender_id),
+                  currentUserId,
+                  conversationId,
+                })
+              ) : (
+                <ChatMessageItem
+                  message={msg}
+                  currentUserId={currentUserId}
+                  conversationId={conversationId}
+                  profile={profiles?.get(msg.sender_id)}
+                  onAddReaction={onAddReaction}
+                  onRemoveReaction={onRemoveReaction}
+                  onEdit={onEdit}
+                  onDelete={onDelete}
+                  onReport={onReport}
+                  onFetchAttachmentUrl={onFetchAttachmentUrl}
+                  isOwnMessage={isOwn}
+                  highlight={showUnreadDivider}
+                />
+              )}
             </React.Fragment>
           );
         })}

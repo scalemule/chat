@@ -714,6 +714,12 @@ export {
   SearchResults,
   SupportInbox,
 } from './react-components';
+export type { UserProfile } from './react-components';
+
+// Note: Admin-only components (WidgetConfigEditor, VisitorContextPanel) are
+// intentionally NOT exported from the main @scalemule/chat/react entry —
+// they are shipped separately via @scalemule/chat/react/admin to keep the
+// bundle lean for customer-facing chat apps. See src/react-admin.ts.
 
 // Re-export core types
 export { ChatClient } from './core/ChatClient';

@@ -12,6 +12,239 @@ The rest of this guide explains how to start using each new feature.
 
 ---
 
+## 0. Theming the SDK to match your app (Tailwind v4)
+
+**Problem:** SDK pre-built React components ship with a blue primary color and generic neutral grays. Host apps using Tailwind v4 want reactions, bubbles, and CTAs to inherit the host palette automatically.
+
+**Solution:** Import the Tailwind preset that ships in v0.0.13+. It maps the SDK's `--sm-*` CSS custom properties to Tailwind v4's auto-generated theme tokens via a fallback chain.
+
+### Option A — CSS import (zero JavaScript)
+
+In your `app/globals.css` (Next.js 15) or equivalent:
+
+```css
+@import "tailwindcss";
+@import "@scalemule/chat/themes/tailwind.css";
+```
+
+That's it. Every `ReactionBar`, `EmojiPicker`, `ChatMessageItem`, `ChannelList`, `SearchBar`, `SupportInbox`, etc. now inherits your Tailwind theme's `--color-primary-*`, grays, `--radius-2xl`, and `--font-sans` automatically.
+
+### Option B — JS import with ChatProvider
+
+```tsx
+// app/layout.tsx
+import { ChatProvider } from '@scalemule/chat/react';
+import { tailwindTheme } from '@scalemule/chat/themes/tailwind';
+
+export default function RootLayout({ children }) {
+  return (
+    <ChatProvider config={chatConfig} theme={tailwindTheme}>
+      {children}
+    </ChatProvider>
+  );
+}
+```
+
+### Customizing your primary color
+
+Define a Tailwind v4 primary palette and the SDK inherits it with no further config:
+
+```css
+@import "tailwindcss";
+
+@theme {
+  --color-primary-500: #ef4444;  /* red-500 */
+  --color-primary-600: #dc2626;
+}
+```
+
+Now all SDK components render in red. No props to pass. No JS config.
+
+### Override individual tokens
+
+Any `--sm-*` variable can be overridden on `:root` or a scoped element:
+
+```css
+:root {
+  --sm-border-radius: 8px;  /* tighter than default */
+  --sm-own-bubble: linear-gradient(135deg, #ef4444, #dc2626);  /* gradient */
+}
+```
+
+### Fallback chain reference
+
+| SDK token | Resolves to |
+|---|---|
+| `--sm-primary` | `--color-primary-500` → `--color-blue-600` → `#2563eb` |
+| `--sm-own-bubble` | Same as `--sm-primary` |
+| `--sm-other-bubble` | `--color-gray-100` → `#f3f4f6` |
+| `--sm-surface` | `--color-white` → `#ffffff` |
+| `--sm-border-color` | `--color-gray-200` → `#e5e7eb` |
+| `--sm-text-color` | `--color-gray-900` → `#111827` |
+| `--sm-muted-text` | `--color-gray-500` → `#6b7280` |
+| `--sm-border-radius` | `--radius-2xl` → `16px` |
+| `--sm-font-family` | `--font-sans` → system stack |
+
+### Tailwind v3 users
+
+The CSS `var()` fallback chain is standard CSS and works in v3 too — you just don't get the automatic `--color-*` inheritance because Tailwind v3 doesn't emit those variables. Define `--sm-primary` etc. directly in your global CSS:
+
+```css
+:root {
+  --sm-primary: #ef4444;
+  --sm-own-bubble: #ef4444;
+}
+```
+
+### shadcn/ui users — use the shadcn preset instead
+
+If your host app uses shadcn/ui (very common in the Next.js 15 ecosystem), use the dedicated shadcn preset. shadcn stores colors as bare HSL triplets and wraps them in `hsl(var(--primary))` — this preset reads those variables directly, including dark mode:
+
+```css
+/* app/globals.css */
+@import "tailwindcss";
+@import "@scalemule/chat/themes/shadcn.css";
+```
+
+Or via JS:
+
+```tsx
+import { ChatProvider } from '@scalemule/chat/react';
+import { shadcnTheme } from '@scalemule/chat/themes/shadcn';
+
+<ChatProvider config={chatConfig} theme={shadcnTheme}>
+  {children}
+</ChatProvider>
+```
+
+The SDK components now read from `--primary`, `--secondary`, `--background`, `--muted`, `--border`, `--foreground`, `--muted-foreground`, and `--radius` — the same variables shadcn's own `Button`, `Card`, `Input` components use. Your `.dark` class toggles both at once.
+
+Combine with `renderSendButton` to drop in a shadcn `<Button>`:
+
+```tsx
+import { ChatInput } from '@scalemule/chat/react';
+import { Button } from '@/components/ui/button';
+import { Send } from 'lucide-react';
+
+<ChatInput
+  onSend={handleSend}
+  renderSendButton={({ canSend, disabled, onSend }) => (
+    <Button onClick={onSend} disabled={disabled || !canSend} size="icon">
+      <Send className="h-4 w-4" />
+    </Button>
+  )}
+/>
+```
+
+---
+
+## 0b. Customizing component slots with render props
+
+Theming handles colors, fonts, and border radius. For structural changes — custom avatars, a lightbox for attachments, a design-system send button — use the render-prop escape hatches.
+
+### Custom avatar on `<ChatMessageItem>`
+
+```tsx
+import { ChatMessageItem } from '@scalemule/chat/react';
+import { Avatar } from '@/components/ui/avatar'; // your design system
+
+<ChatMessageItem
+  message={msg}
+  currentUserId={currentUserId}
+  renderAvatar={(profile, message) => (
+    <Avatar
+      src={profile?.avatar_url}
+      fallback={profile?.display_name?.charAt(0)}
+      href={`/u/${message.sender_id}`}
+    />
+  )}
+/>
+```
+
+### Custom attachment renderer (e.g., app-wide media lightbox)
+
+```tsx
+<ChatMessageItem
+  message={msg}
+  currentUserId={currentUserId}
+  renderAttachment={(att) => (
+    <MyMediaCard
+      fileId={att.file_id}
+      mimeType={att.mime_type}
+      onClick={() => openLightbox(att)}
+    />
+  )}
+/>
+```
+
+### Profile lookup from a store
+
+When you already have a profile store (Zustand, Redux, a plain Map), you don't need to pass `profile` on every message — pass a resolver instead:
+
+```tsx
+const profiles = useProfileStore((s) => s.profiles); // Map<userId, Profile>
+
+<ChatMessageList
+  messages={messages}
+  currentUserId={currentUserId}
+  getProfile={(userId) => profiles.get(userId)}
+/>
+```
+
+Works on both `<ChatMessageItem>` and `<ChatMessageList>`. When both `profile` and `getProfile` are provided, the explicit `profile` prop wins.
+
+### Replace the entire message item
+
+If you want full control over the message bubble but still want the list-level features (date dividers, unread divider, scroll-to-bottom pill), use `renderMessage` on `<ChatMessageList>`:
+
+```tsx
+<ChatMessageList
+  messages={messages}
+  currentUserId={currentUserId}
+  profiles={profileMap}
+  renderMessage={(msg, ctx) => (
+    <MyBubble
+      message={msg}
+      isOwn={ctx.isOwnMessage}
+      highlight={ctx.highlight}
+      profile={ctx.profile}
+    />
+  )}
+/>
+```
+
+### Custom send button
+
+```tsx
+import { ChatInput } from '@scalemule/chat/react';
+import { Button } from '@/components/ui/button'; // shadcn Button
+
+<ChatInput
+  onSend={handleSend}
+  renderSendButton={({ canSend, disabled, onSend }) => (
+    <Button
+      onClick={onSend}
+      disabled={disabled || !canSend}
+      size="icon"
+      variant="default"
+    >
+      <SendIcon className="h-4 w-4" />
+    </Button>
+  )}
+/>
+```
+
+### Why render props instead of "just fork the component"?
+
+You keep:
+- All future SDK bug fixes and feature additions automatically on upgrade
+- All the state management (edit mode, attachment upload, typing indicators, scroll sync)
+- All the event wiring to `ChatClient`
+
+You only write the visual bits your design system requires. This is why the YouSnaps migration (see `docs/YOUSNAPS_MIGRATION_NOTES.md`) needed these escape hatches before swapping its Tailwind-themed `ChatMessageItem`.
+
+---
+
 ## 1. Named channels
 
 The backend now supports Slack-style named channels alongside the existing `direct`, `group`, `large_room`, `broadcast`, `ephemeral`, and `support` conversation types.

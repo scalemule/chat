@@ -23,7 +23,7 @@ function useAttachmentUrl(
   return url;
 }
 
-interface UserProfile {
+export interface UserProfile {
   display_name: string;
   username?: string;
   avatar_url?: string;
@@ -33,7 +33,15 @@ interface ChatMessageItemProps {
   message: ChatMessage;
   currentUserId?: string;
   conversationId?: string;
+  /** Profile for the message sender. Overrides `getProfile` when both are passed. */
   profile?: UserProfile;
+  /**
+   * Fallback profile resolver. Called only when `profile` is not passed. Useful
+   * for hosts that keep profiles in a store (Map, Zustand, Redux) and don't
+   * want to pass them per-message. Return `undefined` for unknown users —
+   * the component will fall back to "User" and generic initials.
+   */
+  getProfile?: (userId: string) => UserProfile | undefined;
   onAddReaction?: (messageId: string, emoji: string) => void | Promise<void>;
   onRemoveReaction?: (messageId: string, emoji: string) => void | Promise<void>;
   onEdit?: (messageId: string, content: string, attachments?: Attachment[]) => void | Promise<void>;
@@ -42,6 +50,29 @@ interface ChatMessageItemProps {
   onFetchAttachmentUrl?: (fileId: string) => Promise<string>;
   isOwnMessage?: boolean;
   highlight?: boolean;
+  /**
+   * Custom avatar renderer. Replaces the default 32px circle avatar for
+   * incoming messages. Receives the resolved profile (or undefined) and the
+   * full message. Return `null` to hide the avatar entirely.
+   *
+   * Host apps use this to render their own avatar component (shadcn Avatar,
+   * linkable profile pictures, status badges, etc.) without forking the
+   * entire ChatMessageItem.
+   */
+  renderAvatar?: (
+    profile: UserProfile | undefined,
+    message: ChatMessage,
+  ) => React.ReactNode;
+  /**
+   * Custom attachment renderer. Replaces the default image/video/audio/file
+   * card for every attachment on the message. Host apps use this to integrate
+   * their own media lightbox, lazy-loading strategy, or CDN transformations
+   * without losing the rest of the message UI.
+   *
+   * The default renderer (with presigned URL fetching via onFetchAttachmentUrl)
+   * is used when this prop is not passed.
+   */
+  renderAttachment?: (attachment: Attachment) => React.ReactNode;
 }
 
 /** Renders a single attachment -- fetches presigned URL on demand if missing */
@@ -211,7 +242,8 @@ export function ChatMessageItem({
   message,
   currentUserId,
   conversationId,
-  profile,
+  profile: profileProp,
+  getProfile,
   onAddReaction,
   onRemoveReaction,
   onEdit,
@@ -220,7 +252,12 @@ export function ChatMessageItem({
   onFetchAttachmentUrl,
   isOwnMessage: isOwnMessageProp,
   highlight = false,
+  renderAvatar,
+  renderAttachment,
 }: ChatMessageItemProps): React.JSX.Element {
+  // Profile resolution: explicit `profile` prop wins, else fall back to
+  // `getProfile(senderId)`, else undefined (default "User" placeholder).
+  const profile = profileProp ?? getProfile?.(message.sender_id);
   const [showActions, setShowActions] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editContent, setEditContent] = useState(message.content);
@@ -320,36 +357,39 @@ export function ChatMessageItem({
       onMouseLeave={() => setShowActions(false)}
     >
       {/* Avatar -- other's messages only */}
-      {!isOwn && (
-        <div
-          style={{
-            flexShrink: 0,
-            width: 32,
-            height: 32,
-            borderRadius: 999,
-            background: 'var(--sm-surface-muted, #f3f4f6)',
-            overflow: 'hidden',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: 12,
-            fontWeight: 500,
-            color: 'var(--sm-muted-text, #6b7280)',
-            marginRight: 10,
-            marginTop: 2,
-          }}
-        >
-          {avatarUrl ? (
-            <img
-              src={avatarUrl}
-              alt={displayName}
-              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-            />
-          ) : (
-            initials
-          )}
-        </div>
-      )}
+      {!isOwn &&
+        (renderAvatar ? (
+          renderAvatar(profile, message)
+        ) : (
+          <div
+            style={{
+              flexShrink: 0,
+              width: 32,
+              height: 32,
+              borderRadius: 999,
+              background: 'var(--sm-surface-muted, #f3f4f6)',
+              overflow: 'hidden',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: 12,
+              fontWeight: 500,
+              color: 'var(--sm-muted-text, #6b7280)',
+              marginRight: 10,
+              marginTop: 2,
+            }}
+          >
+            {avatarUrl ? (
+              <img
+                src={avatarUrl}
+                alt={displayName}
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
+            ) : (
+              initials
+            )}
+          </div>
+        ))}
 
       {/* Message bubble area */}
       <div style={{ position: 'relative', maxWidth: '75%', minWidth: 0 }}>
@@ -691,10 +731,14 @@ export function ChatMessageItem({
                   maxWidth: 320,
                 }}
               >
-                <AttachmentRenderer
-                  att={att}
-                  fetcher={onFetchAttachmentUrl}
-                />
+                {renderAttachment ? (
+                  renderAttachment(att)
+                ) : (
+                  <AttachmentRenderer
+                    att={att}
+                    fetcher={onFetchAttachmentUrl}
+                  />
+                )}
               </div>
             ))}
           </div>

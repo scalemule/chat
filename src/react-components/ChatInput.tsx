@@ -27,6 +27,20 @@ interface ChatInputProps {
   disabled?: boolean;
   maxAttachments?: number;
   accept?: string;
+  /**
+   * Render-prop escape hatch: replace the default send button with a fully
+   * custom element. Host apps use this to drop in their own themed button
+   * (shadcn Button, gradient background, custom icon) without forking the
+   * entire ChatInput.
+   *
+   * The render function receives `canSend` (false when empty or uploading)
+   * and `onSend` (the submit callback wired into ChatInput's state).
+   */
+  renderSendButton?: (args: {
+    canSend: boolean;
+    disabled: boolean;
+    onSend: () => void;
+  }) => React.ReactNode;
 }
 
 export function ChatInput({
@@ -39,6 +53,7 @@ export function ChatInput({
   disabled = false,
   maxAttachments = 5,
   accept = 'image/*,video/*',
+  renderSendButton,
 }: ChatInputProps): React.JSX.Element {
   const [text, setText] = useState('');
   const [attachments, setAttachments] = useState<PendingAttachment[]>([]);
@@ -53,8 +68,9 @@ export function ChatInput({
   const hasUploadingAttachments = attachments.some(
     (a) => a.status === 'uploading',
   );
-  const canSend =
-    (text.trim() || hasReadyAttachments) && !hasUploadingAttachments && !isSending;
+  const canSend: boolean = Boolean(
+    (text.trim() || hasReadyAttachments) && !hasUploadingAttachments && !isSending,
+  );
 
   // Cleanup on unmount
   useEffect(() => {
@@ -575,43 +591,51 @@ export function ChatInput({
           }}
         />
 
-        <button
-          onClick={() => void handleSend()}
-          disabled={disabled || !canSend}
-          type="button"
-          aria-label="Send message"
-          style={{
-            flexShrink: 0,
-            width: 32,
-            height: 32,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderRadius: 999,
-            border: 'none',
-            background: 'var(--sm-primary, #2563eb)',
-            color: '#fff',
-            cursor: disabled || !canSend ? 'not-allowed' : 'pointer',
-            opacity: disabled || !canSend ? 0.4 : 1,
-            marginBottom: 2,
-            transition: 'opacity 0.15s ease',
-          }}
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+        {renderSendButton ? (
+          renderSendButton({
+            canSend,
+            disabled,
+            onSend: () => void handleSend(),
+          })
+        ) : (
+          <button
+            onClick={() => void handleSend()}
+            disabled={disabled || !canSend}
+            type="button"
+            aria-label="Send message"
+            style={{
+              flexShrink: 0,
+              width: 32,
+              height: 32,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: 999,
+              border: 'none',
+              background: 'var(--sm-primary, #2563eb)',
+              color: '#fff',
+              cursor: disabled || !canSend ? 'not-allowed' : 'pointer',
+              opacity: disabled || !canSend ? 0.4 : 1,
+              marginBottom: 2,
+              transition: 'opacity 0.15s ease',
+            }}
           >
-            <line x1="22" y1="2" x2="11" y2="13" />
-            <polygon points="22 2 15 22 11 13 2 9 22 2" />
-          </svg>
-        </button>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <line x1="22" y1="2" x2="11" y2="13" />
+              <polygon points="22 2 15 22 11 13 2 9 22 2" />
+            </svg>
+          </button>
+        )}
       </div>
     </div>
   );
