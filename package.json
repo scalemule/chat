@@ -26,7 +26,13 @@
       "types": "./dist/iframe.d.ts",
       "import": "./dist/iframe.js",
       "require": "./dist/iframe.cjs"
-    }
+    },
+    "./themes/tailwind": {
+      "types": "./dist/themes/tailwind.d.ts",
+      "import": "./dist/themes/tailwind.js",
+      "require": "./dist/themes/tailwind.cjs"
+    },
+    "./themes/tailwind.css": "./dist/themes/tailwind.css"
   },
   "files": [
     "dist",
@@ -36,8 +42,9 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsup && npm run build:types && npm run check:budgets",
+    "build": "tsup && npm run build:types && npm run build:assets && npm run check:budgets",
     "build:types": "tsc --emitDeclarationOnly --project tsconfig.json",
+    "build:assets": "mkdir -p dist/themes && cp src/themes/tailwind.css dist/themes/tailwind.css",
     "check:budgets": "node ./scripts/check-bundle-budgets.mjs",
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit",

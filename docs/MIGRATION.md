@@ -12,6 +12,92 @@ The rest of this guide explains how to start using each new feature.
 
 ---
 
+## 0. Theming the SDK to match your app (Tailwind v4)
+
+**Problem:** SDK pre-built React components ship with a blue primary color and generic neutral grays. Host apps using Tailwind v4 want reactions, bubbles, and CTAs to inherit the host palette automatically.
+
+**Solution:** Import the Tailwind preset that ships in v0.0.13+. It maps the SDK's `--sm-*` CSS custom properties to Tailwind v4's auto-generated theme tokens via a fallback chain.
+
+### Option A — CSS import (zero JavaScript)
+
+In your `app/globals.css` (Next.js 15) or equivalent:
+
+```css
+@import "tailwindcss";
+@import "@scalemule/chat/themes/tailwind.css";
+```
+
+That's it. Every `ReactionBar`, `EmojiPicker`, `ChatMessageItem`, `ChannelList`, `SearchBar`, `SupportInbox`, etc. now inherits your Tailwind theme's `--color-primary-*`, grays, `--radius-2xl`, and `--font-sans` automatically.
+
+### Option B — JS import with ChatProvider
+
+```tsx
+// app/layout.tsx
+import { ChatProvider } from '@scalemule/chat/react';
+import { tailwindTheme } from '@scalemule/chat/themes/tailwind';
+
+export default function RootLayout({ children }) {
+  return (
+    <ChatProvider config={chatConfig} theme={tailwindTheme}>
+      {children}
+    </ChatProvider>
+  );
+}
+```
+
+### Customizing your primary color
+
+Define a Tailwind v4 primary palette and the SDK inherits it with no further config:
+
+```css
+@import "tailwindcss";
+
+@theme {
+  --color-primary-500: #ef4444;  /* red-500 */
+  --color-primary-600: #dc2626;
+}
+```
+
+Now all SDK components render in red. No props to pass. No JS config.
+
+### Override individual tokens
+
+Any `--sm-*` variable can be overridden on `:root` or a scoped element:
+
+```css
+:root {
+  --sm-border-radius: 8px;  /* tighter than default */
+  --sm-own-bubble: linear-gradient(135deg, #ef4444, #dc2626);  /* gradient */
+}
+```
+
+### Fallback chain reference
+
+| SDK token | Resolves to |
+|---|---|
+| `--sm-primary` | `--color-primary-500` → `--color-blue-600` → `#2563eb` |
+| `--sm-own-bubble` | Same as `--sm-primary` |
+| `--sm-other-bubble` | `--color-gray-100` → `#f3f4f6` |
+| `--sm-surface` | `--color-white` → `#ffffff` |
+| `--sm-border-color` | `--color-gray-200` → `#e5e7eb` |
+| `--sm-text-color` | `--color-gray-900` → `#111827` |
+| `--sm-muted-text` | `--color-gray-500` → `#6b7280` |
+| `--sm-border-radius` | `--radius-2xl` → `16px` |
+| `--sm-font-family` | `--font-sans` → system stack |
+
+### Tailwind v3 users
+
+The CSS `var()` fallback chain is standard CSS and works in v3 too — you just don't get the automatic `--color-*` inheritance because Tailwind v3 doesn't emit those variables. Define `--sm-primary` etc. directly in your global CSS:
+
+```css
+:root {
+  --sm-primary: #ef4444;
+  --sm-own-bubble: #ef4444;
+}
+```
+
+---
+
 ## 1. Named channels
 
 The backend now supports Slack-style named channels alongside the existing `direct`, `group`, `large_room`, `broadcast`, `ephemeral`, and `support` conversation types.

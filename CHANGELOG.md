@@ -1,5 +1,24 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+**Tailwind v4 theme preset** (`@scalemule/chat/themes/tailwind`)
+- New `tailwindTheme` export (ChatTheme object with `var()` fallback chains)
+- New CSS file: `@scalemule/chat/themes/tailwind.css` — zero-JS import path
+- Maps all 12 `--sm-*` tokens to Tailwind v4 auto-generated theme variables: `--color-primary-*` → `--color-blue-*` → SDK default
+- Host apps can override the primary palette via Tailwind v4 `@theme { --color-primary-500: ... }` with no further config
+- Pre-built components (ReactionBar, EmojiPicker, ChatMessageItem, ChannelList, SearchBar, SupportInbox, etc.) inherit the host theme automatically
+
+This is the first deliverable of the Phase 2 theming bridge toward v0.1.0. See [`docs/YOUSNAPS_MIGRATION_NOTES.md`](./docs/YOUSNAPS_MIGRATION_NOTES.md) for the customer migration that drove this work, and [`../../docs/chat/CHAT_SDK_COMPLETION_PLAN.md`](../../docs/chat/CHAT_SDK_COMPLETION_PLAN.md) for the full plan.
+
+### Tests
+
+- 53 automated tests passing (48 previous + 5 new tailwindTheme tests)
+
+---
+
 ## 0.0.12 — 2026-04-10
 
 First release with the full MergeYard feature set abstracted into the SDK. See [`docs/MIGRATION.md`](./docs/MIGRATION.md) for detailed upgrade notes.
