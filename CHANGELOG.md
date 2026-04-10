@@ -1,10 +1,12 @@
 # Changelog
 
-## 0.1.0 — 2026-04-10
+## 0.0.13 — 2026-04-10
 
-First release of the "customer SDK" milestone. v0.1.0 makes `@scalemule/chat` genuinely drop-in for host apps using Tailwind v4 or shadcn/ui, adds render-prop escape hatches for structural customization without forking components, ships admin-dashboard components on a code-split entry point, and brings the test suite to 89 automated tests including React Testing Library coverage for every new surface.
+**Not a 0.1.0 release.** This ships Phase 1–6 of the *milestone toward* 0.1.0 — the theming bridge, render-prop escape hatches, admin components, first RTL test coverage, examples, and scope docs. Staying in 0.0.x because meaningful work is still deferred: RTL coverage for the 12 remaining React components, `web/scalemule-app` migration to `@scalemule/chat/react/admin`, full buildable example sub-packages, and real-world validation beyond the YouSnaps migration. The 0.1.0 cut waits until those land.
 
-**Migration:** v0.1.0 is fully backward-compatible with v0.0.12 consumers. No code changes required on upgrade. See [`docs/MIGRATION.md`](./docs/MIGRATION.md) for how to adopt the new theming presets and escape hatches.
+**What you get in 0.0.13:** `@scalemule/chat` is drop-in for host apps using Tailwind v4 or shadcn/ui, with render-prop escape hatches for structural customization without forking components, admin-dashboard components on a code-split entry point, and the test suite at 89 automated tests.
+
+**Migration:** 0.0.13 is fully backward-compatible with 0.0.12 consumers. No code changes required on upgrade. See [`docs/MIGRATION.md`](./docs/MIGRATION.md) for how to adopt the new theming presets and escape hatches.
 
 **Context:** This release closes the Phase 1–6 work in [`../../docs/chat/CHAT_SDK_COMPLETION_PLAN.md`](../../docs/chat/CHAT_SDK_COMPLETION_PLAN.md), driven by the YouSnaps migration (see [`docs/YOUSNAPS_MIGRATION_NOTES.md`](./docs/YOUSNAPS_MIGRATION_NOTES.md)). The scope boundary is now documented in [`../../docs/chat/CHAT_SDK_SCOPE.md`](../../docs/chat/CHAT_SDK_SCOPE.md) so future feature requests can be triaged against a single source of truth.
 

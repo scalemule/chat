@@ -22,7 +22,7 @@ For full prop/type documentation, see the [MIGRATION.md](../docs/MIGRATION.md) a
   <h1>Welcome to Acme</h1>
 
   <!-- Support widget bootstrap -->
-  <script src="https://unpkg.com/@scalemule/chat@^0.1.0/dist/support-widget.global.js"></script>
+  <script src="https://unpkg.com/@scalemule/chat@^0.0.13/dist/support-widget.global.js"></script>
   <script>
     ScaleMuleSupportWidget.init({
       apiKey: 'pb_live_your_public_api_key',
@@ -255,7 +255,7 @@ Each snippet is meant to be copy-pasted into your own Next.js/React project. To 
 ```bash
 npx create-next-app@latest my-chat-example --typescript --tailwind
 cd my-chat-example
-npm install @scalemule/chat@^0.1.0
+npm install @scalemule/chat@^0.0.13
 # paste one of the examples above into app/page.tsx
 npm run dev
 ```
