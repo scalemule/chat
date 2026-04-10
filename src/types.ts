@@ -40,7 +40,7 @@ export interface ApiError {
 
 export interface Conversation {
   id: string;
-  conversation_type: 'direct' | 'group' | 'broadcast' | 'ephemeral' | 'large_room' | 'support';
+  conversation_type: 'direct' | 'group' | 'broadcast' | 'ephemeral' | 'large_room' | 'support' | 'channel';
   name?: string;
   created_by?: string;
   participant_count?: number;
@@ -50,6 +50,8 @@ export interface Conversation {
   last_message_preview?: string;
   last_message_sender_id?: string;
   counterparty_user_id?: string;
+  visibility?: 'public' | 'private';
+  description?: string;
   created_at: string;
   participants?: Participant[];
 }
@@ -108,6 +110,7 @@ export interface MessageEditedEvent {
   conversation_id: string;
   content?: string;
   new_content?: string;
+  new_attachments?: Attachment[];
   editor_user_id?: string;
   is_edited?: boolean;
   updated_at?: string;
@@ -184,6 +187,7 @@ export interface ChatEventMap {
   'inbox:update': { conversationId: string; messageId: string; senderId: string; preview: string };
   'support:new': { conversationId: string; visitorName?: string };
   'support:assigned': { conversationId: string; visitorName?: string; visitorEmail?: string };
+  'channel:changed': void;
   'error': { code: string; message: string };
 }
 
@@ -202,7 +206,7 @@ export interface SendMessageOptions {
 export interface ListConversationsOptions {
   page?: number;
   per_page?: number;
-  conversation_type?: 'direct' | 'group' | 'broadcast' | 'ephemeral' | 'large_room' | 'support';
+  conversation_type?: 'direct' | 'group' | 'broadcast' | 'ephemeral' | 'large_room' | 'support' | 'channel';
 }
 
 export interface UnreadTotalResponse {
@@ -247,4 +251,41 @@ export interface UploadCompleteResponse {
   url: string;
   already_completed: boolean;
   scan_queued: boolean;
+}
+
+// ============ Named Channels (Slack-style) ============
+
+export interface CreateChannelOptions {
+  name: string;
+  visibility?: 'public' | 'private';
+  description?: string;
+}
+
+export interface ChannelListItem {
+  id: string;
+  name: string | null;
+  visibility: string | null;
+  description: string | null;
+  member_count: number;
+  created_at: string;
+  is_member: boolean;
+}
+
+export interface ListChannelsOptions {
+  search?: string;
+  visibility?: 'public' | 'private';
+}
+
+// ============ Search ============
+
+export interface ChatSearchResult {
+  message: ChatMessage;
+  score: number;
+  highlights: string[];
+}
+
+export interface ChatSearchResponse {
+  results: ChatSearchResult[];
+  total: number;
+  query: string;
 }

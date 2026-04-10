@@ -9,11 +9,16 @@ import React, {
 } from 'react';
 import { ChatClient } from './core/ChatClient';
 import type {
+  Attachment,
+  ChannelListItem,
   ChatConfig,
   ChatMessage,
+  ChatSearchResult,
   ConnectionStatus,
   Conversation,
+  CreateChannelOptions,
   ApiResponse,
+  ListChannelsOptions,
   ReadStatus,
   SendMessageOptions,
   GetMessagesOptions,
@@ -226,8 +231,8 @@ export function useChat(conversationId?: string) {
   }, [client, conversationId, messages]);
 
   const editMessage = useCallback(
-    async (messageId: string, content: string) => {
-      const result = await client.editMessage(messageId, content);
+    async (messageId: string, content: string, attachments?: Attachment[]) => {
+      const result = await client.editMessage(messageId, content, attachments);
       if (result.error) {
         setError(result.error.message);
       }
@@ -526,6 +531,19 @@ export function useConversations(options?: { conversationType?: string }) {
     });
   }, [client, fetchConversations]);
 
+  // Listen for channel:changed events — debounced re-fetch, but only when
+  // viewing channels or all conversations (prevents unrelated lists from refetching)
+  useEffect(() => {
+    const type = options?.conversationType;
+    if (type && type !== 'channel') return;
+    return client.on('channel:changed', () => {
+      if (refreshTimer.current) clearTimeout(refreshTimer.current);
+      refreshTimer.current = setTimeout(() => {
+        fetchConversations();
+      }, 500);
+    });
+  }, [client, fetchConversations, options?.conversationType]);
+
   // Listen for read events — update unread_count locally
   useEffect(() => {
     return client.on('read', ({ conversationId }) => {
@@ -542,6 +560,98 @@ export function useConversations(options?: { conversationType?: string }) {
   }, []);
 
   return { conversations, isLoading, refresh: fetchConversations };
+}
+
+// ============ useChannels Hook ============
+
+export function useChannels(options?: ListChannelsOptions) {
+  const { client } = useChatContext();
+  const [channels, setChannels] = useState<ChannelListItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const fetchChannels = useCallback(async () => {
+    setIsLoading(true);
+    const result = await client.listChannels(options);
+    if (result.data) {
+      setChannels(result.data);
+    }
+    setIsLoading(false);
+  }, [client, options?.search, options?.visibility]);
+
+  useEffect(() => {
+    fetchChannels();
+  }, [fetchChannels]);
+
+  // Refresh when channel membership changes
+  useEffect(() => {
+    return client.on('channel:changed', () => {
+      fetchChannels();
+    });
+  }, [client, fetchChannels]);
+
+  const createChannel = useCallback(
+    async (opts: CreateChannelOptions) => {
+      const result = await client.createChannel(opts);
+      return result;
+    },
+    [client],
+  );
+
+  const joinChannel = useCallback(
+    async (channelId: string) => {
+      const result = await client.joinChannel(channelId);
+      return result;
+    },
+    [client],
+  );
+
+  const leaveChannel = useCallback(
+    async (channelId: string) => {
+      const result = await client.leaveChannel(channelId);
+      return result;
+    },
+    [client],
+  );
+
+  return { channels, isLoading, refresh: fetchChannels, createChannel, joinChannel, leaveChannel };
+}
+
+// ============ useSearch Hook ============
+
+export function useSearch(conversationId?: string) {
+  const { client } = useChatContext();
+  const [results, setResults] = useState<ChatSearchResult[]>([]);
+  const [total, setTotal] = useState(0);
+  const [isSearching, setIsSearching] = useState(false);
+  const [query, setQuery] = useState('');
+
+  const search = useCallback(
+    async (searchQuery: string, limit?: number) => {
+      if (!conversationId || !searchQuery.trim()) {
+        setResults([]);
+        setTotal(0);
+        setQuery('');
+        return;
+      }
+      setIsSearching(true);
+      setQuery(searchQuery);
+      const result = await client.searchMessages(conversationId, searchQuery, limit);
+      if (result.data) {
+        setResults(result.data.results);
+        setTotal(result.data.total);
+      }
+      setIsSearching(false);
+    },
+    [client, conversationId],
+  );
+
+  const clearSearch = useCallback(() => {
+    setResults([]);
+    setTotal(0);
+    setQuery('');
+  }, []);
+
+  return { results, total, query, isSearching, search, clearSearch };
 }
 
 // ============ useUnreadCount Hook ============
@@ -591,21 +701,33 @@ export {
   ChatMessageItem,
   ChatMessageList,
   ChatThread,
+  ChannelBrowser,
+  ChannelHeader,
+  ChannelList,
   ConversationList,
   EmojiPicker,
   EmojiPickerTrigger,
   ReactionBar,
+  RepStatusToggle,
   ReportDialog,
+  SearchBar,
+  SearchResults,
+  SupportInbox,
 } from './react-components';
 
 // Re-export core types
 export { ChatClient } from './core/ChatClient';
 export type {
+  ChannelListItem,
   ChatConfig,
   ChatMessage,
+  ChatSearchResult,
+  ChatSearchResponse,
   ConnectionStatus,
+  CreateChannelOptions,
   Conversation,
   ApiResponse,
+  ListChannelsOptions,
   SendMessageOptions,
   GetMessagesOptions,
   MessagesResponse,

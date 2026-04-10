@@ -33,6 +33,10 @@ export class HttpTransport {
     return this.request<T>('PATCH', path, body);
   }
 
+  async put<T>(path: string, body?: unknown): Promise<ApiResponse<T>> {
+    return this.request<T>('PUT', path, body);
+  }
+
   async del<T>(path: string): Promise<ApiResponse<T>> {
     return this.request<T>('DELETE', path);
   }

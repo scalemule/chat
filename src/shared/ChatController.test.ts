@@ -23,6 +23,8 @@ function createClientStub() {
     leavePresence: vi.fn(),
     on: vi.fn(() => () => {}),
     sendMessage: vi.fn(async () => ({ data: {}, error: null })),
+    editMessage: vi.fn(async () => ({ data: null, error: null })),
+    deleteMessage: vi.fn(async () => ({ data: null, error: null })),
     uploadAttachment: vi.fn(async () => ({ data: null, error: null })),
     refreshAttachmentUrl: vi.fn(),
     addReaction: vi.fn(async () => ({ data: null, error: null })),
@@ -78,5 +80,39 @@ describe('ChatController sendMessage', () => {
       attachments,
       message_type: 'image',
     })
+  })
+})
+
+describe('ChatController editMessage', () => {
+  it('delegates to client.editMessage with content and attachments', async () => {
+    const client = createClientStub()
+    const controller = new ChatController(client as unknown as ChatClient, 'conv-1')
+    const atts: Attachment[] = [
+      { file_id: 'f-1', file_name: 'doc.pdf', file_size: 100, mime_type: 'application/pdf' },
+    ]
+
+    await controller.editMessage('msg-1', 'updated', atts)
+
+    expect(client.editMessage).toHaveBeenCalledWith('msg-1', 'updated', atts)
+  })
+
+  it('delegates to client.editMessage without attachments', async () => {
+    const client = createClientStub()
+    const controller = new ChatController(client as unknown as ChatClient, 'conv-1')
+
+    await controller.editMessage('msg-1', 'just text')
+
+    expect(client.editMessage).toHaveBeenCalledWith('msg-1', 'just text', undefined)
+  })
+})
+
+describe('ChatController deleteMessage', () => {
+  it('delegates to client.deleteMessage', async () => {
+    const client = createClientStub()
+    const controller = new ChatController(client as unknown as ChatClient, 'conv-1')
+
+    await controller.deleteMessage('msg-1')
+
+    expect(client.deleteMessage).toHaveBeenCalledWith('msg-1')
   })
 })
