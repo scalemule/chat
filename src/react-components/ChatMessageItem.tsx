@@ -257,6 +257,29 @@ export function ChatMessageItem({
 
   // System messages
   if (message.message_type === 'system') {
+    let displayText = message.content;
+
+    // Parse conference call translation keys
+    if (message.content.startsWith('system.call.')) {
+      const parts = message.content.split('|');
+      const key = parts[0];
+      const params: Record<string, string> = {};
+      for (let i = 1; i < parts.length; i++) {
+        const [k, v] = parts[i].split('=');
+        if (k && v) params[k] = v;
+      }
+
+      if (key === 'system.call.started') {
+        const type = params.type === 'audio' ? 'Audio' : 'Video';
+        displayText = `${type} call started`;
+      } else if (key === 'system.call.ended') {
+        const secs = parseInt(params.duration || '0', 10);
+        const mins = Math.floor(secs / 60);
+        const rem = secs % 60;
+        displayText = `Call ended (${String(mins).padStart(2, '0')}:${String(rem).padStart(2, '0')})`;
+      }
+    }
+
     return (
       <div
         style={{
@@ -267,7 +290,7 @@ export function ChatMessageItem({
           fontStyle: 'italic',
         }}
       >
-        {message.content}
+        {displayText}
       </div>
     );
   }
