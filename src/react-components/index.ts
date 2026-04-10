@@ -1,3 +1,6 @@
+export { CallButton } from './CallButton';
+export { CallControls } from './CallControls';
+export { CallOverlay } from './CallOverlay';
 export { ChatInput } from './ChatInput';
 export { ChatMessageItem } from './ChatMessageItem';
 export { ChatMessageList } from './ChatMessageList';
