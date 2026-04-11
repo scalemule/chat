@@ -122,7 +122,7 @@ Any `--sm-*` variable can be overridden on `:root` or a scoped element:
 
 CSS cascade rules mean these overrides win over the preset's default fallback chain (they come later on `:root`). Every SDK component now inherits your brand palette with no per-component prop passing.
 
-This pattern was validated on YouSnaps during the 0.0.14 adoption — see [`YOUSNAPS_0.0.14_ADOPTION_NOTES.md`](./YOUSNAPS_0.0.14_ADOPTION_NOTES.md) for the full walkthrough and commit references.
+This pattern has been validated in production by host apps that bridge an existing Tailwind v4 design-token namespace to the SDK's `--sm-*` tokens without any per-component prop passing.
 
 ### Tailwind v3 users
 
@@ -312,7 +312,7 @@ function MessageItemWrapper(props) {
 }
 ```
 
-This is the pattern YouSnaps uses for its CSRF-proxied `/api/chat/report` endpoint. See [`YOUSNAPS_0.0.14_ADOPTION_NOTES.md`](./YOUSNAPS_0.0.14_ADOPTION_NOTES.md) for the live code in context.
+This is the standard pattern when your host app has its own CSRF-proxied report or moderation endpoint: the SDK emits the callback, your app owns the dialog, submission, and any auth/session handling.
 
 ### Why render props instead of "just fork the component"?
 
@@ -321,7 +321,7 @@ You keep:
 - All the state management (edit mode, attachment upload, typing indicators, scroll sync)
 - All the event wiring to `ChatClient`
 
-You only write the visual bits your design system requires. This is why the YouSnaps migration (see `docs/YOUSNAPS_MIGRATION_NOTES.md`) needed these escape hatches before swapping its Tailwind-themed `ChatMessageItem`.
+You only write the visual bits your design system requires. This is why render-prop escape hatches are the recommended path for any host app that wants custom avatars, attachment renderers, or design-system buttons without forking `ChatMessageItem` outright.
 
 ---
 
