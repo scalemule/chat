@@ -500,7 +500,7 @@ export function useTyping(conversationId?: string) {
 
 // ============ useConversations Hook ============
 
-export function useConversations(options?: { conversationType?: string }) {
+export function useConversations(options?: { conversationType?: string; perPage?: number }) {
   const { client } = useChatContext();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -509,12 +509,13 @@ export function useConversations(options?: { conversationType?: string }) {
   const fetchConversations = useCallback(async () => {
     const result = await client.listConversations({
       conversation_type: options?.conversationType as Conversation['conversation_type'],
+      per_page: options?.perPage,
     });
     if (result.data) {
       setConversations(result.data);
     }
     setIsLoading(false);
-  }, [client, options?.conversationType]);
+  }, [client, options?.conversationType, options?.perPage]);
 
   // Initial fetch
   useEffect(() => {

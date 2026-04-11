@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.0.18 — 2026-04-10
+
+**Privacy/hygiene patch.** Removes all host-app names (customer references) from the shipped docs and changelog. 0.0.15, 0.0.16, and 0.0.17 shipped with two host-app-specific migration doc files and several changelog references to specific host apps by name — an inadvertent privacy leak for any downstream consumer inspecting the tarball. Those files are deleted and the changelog/MIGRATION.md are rewritten to refer only to "host apps" generically. Consumers should upgrade off 0.0.15/16/17 to 0.0.18.
+
+### Removed
+- `docs/YOUSNAPS_0.0.14_ADOPTION_NOTES.md` — host-app-specific migration notes; content belongs in the host app's own repo, not the SDK
+- `docs/YOUSNAPS_MIGRATION_NOTES.md` — same
+- All host-app name references in `docs/MIGRATION.md` (replaced with generic language)
+- All host-app name references in this changelog (replaced with generic language)
+
+### Unchanged
+- All runtime behavior, APIs, bundle size, and `dist/` contents are identical to 0.0.17
+- `ChatMessageList`'s `renderAttachment` / `renderAvatar` forwarding (from 0.0.15)
+- `getMessagesAround` / `highlightMessageId` (from 0.0.15)
+- `useConversations({ perPage })` option (from 0.0.17)
+
+## 0.0.17 — 2026-04-10
+
+**Added:** `useConversations()` hook now accepts an optional `perPage` option, forwarded to `client.listConversations({ per_page })`. Host apps that need more than the server default page size can now get it via the hook without dropping to direct `ChatClient` calls.
+
+## 0.0.16 — 2026-04-10
+
+**Added:** `ChatMessageList` now accepts `renderAttachment` and `renderAvatar` props, forwarded to its default `ChatMessageItem`. Previously the only way to customize attachment rendering was the full `renderMessage` escape hatch (which required re-implementing the whole bubble). Now a host app can supply a branded attachment renderer and keep the SDK's default bubble chrome, hover toolbar, reactions, etc. Also includes the `getMessagesAround` / `highlightMessageId` scroll-to-message feature merged in from 0.0.15 work.
+
+## 0.0.15 — 2026-04-10
+
+Superseded by 0.0.16/0.0.18. Do not use.
+
 ## 0.0.14 — 2026-04-10
 
 **Cleanup patch — no new features.** Closes the deferred Item B (RTL test coverage gap), Item C (scalemule-app migration decision doc), and Item D (buildable example sub-packages) from the completion plan. Ships as a patch bump per the [versioning policy](../../docs/chat/CHAT_SDK_COMPLETION_PLAN.md#decisions-locked-2026-04-10) — still staying in 0.0.x until the user explicitly cuts 0.1.0.
@@ -54,13 +82,13 @@ After auditing `web/scalemule-app` for local copies of `WidgetConfigEditor` / `V
 
 ## 0.0.13 — 2026-04-10
 
-**Not a 0.1.0 release.** This ships Phase 1–6 of the *milestone toward* 0.1.0 — the theming bridge, render-prop escape hatches, admin components, first RTL test coverage, examples, and scope docs. Staying in 0.0.x because meaningful work is still deferred: RTL coverage for the 12 remaining React components, `web/scalemule-app` migration to `@scalemule/chat/react/admin`, full buildable example sub-packages, and real-world validation beyond the YouSnaps migration. The 0.1.0 cut waits until those land.
+**Not a 0.1.0 release.** This ships Phase 1–6 of the *milestone toward* 0.1.0 — the theming bridge, render-prop escape hatches, admin components, first RTL test coverage, examples, and scope docs. Staying in 0.0.x because meaningful work is still deferred: RTL coverage for the 12 remaining React components, `web/scalemule-app` migration to `@scalemule/chat/react/admin`, full buildable example sub-packages, and further real-world validation. The 0.1.0 cut waits until those land.
 
 **What you get in 0.0.13:** `@scalemule/chat` is drop-in for host apps using Tailwind v4 or shadcn/ui, with render-prop escape hatches for structural customization without forking components, admin-dashboard components on a code-split entry point, and the test suite at 89 automated tests.
 
 **Migration:** 0.0.13 is fully backward-compatible with 0.0.12 consumers. No code changes required on upgrade. See [`docs/MIGRATION.md`](./docs/MIGRATION.md) for how to adopt the new theming presets and escape hatches.
 
-**Context:** This release closes the Phase 1–6 work in [`../../docs/chat/CHAT_SDK_COMPLETION_PLAN.md`](../../docs/chat/CHAT_SDK_COMPLETION_PLAN.md), driven by the YouSnaps migration (see [`docs/YOUSNAPS_MIGRATION_NOTES.md`](./docs/YOUSNAPS_MIGRATION_NOTES.md)). The scope boundary is now documented in [`../../docs/chat/CHAT_SDK_SCOPE.md`](../../docs/chat/CHAT_SDK_SCOPE.md) so future feature requests can be triaged against a single source of truth.
+**Context:** This release closes the Phase 1–6 work in the SDK completion plan. The scope boundary is documented in the SDK scope doc so future feature requests can be triaged against a single source of truth.
 
 ### Added
 
@@ -101,7 +129,7 @@ import { WidgetConfigEditor, VisitorContextPanel } from '@scalemule/chat/react/a
 - `ChatInput.renderSendButton?: ({ canSend, disabled, onSend }) => ReactNode` — replace the default send button with a themed custom element
 - `UserProfile` type is now exported from `@scalemule/chat/react`
 
-All escape hatches are **purely additive** — default behavior is unchanged when the props are omitted. This is the mechanism that unblocks host apps (YouSnaps, CoralMeet) from forking `ChatMessageItem` to inject their own avatars, attachment lightboxes, or design-system buttons.
+All escape hatches are **purely additive** — default behavior is unchanged when the props are omitted. This is the mechanism that unblocks host apps from forking `ChatMessageItem` to inject their own avatars, attachment lightboxes, or design-system buttons.
 
 ### Fixed
 
@@ -123,7 +151,7 @@ These are Phase 2 deliverables of the v0.1.0 completion plan. See [`docs/YOUSNAP
 
 ## 0.0.12 — 2026-04-10
 
-First release with the full MergeYard feature set abstracted into the SDK. See [`docs/MIGRATION.md`](./docs/MIGRATION.md) for detailed upgrade notes.
+First release with the full reference-app feature set abstracted into the SDK. See [`docs/MIGRATION.md`](./docs/MIGRATION.md) for detailed upgrade notes.
 
 ### Added
 
