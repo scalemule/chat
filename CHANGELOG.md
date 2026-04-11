@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.0.19 — 2026-04-10
+
+**Added:** `TypingIndicator` component. Slack-style "X is typing..." indicator with smart pluralization (`"Alice is typing..."`, `"Alice and Bob are typing..."`, `"Alice, Bob, and Carol are typing..."`, `"4 people typing..."`) plus three animated bouncing dots. Uses `--sm-*` CSS variables so it inherits host theme presets. Renders nothing when `typingUsers` is empty so host apps can drop it unconditionally into their container layout.
+
+```tsx
+import { useTyping, TypingIndicator } from '@scalemule/chat/react';
+
+const { typingUsers } = useTyping(conversationId);
+
+<TypingIndicator
+  typingUsers={typingUsers.filter(id => id !== currentUserId)}
+  resolveUserName={(id) => profiles.get(id)?.display_name ?? 'Someone'}
+/>
+```
+
+Props:
+- `typingUsers: string[]` — required; the user IDs currently typing
+- `resolveUserName?: (userId: string) => string` — optional name lookup; falls back to "Someone" / "N people"
+- `isLargeRoom?: boolean` — forces count-only mode (no names), for 100+ participant rooms
+- `maxNames?: number` — collapse to count past this many typers (default: 3)
+
+The SDK's drop-in `ChatThread` component now uses `TypingIndicator` internally, so it gets real pluralization + animated dots instead of the previous "Someone is typing..." placeholder.
+
+**Tests:** +8 component tests (`TypingIndicator.test.tsx`), bringing the SDK suite to 145 passing.
+
 ## 0.0.18 — 2026-04-10
 
 **Privacy/hygiene patch.** Removes all host-app names (customer references) from the shipped docs and changelog. 0.0.15, 0.0.16, and 0.0.17 shipped with two host-app-specific migration doc files and several changelog references to specific host apps by name — an inadvertent privacy leak for any downstream consumer inspecting the tarball. Those files are deleted and the changelog/MIGRATION.md are rewritten to refer only to "host apps" generically. Consumers should upgrade off 0.0.15/16/17 to 0.0.18.
