@@ -26,6 +26,8 @@ interface ChatMessageListProps {
   firstUnreadMessageId?: string;
   /** @deprecated use firstUnreadMessageId instead */
   unreadSince?: string;
+  /** Scroll to and visually highlight a specific message (e.g. from search results). */
+  highlightMessageId?: string;
   isNearBottom?: boolean;
   onReachBottom?: () => void;
   emptyState?: React.ReactNode;
@@ -103,6 +105,7 @@ export function ChatMessageList({
   onFetchAttachmentUrl,
   firstUnreadMessageId,
   unreadSince,
+  highlightMessageId,
   isNearBottom: isNearBottomProp,
   onReachBottom,
   emptyState,
@@ -113,6 +116,7 @@ export function ChatMessageList({
   const containerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const unreadDividerRef = useRef<HTMLDivElement>(null);
+  const highlightRef = useRef<HTMLDivElement>(null);
   const prevLengthRef = useRef(messages.length);
   const isNearBottomRef = useRef(true);
   const [showNewMessagesPill, setShowNewMessagesPill] = useState(false);
@@ -171,10 +175,15 @@ export function ChatMessageList({
     prevLengthRef.current = messages.length;
   }, [messages.length]);
 
-  // Initial scroll: to unread divider if present, otherwise to bottom
+  // Initial scroll: to highlighted message, unread divider, or bottom
   useEffect(() => {
     if (!isLoading && messages.length > 0) {
-      if (resolvedFirstUnreadId && unreadDividerRef.current) {
+      if (highlightMessageId && highlightRef.current) {
+        highlightRef.current.scrollIntoView({
+          block: 'center',
+          behavior: 'instant' as ScrollBehavior,
+        });
+      } else if (resolvedFirstUnreadId && unreadDividerRef.current) {
         unreadDividerRef.current.scrollIntoView({
           block: 'start',
           behavior: 'instant' as ScrollBehavior,
@@ -186,7 +195,7 @@ export function ChatMessageList({
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoading, resolvedFirstUnreadId]);
+  }, [isLoading, resolvedFirstUnreadId, highlightMessageId]);
 
   // IntersectionObserver on bottomRef: detects when bottom is visible
   useEffect(() => {
@@ -305,6 +314,7 @@ export function ChatMessageList({
           const showDateSeparator =
             !prevMsg || !isSameDay(msg.created_at, prevMsg.created_at);
           const showUnreadDivider = resolvedFirstUnreadId === msg.id;
+          const isHighlighted = highlightMessageId === msg.id;
           const isOwn = msg.sender_id === currentUserId;
 
           return (
@@ -386,32 +396,34 @@ export function ChatMessageList({
                   />
                 </div>
               )}
-              {renderMessage ? (
-                renderMessage(msg, {
-                  isOwnMessage: isOwn,
-                  highlight: showUnreadDivider,
-                  profile: profiles?.get(msg.sender_id),
-                  currentUserId,
-                  conversationId,
-                })
-              ) : (
-                <ChatMessageItem
-                  message={msg}
-                  currentUserId={currentUserId}
-                  conversationId={conversationId}
-                  profile={profiles?.get(msg.sender_id)}
-                  onAddReaction={onAddReaction}
-                  onRemoveReaction={onRemoveReaction}
-                  onEdit={onEdit}
-                  onDelete={onDelete}
-                  onReport={onReport}
-                  onFetchAttachmentUrl={onFetchAttachmentUrl}
-                  isOwnMessage={isOwn}
-                  highlight={showUnreadDivider}
-                  renderAttachment={renderAttachment}
-                  renderAvatar={renderAvatar}
-                />
-              )}
+              <div ref={isHighlighted ? highlightRef : undefined}>
+                {renderMessage ? (
+                  renderMessage(msg, {
+                    isOwnMessage: isOwn,
+                    highlight: showUnreadDivider || isHighlighted,
+                    profile: profiles?.get(msg.sender_id),
+                    currentUserId,
+                    conversationId,
+                  })
+                ) : (
+                  <ChatMessageItem
+                    message={msg}
+                    currentUserId={currentUserId}
+                    conversationId={conversationId}
+                    profile={profiles?.get(msg.sender_id)}
+                    onAddReaction={onAddReaction}
+                    onRemoveReaction={onRemoveReaction}
+                    onEdit={onEdit}
+                    onDelete={onDelete}
+                    onReport={onReport}
+                    onFetchAttachmentUrl={onFetchAttachmentUrl}
+                    isOwnMessage={isOwn}
+                    highlight={showUnreadDivider || isHighlighted}
+                    renderAttachment={renderAttachment}
+                    renderAvatar={renderAvatar}
+                  />
+                )}
+              </div>
             </React.Fragment>
           );
         })}

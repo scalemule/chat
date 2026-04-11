@@ -235,6 +235,17 @@ export interface MessagesResponse {
   newest_id?: string;
 }
 
+export interface GetMessagesAroundOptions {
+  limit?: number;
+}
+
+export interface MessagesAroundResponse {
+  messages: ChatMessage[];
+  target_message_id: string;
+  has_older: boolean;
+  has_newer: boolean;
+}
+
 export interface PresignedUploadResponse {
   file_id: string;
   upload_url: string;
