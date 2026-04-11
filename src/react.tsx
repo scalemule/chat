@@ -694,10 +694,10 @@ export function useUnreadCount() {
   return { totalUnread };
 }
 
+// CallButton, CallControls, CallOverlay are intentionally NOT re-exported
+// here — they ship via @scalemule/chat/calls so consumers that only need
+// chat don't pull in the video backend's React components. See src/calls.tsx.
 export {
-  CallButton,
-  CallControls,
-  CallOverlay,
   ChatInput,
   ChatMessageItem,
   ChatMessageList,
