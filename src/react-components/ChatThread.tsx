@@ -4,6 +4,7 @@ import { useChat, useChatClient, useTyping, usePresence } from '../react';
 import type { Attachment } from '../types';
 import { ChatInput } from './ChatInput';
 import { ChatMessageList } from './ChatMessageList';
+import { TypingIndicator } from './TypingIndicator';
 import type { ChatTheme } from './theme';
 import { themeToStyle } from './theme';
 
@@ -174,16 +175,10 @@ export function ChatThread({
         emptyState={isLoading ? 'Loading messages...' : 'Start the conversation'}
       />
 
-      <div
-        style={{
-          minHeight: otherTypingUsers.length ? 28 : 0,
-          padding: otherTypingUsers.length ? '0 16px 8px' : 0,
-          fontSize: 12,
-          color: 'var(--sm-muted-text, #6b7280)',
-        }}
-      >
-        {otherTypingUsers.length ? 'Someone is typing...' : null}
-      </div>
+      <TypingIndicator
+        typingUsers={otherTypingUsers}
+        resolveUserName={(userId) => profiles?.get(userId)?.display_name ?? 'Someone'}
+      />
 
       <ChatInput
         onSend={async (content, attachments) => {

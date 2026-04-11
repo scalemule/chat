@@ -714,6 +714,7 @@ export {
   SearchBar,
   SearchResults,
   SupportInbox,
+  TypingIndicator,
 } from './react-components';
 export type { UserProfile } from './react-components';
 
