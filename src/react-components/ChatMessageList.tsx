@@ -50,6 +50,20 @@ interface ChatMessageListProps {
       conversationId: string | undefined;
     },
   ) => React.ReactNode;
+  /**
+   * Forwarded to the default `ChatMessageItem` for per-attachment custom
+   * rendering (e.g. click-to-expand image lightbox, branded video player).
+   * Ignored when `renderMessage` is provided.
+   */
+  renderAttachment?: (attachment: Attachment) => React.ReactNode;
+  /**
+   * Forwarded to the default `ChatMessageItem` for custom avatar rendering
+   * on other-user messages. Ignored when `renderMessage` is provided.
+   */
+  renderAvatar?: (
+    profile: UserProfile | undefined,
+    message: ChatMessage,
+  ) => React.ReactNode;
 }
 
 function getDateLabel(dateStr: string): string {
@@ -96,6 +110,8 @@ export function ChatMessageList({
   onReachBottom,
   emptyState,
   renderMessage,
+  renderAttachment,
+  renderAvatar,
 }: ChatMessageListProps): React.JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -403,6 +419,8 @@ export function ChatMessageList({
                     onFetchAttachmentUrl={onFetchAttachmentUrl}
                     isOwnMessage={isOwn}
                     highlight={showUnreadDivider || isHighlighted}
+                    renderAttachment={renderAttachment}
+                    renderAvatar={renderAvatar}
                   />
                 )}
               </div>
