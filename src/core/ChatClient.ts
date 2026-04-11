@@ -22,10 +22,12 @@ import type {
   CreateEphemeralChannelOptions,
   CreateLargeRoomOptions,
   GetMessagesOptions,
+  GetMessagesAroundOptions,
   ListChannelsOptions,
   ListConversationsOptions,
   MessageEditedEvent,
   MessagesResponse,
+  MessagesAroundResponse,
   PresignedUploadResponse,
   ReactionEvent,
   ReadStatus,
@@ -227,6 +229,20 @@ export class ChatClient extends EventEmitter<ChatEventMap> {
     }
 
     return result;
+  }
+
+  async getMessagesAround(
+    conversationId: string,
+    messageId: string,
+    options?: GetMessagesAroundOptions,
+  ): Promise<ApiResponse<MessagesAroundResponse>> {
+    const params = new URLSearchParams();
+    if (options?.limit) params.set('limit', String(options.limit));
+    const qs = params.toString();
+
+    return this.http.get<MessagesAroundResponse>(
+      `/v1/chat/conversations/${conversationId}/messages/${messageId}/around${qs ? '?' + qs : ''}`,
+    );
   }
 
   async editMessage(messageId: string, content: string, attachments?: Attachment[]): Promise<ApiResponse<void>> {
