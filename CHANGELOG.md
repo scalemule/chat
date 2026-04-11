@@ -1,5 +1,44 @@
 # Changelog
 
+## 0.0.20 — 2026-04-11
+
+**Added: `ConferenceClient`** — a vendor-neutral client for the ScaleMule conference service. Customer code now never names the underlying video backend.
+
+```ts
+import { ConferenceClient, CallOverlay } from '@scalemule/chat';
+
+const conf = new ConferenceClient({ baseUrl, apiKey });
+const call = await conf.createCall({ conversationId, callType: 'video' });
+const session = await conf.joinCall(call.id);
+
+// session: { callId, serverUrl, accessToken, tokenExpiresAt, participant }
+<CallOverlay
+  session={session}
+  onTokenRefresh={() => conf.joinCall(call.id)}
+  onClose={() => conf.leaveCall(call.id)}
+/>
+```
+
+Surface: `createCall` / `listCalls` / `getCall` / `joinCall` / `leaveCall` / `endCall`. Types: `Call`, `CallSession`, `CallParticipant`, `CreateCallOptions`, `ListCallsOptions`, `ConferenceClientConfig`.
+
+**Breaking (`CallOverlay` props):** Renamed vendor-named props to a vendor-neutral `session` object.
+
+Before (0.0.19):
+```tsx
+<CallOverlay callId={callId} livekitUrl={url} livekitToken={token} onTokenRefresh={...} />
+```
+
+After (0.0.20):
+```tsx
+<CallOverlay session={session} onTokenRefresh={async () => conf.joinCall(callId)} />
+```
+
+`session.callId`, `session.serverUrl`, `session.accessToken`, `session.tokenExpiresAt`, `session.participant` — all vendor-neutral. `onTokenRefresh` now returns a full `CallSession` and the overlay handles the refresh internally before the previous token's `tokenExpiresAt`.
+
+**Dependency change:** Moved `@livekit/components-react` and `livekit-client` from `peerDependencies` → `dependencies`. Customers no longer need to install these packages separately — they come transitively via `@scalemule/chat`. The video backend is now a fully hidden implementation detail. Also fixes a Turbopack build failure in Next.js 16 consumers where the previously-optional peer dep couldn't be statically resolved.
+
+**Internal rename:** The `LiveKitComponents` type inside `CallOverlay` was renamed to `VideoBackendComponents` to match the rest of the vendor-neutral surface. This is internal to the file — no consumer impact.
+
 ## 0.0.19 — 2026-04-10
 
 **Added:** `TypingIndicator` component. Slack-style "X is typing..." indicator with smart pluralization (`"Alice is typing..."`, `"Alice and Bob are typing..."`, `"Alice, Bob, and Carol are typing..."`, `"4 people typing..."`) plus three animated bouncing dots. Uses `--sm-*` CSS variables so it inherits host theme presets. Renders nothing when `typingUsers` is empty so host apps can drop it unconditionally into their container layout.
