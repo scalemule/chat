@@ -83,11 +83,39 @@ export function CallOverlay({
     return () => { cancelled = true; };
   }, []);
 
+  // Token refresh with linear backoff + jitter to prevent thundering herd
+  // when the LiveKit server restarts and many participants reconnect at once.
+  // Retry windows: rand(1-3)s, rand(3-10)s, rand(10-30)s.
   const tokenProvider = useCallback(async (): Promise<string> => {
-    if (onTokenRefresh) {
-      return onTokenRefresh();
+    if (!onTokenRefresh) {
+      throw new Error('Token refresh not configured');
     }
-    throw new Error('Token refresh not configured');
+
+    const backoffWindows: Array<[number, number]> = [
+      [1000, 3000],
+      [3000, 10000],
+      [10000, 30000],
+    ];
+
+    let lastError: unknown;
+    for (let attempt = 0; attempt <= backoffWindows.length; attempt++) {
+      try {
+        return await onTokenRefresh();
+      } catch (err) {
+        lastError = err;
+        if (attempt >= backoffWindows.length) break;
+        const [minMs, maxMs] = backoffWindows[attempt];
+        const delayMs = minMs + Math.floor(Math.random() * (maxMs - minMs));
+        console.warn(
+          `[CallOverlay] Token refresh attempt ${attempt + 1} failed, retrying in ${delayMs}ms`,
+          err,
+        );
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      }
+    }
+    throw lastError instanceof Error
+      ? lastError
+      : new Error('Token refresh failed after 4 attempts');
   }, [onTokenRefresh]);
 
   const overlayStyle: React.CSSProperties = {
