@@ -1,6 +1,6 @@
 {
   "name": "@scalemule/chat",
-  "version": "0.0.20",
+  "version": "0.0.21",
   "description": "ScaleMule standalone chat SDK — real-time messaging, presence, typing indicators",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -21,6 +21,11 @@
       "types": "./dist/react-admin.d.ts",
       "import": "./dist/react-admin.js",
       "require": "./dist/react-admin.cjs"
+    },
+    "./calls": {
+      "types": "./dist/calls.d.ts",
+      "import": "./dist/calls.js",
+      "require": "./dist/calls.cjs"
     },
     "./element": {
       "types": "./dist/element.d.ts",
@@ -51,6 +56,13 @@
     "CHANGELOG.md",
     "README.md",
     "LICENSE"
+  ],
+  "sideEffects": [
+    "./dist/chat.umd.global.js",
+    "./dist/chat.embed.global.js",
+    "./dist/support-widget.global.js",
+    "./dist/themes/*.css",
+    "*.css"
   ],
   "scripts": {
     "build": "tsup && npm run build:types && npm run build:assets && npm run check:budgets",

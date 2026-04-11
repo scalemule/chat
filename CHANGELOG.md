@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.0.21 — 2026-04-11
+
+**New entry point: `@scalemule/chat/calls`** — the video call components and `ConferenceClient` now ship from a dedicated sub-entry so consumers who only need chat don't pay the video bundle cost.
+
+Before (0.0.20):
+```ts
+import { CallOverlay, CallButton, CallControls } from '@scalemule/chat/react';
+```
+
+After (0.0.21):
+```ts
+import {
+  ConferenceClient,
+  CallOverlay,
+  CallButton,
+  CallControls,
+} from '@scalemule/chat/calls';
+```
+
+`ConferenceClient` is also still exported from `@scalemule/chat` (main) and `@scalemule/chat/react` for backward compat — it's pure TypeScript/HTTP with no video backend dependencies. Only the React components (`CallButton`, `CallControls`, `CallOverlay`) moved.
+
+**Breaking:** `@scalemule/chat/react` no longer re-exports `CallButton`, `CallControls`, or `CallOverlay`. Consumers using those from `/react` need to switch the import path to `/calls`. No source changes other than the import statement.
+
+**Bundle size impact:** the `react.js` entry dropped from **145.50 KB → 136.25 KB** (about 9 KB), and the UMD bundle dropped from **43.51 KB → 22.28 KB** (about 21 KB — nearly half). Chat-only consumers get a lighter bundle and the video backend's module graph stays completely out of their build.
+
+**Also added:** `sideEffects` field in `package.json` listing only the IIFE script-tag bundles (`chat.umd.global.js`, `chat.embed.global.js`, `support-widget.global.js`) and CSS as side-effectful. Every library entry (`index`, `react`, `react-admin`, `calls`, `element`, `iframe`, `themes/*`) is marked side-effect-free so downstream bundlers (webpack, Turbopack, rollup, esbuild) can drop phantom shared-chunk imports during tree-shaking.
+
 ## 0.0.20 — 2026-04-11
 
 **Added: `ConferenceClient`** — a vendor-neutral client for the ScaleMule conference service. Customer code now never names the underlying video backend.
