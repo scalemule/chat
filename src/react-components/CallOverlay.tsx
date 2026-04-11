@@ -1,23 +1,37 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import type { CallSession } from '../core/ConferenceClient';
 
-interface LiveKitComponents {
-  LiveKitRoom: React.ComponentType<any>;
+// ============================================================================
+// Lazy loader for the video backend's React components.
+//
+// The SDK uses LiveKit's React components internally as the video backend.
+// We load them lazily via dynamic import so that:
+//  1. Consumers who never render a CallOverlay don't pay the bundle cost.
+//  2. The dynamic import still fails gracefully if the peer dep is somehow
+//     missing (legacy consumers upgrading from an older version, etc.).
+//
+// Consumers of @scalemule/chat should never see "LiveKit" in their own
+// code — the backend (`scalemule-conference`) exposes vendor-neutral field
+// names and this component accepts vendor-neutral props. The only
+// vendor-specific code lives here, below this comment.
+// ============================================================================
+
+interface VideoBackendComponents {
+  Room: React.ComponentType<any>;
   VideoConference: React.ComponentType<any>;
   RoomAudioRenderer: React.ComponentType<any>;
 }
 
-// Module-level cache for the async-resolved LiveKit components.
-// This ensures the dynamic import only runs once across all CallOverlay instances.
-let cachedComponents: LiveKitComponents | null = null;
+let cachedComponents: VideoBackendComponents | null = null;
 let importAttempted = false;
-let importPromise: Promise<LiveKitComponents | null> | null = null;
+let importPromise: Promise<VideoBackendComponents | null> | null = null;
 
-function loadLiveKitComponents(): Promise<LiveKitComponents | null> {
+function loadVideoBackendComponents(): Promise<VideoBackendComponents | null> {
   if (importPromise) return importPromise;
   importPromise = import('@livekit/components-react')
     .then((mod) => {
       cachedComponents = {
-        LiveKitRoom: mod.LiveKitRoom,
+        Room: mod.LiveKitRoom,
         VideoConference: mod.VideoConference,
         RoomAudioRenderer: mod.RoomAudioRenderer,
       };
@@ -25,98 +39,126 @@ function loadLiveKitComponents(): Promise<LiveKitComponents | null> {
       return cachedComponents;
     })
     .catch(() => {
-      // @livekit/components-react not installed — will render placeholder
       importAttempted = true;
       return null;
     });
   return importPromise;
 }
 
-interface CallOverlayProps {
-  callId: string;
-  livekitUrl: string;
-  livekitToken: string;
-  /** Called to get a fresh token (5-min TTL refresh). Should call sm.conference.joinCall(callId). */
-  onTokenRefresh?: () => Promise<string>;
+// ============================================================================
+// Public props — vendor-neutral
+// ============================================================================
+
+export interface CallOverlayProps {
+  /**
+   * The active call session, obtained via `ConferenceClient.joinCall(callId)`.
+   * The SDK re-calls `joinCall` internally before `session.tokenExpiresAt`
+   * via `onTokenRefresh` to keep the connection alive.
+   */
+  session: CallSession;
+  /**
+   * Called when the access token is about to expire. Should resolve to a
+   * fresh session (typically by calling `ConferenceClient.joinCall(callId)`
+   * again). If omitted, the call will disconnect when the token expires.
+   */
+  onTokenRefresh?: () => Promise<CallSession>;
+  /** Called when the user closes the overlay (or the call is ended). */
   onClose?: () => void;
+  /** Fired on media-session errors. */
   onError?: (error: Error) => void;
   style?: React.CSSProperties;
 }
 
 /**
- * Full-screen call overlay with video conferencing.
+ * Full-screen video call overlay.
  *
- * Uses @livekit/components-react for the actual WebRTC UI.
- * Falls back to a placeholder if LiveKit deps aren't installed.
- *
- * The `onTokenRefresh` callback is critical -- LiveKit tokens have a 5-minute TTL.
- * The SDK calls this automatically before expiry to get a fresh token.
- * This re-checks authorization (chat membership, etc.) on every refresh.
+ * Takes a `CallSession` from `ConferenceClient.joinCall()` and renders a
+ * live video conference. The specific video backend is an implementation
+ * detail — this component's public API is entirely vendor-neutral.
  */
 export function CallOverlay({
-  callId,
-  livekitUrl,
-  livekitToken,
+  session,
   onTokenRefresh,
   onClose,
   onError,
   style,
 }: CallOverlayProps): React.JSX.Element {
-  const [isConnected, setIsConnected] = useState(false);
-  const [lk, setLk] = useState<LiveKitComponents | null>(cachedComponents);
-  const [lkLoaded, setLkLoaded] = useState(importAttempted);
+  const [, setIsConnected] = useState(false);
+  const [backend, setBackend] = useState<VideoBackendComponents | null>(cachedComponents);
+  const [backendLoaded, setBackendLoaded] = useState(importAttempted);
+  const [currentToken, setCurrentToken] = useState(session.accessToken);
+  const [currentServerUrl, setCurrentServerUrl] = useState(session.serverUrl);
 
-  // Resolve LiveKit components on mount (async, but cached after first load)
+  // Resolve the video backend on mount (async, cached after first load)
   useEffect(() => {
     if (cachedComponents) {
-      setLk(cachedComponents);
-      setLkLoaded(true);
+      setBackend(cachedComponents);
+      setBackendLoaded(true);
       return;
     }
     let cancelled = false;
-    loadLiveKitComponents().then((result) => {
+    loadVideoBackendComponents().then((result) => {
       if (!cancelled) {
-        setLk(result);
-        setLkLoaded(true);
+        setBackend(result);
+        setBackendLoaded(true);
       }
     });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  // Token refresh with linear backoff + jitter to prevent thundering herd
-  // when the LiveKit server restarts and many participants reconnect at once.
-  // Retry windows: rand(1-3)s, rand(3-10)s, rand(10-30)s.
-  const tokenProvider = useCallback(async (): Promise<string> => {
-    if (!onTokenRefresh) {
-      throw new Error('Token refresh not configured');
-    }
-
-    const backoffWindows: Array<[number, number]> = [
-      [1000, 3000],
-      [3000, 10000],
-      [10000, 30000],
-    ];
-
-    let lastError: unknown;
-    for (let attempt = 0; attempt <= backoffWindows.length; attempt++) {
-      try {
-        return await onTokenRefresh();
-      } catch (err) {
-        lastError = err;
-        if (attempt >= backoffWindows.length) break;
-        const [minMs, maxMs] = backoffWindows[attempt];
-        const delayMs = minMs + Math.floor(Math.random() * (maxMs - minMs));
-        console.warn(
-          `[CallOverlay] Token refresh attempt ${attempt + 1} failed, retrying in ${delayMs}ms`,
-          err,
-        );
-        await new Promise((resolve) => setTimeout(resolve, delayMs));
+  // Token refresh ahead of expiry. Wakes up 30s before the token dies,
+  // calls `onTokenRefresh` with linear-backoff + jitter retries (preserved
+  // from #17 — prevents thundering-herd reconnects when the video backend
+  // restarts and many clients refresh simultaneously), and swaps the new
+  // session in when it arrives.
+  useEffect(() => {
+    if (!onTokenRefresh) return;
+    const msUntilRefresh = Math.max(
+      5_000,
+      session.tokenExpiresAt - Date.now() - 30_000,
+    );
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      const backoffWindows: Array<[number, number]> = [
+        [1000, 3000],
+        [3000, 10000],
+        [10000, 30000],
+      ];
+      let lastError: unknown;
+      for (let attempt = 0; attempt <= backoffWindows.length; attempt++) {
+        if (cancelled) return;
+        try {
+          const next = await onTokenRefresh();
+          if (cancelled) return;
+          setCurrentToken(next.accessToken);
+          setCurrentServerUrl(next.serverUrl);
+          return;
+        } catch (err) {
+          lastError = err;
+          if (attempt >= backoffWindows.length) break;
+          const [minMs, maxMs] = backoffWindows[attempt];
+          const delayMs = minMs + Math.floor(Math.random() * (maxMs - minMs));
+          console.warn(
+            `[CallOverlay] Token refresh attempt ${attempt + 1} failed, retrying in ${delayMs}ms`,
+            err,
+          );
+          await new Promise((resolve) => setTimeout(resolve, delayMs));
+        }
       }
-    }
-    throw lastError instanceof Error
-      ? lastError
-      : new Error('Token refresh failed after 4 attempts');
-  }, [onTokenRefresh]);
+      if (cancelled) return;
+      const finalErr =
+        lastError instanceof Error
+          ? lastError
+          : new Error('Token refresh failed after 4 attempts');
+      onError?.(finalErr);
+    }, msUntilRefresh);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [session.tokenExpiresAt, onTokenRefresh, onError]);
 
   const overlayStyle: React.CSSProperties = {
     position: 'fixed',
@@ -128,18 +170,19 @@ export function CallOverlay({
     ...style,
   };
 
-  // If LiveKit components are available, render the real video UI
-  if (lk && livekitUrl && livekitToken) {
+  if (backend && currentToken && currentServerUrl) {
+    const Room = backend.Room;
+    const VideoConference = backend.VideoConference;
+    const RoomAudioRenderer = backend.RoomAudioRenderer;
     return (
       <div style={overlayStyle} role="dialog" aria-label="Video call">
-        <lk.LiveKitRoom
-          serverUrl={livekitUrl}
-          token={livekitToken}
+        <Room
+          serverUrl={currentServerUrl}
+          token={currentToken}
           connect={true}
           onConnected={() => setIsConnected(true)}
           onDisconnected={() => setIsConnected(false)}
           onError={(err: Error) => {
-            console.error('LiveKit error:', err);
             onError?.(err);
           }}
           options={{
@@ -148,11 +191,10 @@ export function CallOverlay({
           }}
         >
           <div style={{ flex: 1, position: 'relative' }}>
-            <lk.VideoConference />
-            <lk.RoomAudioRenderer />
+            <VideoConference />
+            <RoomAudioRenderer />
           </div>
 
-          {/* Close/end call button overlay */}
           <div
             style={{
               position: 'absolute',
@@ -178,12 +220,12 @@ export function CallOverlay({
               End Call
             </button>
           </div>
-        </lk.LiveKitRoom>
+        </Room>
       </div>
     );
   }
 
-  // Fallback: LiveKit deps not installed, still loading, or missing connection details
+  // Fallback: backend still loading, failed to load, or missing creds
   return (
     <div style={overlayStyle} role="dialog" aria-label="Video call">
       <div
@@ -197,18 +239,18 @@ export function CallOverlay({
         }}
       >
         <p style={{ fontSize: 18, marginBottom: 8 }}>
-          {!lkLoaded
+          {!backendLoaded
             ? 'Loading...'
-            : livekitUrl
+            : currentServerUrl
               ? 'Connecting...'
               : 'Video conferencing not configured'}
         </p>
         <p style={{ fontSize: 12, color: '#9ca3af', marginBottom: 24 }}>
-          Call ID: {callId}
+          Call ID: {session.callId}
         </p>
-        {lkLoaded && !lk && (
+        {backendLoaded && !backend && (
           <p style={{ fontSize: 13, color: '#d1d5db', maxWidth: 400, textAlign: 'center' }}>
-            Install @livekit/components-react and livekit-client to enable video conferencing.
+            Video backend failed to load. Reinstall <code>@scalemule/chat</code> to repair.
           </p>
         )}
         {onClose && (

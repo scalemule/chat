@@ -1,4 +1,13 @@
 export { ChatClient } from './core/ChatClient';
+export { ConferenceClient } from './core/ConferenceClient';
+export type {
+  Call,
+  CallParticipant,
+  CallSession,
+  ConferenceClientConfig,
+  CreateCallOptions,
+  ListCallsOptions,
+} from './core/ConferenceClient';
 export { SupportClient } from './support';
 export { RepClient } from './rep';
 export { ChatController } from './shared/ChatController';

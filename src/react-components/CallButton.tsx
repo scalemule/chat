@@ -42,12 +42,13 @@ export function CallButton({
         video: callType === 'video',
       };
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      // Stop tracks immediately — LiveKit will request its own stream
+      // Stop tracks immediately — the video backend will request its own stream
+      // once the call is joined.
       stream.getTracks().forEach((t) => t.stop());
 
-      // Notify parent to initiate the call
-      // The parent component (e.g., ChatThread) should use the ConferenceService
-      // to create and join the call, then render CallOverlay
+      // Notify parent to initiate the call. The parent component (e.g.,
+      // ChatThread) should use `ConferenceClient` to create and join the
+      // call, then render `CallOverlay` with the resulting `CallSession`.
       onCallStarted?.(conversationId);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to access media devices';

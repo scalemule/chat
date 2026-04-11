@@ -1,6 +1,6 @@
 {
   "name": "@scalemule/chat",
-  "version": "0.0.19",
+  "version": "0.0.20",
   "description": "ScaleMule standalone chat SDK — real-time messaging, presence, typing indicators",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -64,9 +64,11 @@
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest"
   },
+  "dependencies": {
+    "@livekit/components-react": "^2.9.20",
+    "livekit-client": "^2.18.1"
+  },
   "peerDependencies": {
-    "@livekit/components-react": ">=2.0.0",
-    "livekit-client": ">=2.0.0",
     "react": ">=17.0.0",
     "react-dom": ">=17.0.0"
   },
@@ -76,23 +78,15 @@
     },
     "react-dom": {
       "optional": true
-    },
-    "livekit-client": {
-      "optional": true
-    },
-    "@livekit/components-react": {
-      "optional": true
     }
   },
   "devDependencies": {
-    "@livekit/components-react": "^2.9.20",
     "@livekit/components-styles": "^1.2.0",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.3.2",
     "@types/react": "^18.0.0",
     "@types/react-dom": "^18.0.0",
     "jsdom": "^26.0.0",
-    "livekit-client": "^2.18.1",
     "tsup": "^8.0.0",
     "typescript": "^5.4.0",
     "vitest": "^2.0.0"
