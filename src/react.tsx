@@ -694,10 +694,13 @@ export function useUnreadCount() {
   return { totalUnread };
 }
 
-// CallButton, CallControls, CallOverlay are intentionally NOT re-exported
-// here — they ship via @scalemule/chat/calls so consumers that only need
-// chat don't pull in the video backend's React components. See src/calls.tsx.
+// Call components (CallOverlay, CallControls, CallButton) have moved to
+// @scalemule/conference. Chat SDK retains thin integration components only:
+// ActiveCallBanner, CallTriggerButton, CallSystemMessage.
 export {
+  ActiveCallBanner,
+  CallTriggerButton,
+  CallSystemMessage,
   ChatInput,
   ChatMessageItem,
   ChatMessageList,
@@ -725,15 +728,6 @@ export type { UserProfile } from './react-components';
 
 // Re-export core types
 export { ChatClient } from './core/ChatClient';
-export { ConferenceClient } from './core/ConferenceClient';
-export type {
-  Call,
-  CallParticipant,
-  CallSession,
-  ConferenceClientConfig,
-  CreateCallOptions,
-  ListCallsOptions,
-} from './core/ConferenceClient';
 export type {
   ChannelListItem,
   ChatConfig,
