@@ -53,6 +53,7 @@
     "LICENSE"
   ],
   "sideEffects": [
+    "./src/element.ts",
     "./dist/chat.umd.global.js",
     "./dist/chat.embed.global.js",
     "./dist/support-widget.global.js",
