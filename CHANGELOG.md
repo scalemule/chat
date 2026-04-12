@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.0.22 — 2026-04-11
+
+**Breaking: Conference code extracted to `@scalemule/conference`.**
+
+Removed: `ConferenceClient`, `CallOverlay`, `CallControls`, full `CallButton`.
+Removed: `./calls` entry point.
+Removed: LiveKit dependencies (`@livekit/components-react`, `livekit-client`).
+
+Migration:
+```
+Before: import { ConferenceClient } from '@scalemule/chat';
+After:  import { ConferenceClient } from '@scalemule/conference';
+
+Before: import { CallOverlay } from '@scalemule/chat/calls';
+After:  import { CallOverlay } from '@scalemule/conference/react';
+```
+
+Added: Thin `ActiveCallBanner`, `CallSystemMessage`, `CallTriggerButton` presentational components.
+`CallTriggerButton` replaces the old `CallButton` — renamed to avoid silent behavior change
+(the full `CallButton` with getUserMedia now lives in `@scalemule/conference/react`).
+
+Fixed: Declaration generation uses `tsconfig.build.json` — test `.d.ts` files no longer leak into `dist/`.
+
 ## 0.0.21 — 2026-04-11
 
 **New entry point: `@scalemule/chat/calls`** — the video call components and `ConferenceClient` now ship from a dedicated sub-entry so consumers who only need chat don't pay the video bundle cost.

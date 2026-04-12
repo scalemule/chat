@@ -1,6 +1,6 @@
-export { CallButton } from './CallButton';
-export { CallControls } from './CallControls';
-export { CallOverlay } from './CallOverlay';
+export { ActiveCallBanner } from './ActiveCallBanner';
+export { CallTriggerButton } from './CallTriggerButton';
+export { CallSystemMessage } from './CallSystemMessage';
 export { ChannelBrowser } from './ChannelBrowser';
 export { ChannelHeader } from './ChannelHeader';
 export { ChannelList } from './ChannelList';

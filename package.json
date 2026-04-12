@@ -22,11 +22,6 @@
       "import": "./dist/react-admin.js",
       "require": "./dist/react-admin.cjs"
     },
-    "./calls": {
-      "types": "./dist/calls.d.ts",
-      "import": "./dist/calls.js",
-      "require": "./dist/calls.cjs"
-    },
     "./element": {
       "types": "./dist/element.d.ts",
       "import": "./dist/element.js",
@@ -66,7 +61,7 @@
   ],
   "scripts": {
     "build": "tsup && npm run build:types && npm run build:assets && npm run check:budgets",
-    "build:types": "tsc --emitDeclarationOnly --project tsconfig.json",
+    "build:types": "tsc --emitDeclarationOnly --project tsconfig.build.json",
     "build:assets": "mkdir -p dist/themes && cp src/themes/tailwind.css dist/themes/tailwind.css && cp src/themes/shadcn.css dist/themes/shadcn.css",
     "check:budgets": "node ./scripts/check-bundle-budgets.mjs",
     "dev": "tsup --watch",
@@ -76,10 +71,7 @@
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest"
   },
-  "dependencies": {
-    "@livekit/components-react": "^2.9.20",
-    "livekit-client": "^2.18.1"
-  },
+  "dependencies": {},
   "peerDependencies": {
     "react": ">=17.0.0",
     "react-dom": ">=17.0.0"
@@ -93,7 +85,6 @@
     }
   },
   "devDependencies": {
-    "@livekit/components-styles": "^1.2.0",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.3.2",
     "@types/react": "^18.0.0",
