@@ -57,6 +57,19 @@ export interface CallOverlayProps {
    */
   session: CallSession;
   /**
+   * The kind of call: `"audio"`, `"video"`, or `"screen_share"`.
+   *
+   * Controls auto-publishing behavior on join:
+   * - `"audio"` (default) → microphone auto-enabled, camera off
+   * - `"video"` → microphone + camera auto-enabled
+   * - `"screen_share"` → microphone auto-enabled, camera off
+   *
+   * Without this, participants join completely muted and need to manually
+   * click the unmute button — which isn't obvious in the default layout
+   * and caused "both people cannot hear or see anything" in testing.
+   */
+  callType?: 'audio' | 'video' | 'screen_share';
+  /**
    * Called when the access token is about to expire. Should resolve to a
    * fresh session (typically by calling `ConferenceClient.joinCall(callId)`
    * again). If omitted, the call will disconnect when the token expires.
@@ -78,6 +91,7 @@ export interface CallOverlayProps {
  */
 export function CallOverlay({
   session,
+  callType = 'audio',
   onTokenRefresh,
   onClose,
   onError,
@@ -180,6 +194,8 @@ export function CallOverlay({
           serverUrl={currentServerUrl}
           token={currentToken}
           connect={true}
+          audio={true}
+          video={callType === 'video'}
           onConnected={() => setIsConnected(true)}
           onDisconnected={() => setIsConnected(false)}
           onError={(err: Error) => {
