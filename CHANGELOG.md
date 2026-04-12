@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.0.23 — 2026-04-12
+
+**Fix:** UMD bundle (`chat.umd.global.js`) now registers the `<scalemule-chat>` custom element.
+Previously the `sideEffects` field caused esbuild to drop the `import './element'` in `umd.ts`.
+
+**Fix:** `package-lock.json` regenerated — was stale at 0.0.20 with LiveKit dependencies.
+
 ## 0.0.22 — 2026-04-11
 
 **Breaking: Conference code extracted to `@scalemule/conference`.**
