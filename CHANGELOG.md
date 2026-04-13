@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.28 — 2026-04-13
+
+**Fixed:** Republish with theme CSS files (`tailwind.css`, `shadcn.css`) included in tarball. Versions 0.0.25-0.0.27 were missing these files due to a stale dist directory during publish.
+
 ## 0.0.27 — 2026-04-13
 
 **Fixed:** Type error in `ChatThread` when forwarding `onValidateFile` to `ChatInput`. `ChatInput` expects `(file) => { valid, error }` while `ChatMessageItem` uses `(file) => string | null`. `ChatThread` now adapts between the two signatures internally.
