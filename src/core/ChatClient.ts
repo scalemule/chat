@@ -669,7 +669,7 @@ export class ChatClient extends EventEmitter<ChatEventMap> {
       sender_id: existing?.sender_id ?? '',
       sender_type: existing?.sender_type,
       sender_agent_model: existing?.sender_agent_model,
-      attachments: update.new_attachments ?? existing?.attachments,
+      attachments: update.new_attachments ?? update.attachments ?? existing?.attachments,
       reactions: existing?.reactions,
       is_edited: true,
       created_at:

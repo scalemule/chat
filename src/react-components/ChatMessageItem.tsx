@@ -1,9 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 
-import type { ChatMessage, Attachment } from '../types';
+import type { ChatMessage, Attachment, ApiResponse } from '../types';
 import { EmojiPickerTrigger } from './EmojiPicker';
 import { ReactionBar } from './ReactionBar';
 import { formatMessageTime } from './utils';
+
+interface PendingUpload {
+  id: string;
+  file: File;
+  preview?: string;
+  attachment?: Attachment;
+  status: 'uploading' | 'ready' | 'error';
+  progress: number;
+  error?: string;
+  abort: AbortController;
+}
 
 /** Hook that lazily fetches a presigned URL for an attachment */
 function useAttachmentUrl(
@@ -73,6 +84,23 @@ interface ChatMessageItemProps {
    * is used when this prop is not passed.
    */
   renderAttachment?: (attachment: Attachment) => React.ReactNode;
+  /** Upload handler for adding new attachments during edit. When provided, a
+   *  paperclip button appears in the edit footer. Matches ChatInput's API. */
+  onUploadAttachment?: (
+    file: File | Blob,
+    onProgress?: (percent: number) => void,
+    signal?: AbortSignal,
+  ) => Promise<ApiResponse<Attachment>>;
+  /** Cleanup handler called when an uploaded attachment is removed during edit
+   *  (or when an edit with pending uploads is cancelled). */
+  onDeleteAttachment?: (fileId: string) => Promise<void>;
+  /** Optional file validation before upload. Return an error string to reject,
+   *  or null to accept. */
+  onValidateFile?: (file: File) => string | null;
+  /** Maximum number of attachments per message (existing + new). Default 10. */
+  maxAttachments?: number;
+  /** File input accept filter. Default "image/*,video/*". */
+  accept?: string;
 }
 
 /** Renders a single attachment -- fetches presigned URL on demand if missing */
@@ -254,6 +282,11 @@ export function ChatMessageItem({
   highlight = false,
   renderAvatar,
   renderAttachment,
+  onUploadAttachment,
+  onDeleteAttachment,
+  onValidateFile,
+  maxAttachments = 10,
+  accept = 'image/*,video/*',
 }: ChatMessageItemProps): React.JSX.Element {
   // Profile resolution: explicit `profile` prop wins, else fall back to
   // `getProfile(senderId)`, else undefined (default "User" placeholder).
@@ -262,6 +295,83 @@ export function ChatMessageItem({
   const [editing, setEditing] = useState(false);
   const [editContent, setEditContent] = useState(message.content);
   const [editAttachments, setEditAttachments] = useState<Attachment[]>(message.attachments ?? []);
+  const [editUploads, setEditUploads] = useState<PendingUpload[]>([]);
+  const editFileInputRef = useRef<HTMLInputElement>(null);
+
+  function startEditing() {
+    setEditContent(message.content);
+    setEditAttachments(message.attachments ?? []);
+    setEditUploads([]);
+    setEditing(true);
+  }
+
+  const cancelEditing = useCallback(() => {
+    // Revoke preview URLs
+    for (const u of editUploads) {
+      if (u.preview) URL.revokeObjectURL(u.preview);
+      // Abort in-progress uploads
+      if (u.status === 'uploading') u.abort.abort();
+      // Clean up already-uploaded files
+      if (u.status === 'ready' && u.attachment) {
+        void onDeleteAttachment?.(u.attachment.file_id);
+      }
+    }
+    setEditContent(message.content);
+    setEditAttachments(message.attachments ?? []);
+    setEditUploads([]);
+    setEditing(false);
+  }, [editUploads, message.content, message.attachments, onDeleteAttachment]);
+
+  // Sync edit state when message updates from another user while editing
+  useEffect(() => {
+    if (!editing) {
+      setEditContent(message.content);
+      setEditAttachments(message.attachments ?? []);
+    }
+  }, [message.content, message.attachments, editing]);
+
+  const handleEditFileSelect = useCallback(
+    async (files: FileList | null) => {
+      if (!files || !onUploadAttachment) return;
+      const totalCount = editAttachments.length + editUploads.filter((u) => u.status !== 'error').length;
+      for (let i = 0; i < files.length && totalCount + i < maxAttachments; i++) {
+        const file = files[i];
+        if (onValidateFile) {
+          const err = onValidateFile(file);
+          if (err) continue;
+        }
+        const abort = new AbortController();
+        const id = `upload-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+        const isImage = file.type.startsWith('image/');
+        const isVideo = file.type.startsWith('video/');
+        const preview = isImage || isVideo ? URL.createObjectURL(file) : undefined;
+
+        const pending: PendingUpload = { id, file, preview, status: 'uploading', progress: 0, abort };
+        setEditUploads((prev) => [...prev, pending]);
+
+        onUploadAttachment(
+          file,
+          (pct) => setEditUploads((prev) => prev.map((u) => (u.id === id ? { ...u, progress: pct } : u))),
+          abort.signal,
+        ).then((res) => {
+          if (res.data) {
+            setEditUploads((prev) =>
+              prev.map((u) => (u.id === id ? { ...u, status: 'ready' as const, attachment: res.data!, progress: 100 } : u)),
+            );
+          } else {
+            setEditUploads((prev) =>
+              prev.map((u) => (u.id === id ? { ...u, status: 'error' as const, error: res.error?.message ?? 'Upload failed' } : u)),
+            );
+          }
+        }).catch(() => {
+          setEditUploads((prev) =>
+            prev.map((u) => (u.id === id ? { ...u, status: 'error' as const, error: 'Upload failed' } : u)),
+          );
+        });
+      }
+    },
+    [onUploadAttachment, onValidateFile, editAttachments.length, editUploads, maxAttachments],
+  );
 
   const isOwn =
     isOwnMessageProp !== undefined
@@ -287,21 +397,43 @@ export function ChatMessageItem({
   }
 
   function handleSaveEdit() {
-    const originalAttachmentIds = new Set((message.attachments ?? []).map((a) => a.file_id));
-    const editAttachmentIds = new Set(editAttachments.map((a) => a.file_id));
-    const attachmentsChanged =
-      originalAttachmentIds.size !== editAttachmentIds.size ||
-      [...originalAttachmentIds].some((id) => !editAttachmentIds.has(id));
-    const contentChanged = editContent.trim() !== message.content;
-    const hasContent = editContent.trim() || editAttachments.length > 0;
+    // Merge existing (possibly reduced) + newly uploaded attachments
+    const readyUploads = editUploads.filter((u) => u.status === 'ready' && u.attachment);
+    const allAttachments = [...editAttachments, ...readyUploads.map((u) => u.attachment!)];
 
-    if (hasContent && (contentChanged || attachmentsChanged)) {
+    const originalAttachmentIds = new Set((message.attachments ?? []).map((a) => a.file_id));
+    const mergedAttachmentIds = new Set(allAttachments.map((a) => a.file_id));
+    const attachmentsChanged =
+      originalAttachmentIds.size !== mergedAttachmentIds.size ||
+      [...originalAttachmentIds].some((id) => !mergedAttachmentIds.has(id)) ||
+      [...mergedAttachmentIds].some((id) => !originalAttachmentIds.has(id));
+    const contentChanged = editContent.trim() !== message.content;
+    const hasContent = editContent.trim() || allAttachments.length > 0;
+
+    // Delete-on-empty: clearing all text + attachments deletes the message
+    if (!hasContent) {
+      void onDelete?.(message.id);
+      // Clean up preview URLs
+      for (const u of editUploads) {
+        if (u.preview) URL.revokeObjectURL(u.preview);
+      }
+      setEditUploads([]);
+      setEditing(false);
+      return;
+    }
+
+    if (contentChanged || attachmentsChanged) {
       void onEdit?.(
         message.id,
         editContent.trim(),
-        attachmentsChanged ? editAttachments : undefined,
+        attachmentsChanged ? allAttachments : undefined,
       );
     }
+    // Clean up preview URLs (files are now saved, don't delete from server)
+    for (const u of editUploads) {
+      if (u.preview) URL.revokeObjectURL(u.preview);
+    }
+    setEditUploads([]);
     setEditing(false);
   }
 
@@ -451,7 +583,7 @@ export function ChatMessageItem({
             )}
             {isOwn && onEdit && (
               <button
-                onClick={() => setEditing(true)}
+                onClick={() => startEditing()}
                 type="button"
                 aria-label="Edit"
                 style={{
@@ -571,14 +703,14 @@ export function ChatMessageItem({
 
           {editing ? (
             <>
-              <div style={{ display: 'flex', gap: 8 }}>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 <input
                   type="text"
                   value={editContent}
                   onChange={(e) => setEditContent(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') handleSaveEdit();
-                    if (e.key === 'Escape') setEditing(false);
+                    if (e.key === 'Enter' && !editUploads.some((u) => u.status === 'uploading')) handleSaveEdit();
+                    if (e.key === 'Escape') cancelEditing();
                   }}
                   autoFocus
                   style={{
@@ -592,15 +724,52 @@ export function ChatMessageItem({
                     background: 'var(--sm-surface, #fff)',
                   }}
                 />
+                {onUploadAttachment && (
+                  <>
+                    <input
+                      ref={editFileInputRef}
+                      type="file"
+                      accept={accept}
+                      multiple
+                      style={{ display: 'none' }}
+                      onChange={(e) => {
+                        void handleEditFileSelect(e.target.files);
+                        e.target.value = '';
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => editFileInputRef.current?.click()}
+                      disabled={editAttachments.length + editUploads.filter((u) => u.status !== 'error').length >= maxAttachments}
+                      aria-label="Attach file"
+                      title="Attach file"
+                      style={{
+                        padding: 4,
+                        border: 'none',
+                        background: 'transparent',
+                        cursor: 'pointer',
+                        color: isOwn ? 'rgba(255,255,255,0.7)' : 'var(--sm-muted-text, #6b7280)',
+                        display: 'flex',
+                        alignItems: 'center',
+                      }}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+                      </svg>
+                    </button>
+                  </>
+                )}
                 <button
                   onClick={handleSaveEdit}
                   type="button"
+                  disabled={editUploads.some((u) => u.status === 'uploading')}
                   style={{
                     fontSize: 12,
                     fontWeight: 500,
                     border: 'none',
                     background: 'transparent',
-                    cursor: 'pointer',
+                    cursor: editUploads.some((u) => u.status === 'uploading') ? 'not-allowed' : 'pointer',
+                    opacity: editUploads.some((u) => u.status === 'uploading') ? 0.5 : 1,
                     color: isOwn
                       ? 'rgba(255,255,255,0.7)'
                       : 'var(--sm-primary, #2563eb)',
@@ -609,7 +778,7 @@ export function ChatMessageItem({
                   Save
                 </button>
                 <button
-                  onClick={() => setEditing(false)}
+                  onClick={cancelEditing}
                   type="button"
                   style={{
                     fontSize: 12,
@@ -624,7 +793,8 @@ export function ChatMessageItem({
                   Cancel
                 </button>
               </div>
-              {editAttachments.length > 0 ? (
+              {/* Existing attachment chips */}
+              {(editAttachments.length > 0 || editUploads.length > 0) ? (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
                   {editAttachments.map((att) => (
                     <div
@@ -646,6 +816,53 @@ export function ChatMessageItem({
                       <button
                         type="button"
                         onClick={() => setEditAttachments((prev) => prev.filter((a) => a.file_id !== att.file_id))}
+                        style={{
+                          border: 'none',
+                          background: 'transparent',
+                          cursor: 'pointer',
+                          padding: 0,
+                          fontSize: 14,
+                          lineHeight: 1,
+                          color: 'inherit',
+                        }}
+                      >
+                        &times;
+                      </button>
+                    </div>
+                  ))}
+                  {/* Pending upload chips */}
+                  {editUploads.map((u) => (
+                    <div
+                      key={u.id}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        padding: '2px 8px',
+                        borderRadius: 4,
+                        fontSize: 12,
+                        background: isOwn ? 'rgba(255,255,255,0.15)' : 'var(--sm-surface-muted, #f3f4f6)',
+                        color: u.status === 'error'
+                          ? 'var(--sm-error, #ef4444)'
+                          : isOwn ? 'rgba(255,255,255,0.8)' : 'var(--sm-muted-text, #6b7280)',
+                      }}
+                    >
+                      {u.status === 'uploading' && (
+                        <span style={{ fontSize: 10 }}>{Math.round(u.progress)}%</span>
+                      )}
+                      <span style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {u.file.name}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (u.status === 'uploading') u.abort.abort();
+                          if (u.preview) URL.revokeObjectURL(u.preview);
+                          if (u.status === 'ready' && u.attachment) {
+                            void onDeleteAttachment?.(u.attachment.file_id);
+                          }
+                          setEditUploads((prev) => prev.filter((p) => p.id !== u.id));
+                        }}
                         style={{
                           border: 'none',
                           background: 'transparent',

@@ -111,6 +111,7 @@ export interface MessageEditedEvent {
   content?: string;
   new_content?: string;
   new_attachments?: Attachment[];
+  attachments?: Attachment[];
   editor_user_id?: string;
   is_edited?: boolean;
   updated_at?: string;
