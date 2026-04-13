@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.26 — 2026-04-13
+
+**Fixed:** `ChatThread` now forwards `onDeleteAttachment`, `onValidateFile`, `maxAttachments`, and `accept` to `ChatInput` as well as `ChatMessageList`. Previously only the message list received the full edit-upload prop surface; the send composer was missing cleanup, validation, count, and accept configuration.
+
 ## 0.0.25 — 2026-04-13
 
 **Fixed:** `ChatMessageItem` `maxAttachments` default changed from 10 to 5 to match the backend's max-5 enforcement. Previously SDK allowed selecting up to 10 files but the server would reject >5.

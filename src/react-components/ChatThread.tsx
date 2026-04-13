@@ -208,6 +208,10 @@ export function ChatThread({
           sendTyping(isTyping);
         }}
         onUploadAttachment={uploadAttachment}
+        onDeleteAttachment={onDeleteAttachment}
+        onValidateFile={onValidateFile}
+        maxAttachments={maxAttachments}
+        accept={accept}
       />
     </div>
   );
