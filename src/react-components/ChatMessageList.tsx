@@ -74,7 +74,7 @@ interface ChatMessageListProps {
   onDeleteAttachment?: (fileId: string) => Promise<void>;
   /** Forwarded to ChatMessageItem for validating files before upload. */
   onValidateFile?: (file: File) => string | null;
-  /** Forwarded to ChatMessageItem. Max attachments per message. Default 10. */
+  /** Forwarded to ChatMessageItem. Max attachments per message. Default 5. */
   maxAttachments?: number;
   /** Forwarded to ChatMessageItem. File input accept filter. Default "image/*,video/*". */
   accept?: string;

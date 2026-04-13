@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.0.25 — 2026-04-13
+
+**Fixed:** `ChatMessageItem` `maxAttachments` default changed from 10 to 5 to match the backend's max-5 enforcement. Previously SDK allowed selecting up to 10 files but the server would reject >5.
+
+**Fixed:** `ChatThread` now forwards `onDeleteAttachment`, `onValidateFile`, `maxAttachments`, and `accept` props to `ChatMessageList`. Previously only `onUploadAttachment` was forwarded; the remaining edit-upload control surface was inaccessible through the `ChatThread` convenience component.
+
 ## 0.0.24 — 2026-04-13
 
 **Added:** `ChatMessageItem` file upload button in edit mode. When `onUploadAttachment` is passed, a paperclip button appears in the edit footer allowing users to add new attachments while editing a message. Upload progress is tracked per-file, Save is disabled while uploads are in-progress, and cancelled/abandoned uploads are cleaned up via `onDeleteAttachment`.

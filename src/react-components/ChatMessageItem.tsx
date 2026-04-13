@@ -97,7 +97,7 @@ interface ChatMessageItemProps {
   /** Optional file validation before upload. Return an error string to reject,
    *  or null to accept. */
   onValidateFile?: (file: File) => string | null;
-  /** Maximum number of attachments per message (existing + new). Default 10. */
+  /** Maximum number of attachments per message (existing + new). Default 5. */
   maxAttachments?: number;
   /** File input accept filter. Default "image/*,video/*". */
   accept?: string;
@@ -285,7 +285,7 @@ export function ChatMessageItem({
   onUploadAttachment,
   onDeleteAttachment,
   onValidateFile,
-  maxAttachments = 10,
+  maxAttachments = 5,
   accept = 'image/*,video/*',
 }: ChatMessageItemProps): React.JSX.Element {
   // Profile resolution: explicit `profile` prop wins, else fall back to
