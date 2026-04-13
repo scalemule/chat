@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 
-import type { Attachment, ChatMessage } from '../types';
+import type { Attachment, ApiResponse, ChatMessage } from '../types';
 import { ChatMessageItem } from './ChatMessageItem';
 
 interface UserProfile {
@@ -64,6 +64,20 @@ interface ChatMessageListProps {
     profile: UserProfile | undefined,
     message: ChatMessage,
   ) => React.ReactNode;
+  /** Forwarded to ChatMessageItem for adding attachments during edit. */
+  onUploadAttachment?: (
+    file: File | Blob,
+    onProgress?: (percent: number) => void,
+    signal?: AbortSignal,
+  ) => Promise<ApiResponse<Attachment>>;
+  /** Forwarded to ChatMessageItem for cleaning up removed/cancelled uploads. */
+  onDeleteAttachment?: (fileId: string) => Promise<void>;
+  /** Forwarded to ChatMessageItem for validating files before upload. */
+  onValidateFile?: (file: File) => string | null;
+  /** Forwarded to ChatMessageItem. Max attachments per message. Default 10. */
+  maxAttachments?: number;
+  /** Forwarded to ChatMessageItem. File input accept filter. Default "image/*,video/*". */
+  accept?: string;
 }
 
 function getDateLabel(dateStr: string): string {
@@ -112,6 +126,11 @@ export function ChatMessageList({
   renderMessage,
   renderAttachment,
   renderAvatar,
+  onUploadAttachment,
+  onDeleteAttachment,
+  onValidateFile,
+  maxAttachments,
+  accept,
 }: ChatMessageListProps): React.JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -417,6 +436,11 @@ export function ChatMessageList({
                     onDelete={onDelete}
                     onReport={onReport}
                     onFetchAttachmentUrl={onFetchAttachmentUrl}
+                    onUploadAttachment={onUploadAttachment}
+                    onDeleteAttachment={onDeleteAttachment}
+                    onValidateFile={onValidateFile}
+                    maxAttachments={maxAttachments}
+                    accept={accept}
                     isOwnMessage={isOwn}
                     highlight={showUnreadDivider || isHighlighted}
                     renderAttachment={renderAttachment}

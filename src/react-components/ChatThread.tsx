@@ -170,6 +170,7 @@ export function ChatThread({
         onDelete={(messageId) => void deleteMessage(messageId)}
         onReport={(messageId) => void reportMessage(messageId, 'other')}
         onFetchAttachmentUrl={onFetchAttachmentUrl}
+        onUploadAttachment={uploadAttachment}
         unreadSince={ownReadStatus}
         onReachBottom={() => void markRead()}
         emptyState={isLoading ? 'Loading messages...' : 'Start the conversation'}

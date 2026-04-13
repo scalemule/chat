@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.0.24 — 2026-04-13
+
+**Added:** `ChatMessageItem` file upload button in edit mode. When `onUploadAttachment` is passed, a paperclip button appears in the edit footer allowing users to add new attachments while editing a message. Upload progress is tracked per-file, Save is disabled while uploads are in-progress, and cancelled/abandoned uploads are cleaned up via `onDeleteAttachment`.
+
+**Added:** Delete-on-empty-edit. Clearing all text and removing all attachments during message edit now calls `onDelete` to delete the message (matching the Slack/MergeYard convention where an empty save = delete).
+
+**Added:** `ChatMessageList` and `ChatThread` forward `onUploadAttachment`, `onDeleteAttachment`, `onValidateFile`, `maxAttachments`, and `accept` props through to `ChatMessageItem`.
+
+**Fixed:** `ChatClient.buildEditedMessage()` now accepts the `attachments` field from server edit events alongside `new_attachments`. Previously, edit-attachment changes broadcast by the backend were ignored in the live cache until page reload.
+
+**Fixed:** `ChatMessageItem` edit state (content, attachments, pending uploads) now resets correctly on cancel and re-edit. Previously, removing an attachment, cancelling the edit, then re-editing would show the stale removed state.
+
+**Fixed:** `MessageEditedEvent` type now includes optional `attachments` field matching backend broadcast payload.
+
 ## 0.0.23 — 2026-04-12
 
 **Fix:** UMD bundle (`chat.umd.global.js`) now registers the `<scalemule-chat>` custom element.
