@@ -185,6 +185,8 @@ export class ChatClient extends EventEmitter<ChatEventMap> {
         content: options.content,
         message_type: options.message_type ?? 'text',
         attachments: options.attachments,
+        thread_id: options.thread_id,
+        is_thread_broadcast: options.is_thread_broadcast,
       },
     );
 
@@ -242,6 +244,18 @@ export class ChatClient extends EventEmitter<ChatEventMap> {
 
     return this.http.get<MessagesAroundResponse>(
       `/v1/chat/conversations/${conversationId}/messages/${messageId}/around${qs ? '?' + qs : ''}`,
+    );
+  }
+
+  async getThreadReplies(messageId: string, options?: GetMessagesOptions): Promise<ApiResponse<MessagesResponse>> {
+    const params = new URLSearchParams();
+    if (options?.limit) params.set('limit', String(options.limit));
+    if (options?.before) params.set('before', options.before);
+    if (options?.after) params.set('after', options.after);
+    const qs = params.toString();
+
+    return this.http.get<MessagesResponse>(
+      `/v1/chat/messages/${messageId}/replies${qs ? '?' + qs : ''}`,
     );
   }
 
@@ -652,6 +666,11 @@ export class ChatClient extends EventEmitter<ChatEventMap> {
         (payload.updated_at as string) ??
         (payload.timestamp as string) ??
         new Date().toISOString(),
+      thread_id: payload.thread_id as string | undefined,
+      reply_count: payload.reply_count as number | undefined,
+      latest_reply_at: payload.latest_reply_at as string | undefined,
+      reply_user_ids: payload.reply_user_ids as string[] | undefined,
+      is_thread_broadcast: payload.is_thread_broadcast as boolean | undefined,
     };
   }
 
@@ -815,6 +834,29 @@ export class ChatClient extends EventEmitter<ChatEventMap> {
         const lastReadAt = (payload as { last_read_at?: string }).last_read_at;
         if (userId && lastReadAt) {
           this.emit('read', { userId, conversationId, lastReadAt });
+        }
+        break;
+      }
+      case 'thread_update': {
+        const messageId = (payload as { message_id?: string }).message_id;
+        const latestReplyAt = (payload as { latest_reply_at?: string }).latest_reply_at;
+        const replyUserId = (payload as { reply_user_id?: string }).reply_user_id;
+        if (messageId && latestReplyAt && replyUserId) {
+          // Update cached parent message's reply_count
+          const existing = this.cache.getMessage(conversationId, messageId);
+          if (existing) {
+            this.cache.updateMessage(conversationId, {
+              ...existing,
+              reply_count: (existing.reply_count ?? 0) + 1,
+              latest_reply_at: latestReplyAt,
+              reply_user_ids: existing.reply_user_ids
+                ? existing.reply_user_ids.includes(replyUserId)
+                  ? existing.reply_user_ids
+                  : [...existing.reply_user_ids, replyUserId]
+                : [replyUserId],
+            });
+          }
+          this.emit('thread:update', { conversationId, messageId, latestReplyAt, replyUserId });
         }
         break;
       }

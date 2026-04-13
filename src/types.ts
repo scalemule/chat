@@ -73,6 +73,11 @@ export interface ChatMessage {
   reactions?: ReactionSummary[];
   is_edited: boolean;
   created_at: string;
+  thread_id?: string;
+  reply_count?: number;
+  latest_reply_at?: string;
+  reply_user_ids?: string[];
+  is_thread_broadcast?: boolean;
 }
 
 export interface ReactionSummary {
@@ -183,6 +188,7 @@ export interface ChatEventMap {
   'presence:state': { conversationId: string; members: PresenceMember[] };
   'read': { userId: string; conversationId: string; lastReadAt: string };
   'reaction': { reaction: ChatReaction; conversationId: string; action: 'added' | 'removed' };
+  'thread:update': { conversationId: string; messageId: string; latestReplyAt: string; replyUserId: string };
   'room_upgraded': { conversationId: string; newType: 'large_room' };
   'delivery': { messageId: string; status: 'sent' | 'delivered' | 'read' };
   'inbox:update': { conversationId: string; messageId: string; senderId: string; preview: string };
@@ -202,6 +208,8 @@ export interface SendMessageOptions {
   content: string;
   message_type?: 'text' | 'image' | 'file';
   attachments?: Attachment[];
+  thread_id?: string;
+  is_thread_broadcast?: boolean;
 }
 
 export interface ListConversationsOptions {
