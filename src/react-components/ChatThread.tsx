@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo } from 'react';
 
 import { useChat, useChatClient, useTyping, usePresence } from '../react';
-import type { Attachment } from '../types';
+import type { Attachment, ApiResponse } from '../types';
 import { ChatInput } from './ChatInput';
 import { ChatMessageList } from './ChatMessageList';
 import { TypingIndicator } from './TypingIndicator';
@@ -22,6 +22,14 @@ interface ChatThreadProps {
   title?: string;
   subtitle?: string;
   onFetchAttachmentUrl?: (fileId: string) => Promise<string>;
+  /** Cleanup handler for removing uploaded attachments on cancel. */
+  onDeleteAttachment?: (fileId: string) => Promise<void>;
+  /** File validation before upload. Return error string to reject, null to accept. */
+  onValidateFile?: (file: File) => string | null;
+  /** Max attachments per message. Default 5. */
+  maxAttachments?: number;
+  /** File input accept filter. Default "image/*,video/*". */
+  accept?: string;
 }
 
 function inferMessageType(content: string, attachments: Attachment[]): 'text' | 'image' | 'file' {
@@ -40,6 +48,10 @@ export function ChatThread({
   title = 'Chat',
   subtitle,
   onFetchAttachmentUrl,
+  onDeleteAttachment,
+  onValidateFile,
+  maxAttachments,
+  accept,
 }: ChatThreadProps): React.JSX.Element {
   const client = useChatClient();
   const resolvedUserId = currentUserId ?? client.userId;
@@ -171,6 +183,10 @@ export function ChatThread({
         onReport={(messageId) => void reportMessage(messageId, 'other')}
         onFetchAttachmentUrl={onFetchAttachmentUrl}
         onUploadAttachment={uploadAttachment}
+        onDeleteAttachment={onDeleteAttachment}
+        onValidateFile={onValidateFile}
+        maxAttachments={maxAttachments}
+        accept={accept}
         unreadSince={ownReadStatus}
         onReachBottom={() => void markRead()}
         emptyState={isLoading ? 'Loading messages...' : 'Start the conversation'}
