@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useCallback } from 'react';
 
 import { useChat, useChatClient, useTyping, usePresence } from '../react';
 import type { Attachment, ApiResponse } from '../types';
@@ -96,6 +96,17 @@ export function ChatThread({
     if (!messages.length) return;
     void markRead();
   }, [markRead, messages.length, messages[messages.length - 1]?.id]);
+
+  // ChatInput.onValidateFile expects { valid, error } while ChatMessageItem
+  // uses string|null. Adapt the unified prop for the send composer.
+  const inputValidateFile = useCallback(
+    (file: File): { valid: boolean; error?: string } => {
+      if (!onValidateFile) return { valid: true };
+      const err = onValidateFile(file);
+      return err ? { valid: false, error: err } : { valid: true };
+    },
+    [onValidateFile],
+  );
 
   return (
     <div
@@ -209,7 +220,7 @@ export function ChatThread({
         }}
         onUploadAttachment={uploadAttachment}
         onDeleteAttachment={onDeleteAttachment}
-        onValidateFile={onValidateFile}
+        onValidateFile={onValidateFile ? inputValidateFile : undefined}
         maxAttachments={maxAttachments}
         accept={accept}
       />

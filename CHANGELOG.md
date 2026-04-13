@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.27 — 2026-04-13
+
+**Fixed:** Type error in `ChatThread` when forwarding `onValidateFile` to `ChatInput`. `ChatInput` expects `(file) => { valid, error }` while `ChatMessageItem` uses `(file) => string | null`. `ChatThread` now adapts between the two signatures internally.
+
 ## 0.0.26 — 2026-04-13
 
 **Fixed:** `ChatThread` now forwards `onDeleteAttachment`, `onValidateFile`, `maxAttachments`, and `accept` to `ChatInput` as well as `ChatMessageList`. Previously only the message list received the full edit-upload prop surface; the send composer was missing cleanup, validation, count, and accept configuration.
