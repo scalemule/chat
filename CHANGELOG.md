@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.34 — 2026-04-14
+
+Version bump only — 0.0.33 was already taken on npm (a prior auto-publish with different content). The mention-support release ships under 0.0.34.
+
 ## 0.0.33 — 2026-04-14
 
 **Added: `@` user mentions and `#` channel mentions in `RichTextInput`.**
