@@ -32,6 +32,10 @@ interface ChatThreadProps {
   accept?: string;
   /** Max content length in Unicode code points. Default 40,000 (Slack-parity). */
   maxLength?: number;
+  /** Enable snippet auto-promote for over-limit messages. Default false. */
+  enableSnippetPromote?: boolean;
+  /** Filename for snippet uploads. Default "message.txt". */
+  snippetFilename?: string;
 }
 
 function inferMessageType(content: string, attachments: Attachment[]): 'text' | 'image' | 'file' {
@@ -55,6 +59,8 @@ export function ChatThread({
   maxAttachments,
   accept,
   maxLength,
+  enableSnippetPromote,
+  snippetFilename,
 }: ChatThreadProps): React.JSX.Element {
   const [sendError, setSendError] = useState<string | null>(null);
   const sendErrorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -280,6 +286,8 @@ export function ChatThread({
         maxAttachments={maxAttachments}
         accept={accept}
         maxLength={maxLength ?? 40000}
+        enableSnippetPromote={enableSnippetPromote}
+        snippetFilename={snippetFilename}
       />
     </div>
   );

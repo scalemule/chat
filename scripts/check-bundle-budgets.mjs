@@ -26,7 +26,10 @@ const budgets = [
   },
   {
     file: 'react.js',
-    limit: 160_000,
+    // Bumped 160K -> 170K to accommodate the SnippetCard component (Phase B).
+    // The snippet renderer adds ~5KB but it's a new feature that replaces what
+    // would otherwise be host-app duplication. Monitor on next major release.
+    limit: 170_000,
     label: 'React ESM',
   },
 ];
