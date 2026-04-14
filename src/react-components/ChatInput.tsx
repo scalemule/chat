@@ -43,6 +43,22 @@ interface ChatInputProps {
   /** Show counter when content length exceeds warnThreshold * maxLength. Default 0.9. */
   warnThreshold?: number;
   /**
+   * Enable snippet auto-promote for over-limit messages.
+   *
+   * When set AND the user's content exceeds `maxLength`, the Send button
+   * becomes "Send as snippet". On click the ChatInput:
+   *   1. Uploads the full body as a `text/plain` attachment via `onUploadAttachment`
+   *   2. Builds a 280-char preview
+   *   3. Calls `onSend(preview, [attachment], { message_type: 'snippet' })`
+   *
+   * Requires `onUploadAttachment`. If not set, the over-limit message is simply blocked.
+   *
+   * Pass the filename to use for the snippet (default "message.txt").
+   */
+  snippetFilename?: string;
+  /** Enable snippet auto-promote. Default false. */
+  enableSnippetPromote?: boolean;
+  /**
    * Render-prop escape hatch: replace the default send button with a fully
    * custom element. Host apps use this to drop in their own themed button
    * (shadcn Button, gradient background, custom icon) without forking the
@@ -71,6 +87,8 @@ export function ChatInput({
   accept = 'image/*,video/*',
   maxLength,
   warnThreshold = 0.9,
+  snippetFilename = 'message.txt',
+  enableSnippetPromote = false,
   renderSendButton,
 }: ChatInputProps): React.JSX.Element {
   const [text, setText] = useState('');
@@ -91,11 +109,21 @@ export function ChatInput({
   const overLimit = maxLength != null && codePointCount > maxLength;
   const showCounter =
     maxLength != null && codePointCount > Math.floor(maxLength * warnThreshold);
+  /**
+   * Snippet promote is available when the content is over the limit AND the host
+   * has opted in (requires `onUploadAttachment` to upload the full body). When
+   * promote is available, Send stays enabled — clicking converts to snippet.
+   */
+  const snippetPromoteAvailable =
+    enableSnippetPromote &&
+    !!onUploadAttachment &&
+    overLimit &&
+    text.trim().length > 0;
   const canSend: boolean = Boolean(
     (text.trim() || hasReadyAttachments) &&
       !hasUploadingAttachments &&
       !isSending &&
-      !overLimit,
+      (!overLimit || snippetPromoteAvailable),
   );
 
   // Cleanup on unmount
@@ -232,10 +260,27 @@ export function ChatInput({
 
     setIsSending(true);
     try {
-      const result = await onSend(
-        text.trim(),
-        readyAttachments.length > 0 ? readyAttachments : undefined,
-      );
+      let result;
+
+      // Snippet auto-promote path: upload full body as text/plain and send
+      // a snippet message with a 280-char preview.
+      if (snippetPromoteAvailable && onUploadAttachment) {
+        const { uploadSnippet } = await import('../shared/snippet');
+        const { attachment: snippetAtt, preview } = await uploadSnippet(
+          text,
+          snippetFilename,
+          onUploadAttachment,
+        );
+        result = await onSend(preview, [snippetAtt], {
+          content_format: 'plain',
+          message_type: 'snippet',
+        });
+      } else {
+        result = await onSend(
+          text.trim(),
+          readyAttachments.length > 0 ? readyAttachments : undefined,
+        );
+      }
 
       // If onSend returned an ApiResponse with an error, treat as failure.
       // Keep input populated so the user can edit and retry.
@@ -261,7 +306,17 @@ export function ChatInput({
     } finally {
       setIsSending(false);
     }
-  }, [text, attachments, canSend, onSend, onSendError, onTypingChange]);
+  }, [
+    text,
+    attachments,
+    canSend,
+    onSend,
+    onSendError,
+    onTypingChange,
+    snippetPromoteAvailable,
+    onUploadAttachment,
+    snippetFilename,
+  ]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -639,7 +694,12 @@ export function ChatInput({
             onClick={() => void handleSend()}
             disabled={disabled || !canSend}
             type="button"
-            aria-label="Send message"
+            aria-label={snippetPromoteAvailable ? 'Send as snippet' : 'Send message'}
+            title={
+              snippetPromoteAvailable
+                ? 'Message is over the limit — will be sent as a snippet attachment'
+                : undefined
+            }
             style={{
               flexShrink: 0,
               width: 32,

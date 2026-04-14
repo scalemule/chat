@@ -2,6 +2,8 @@ export { ChatClient } from './core/ChatClient';
 export { SupportClient } from './support';
 export { RepClient } from './rep';
 export { ChatController } from './shared/ChatController';
+export { uploadSnippet, MAX_SNIPPET_SIZE_BYTES, SNIPPET_PREVIEW_LENGTH } from './shared/snippet';
+export type { UploadSnippetResult, SnippetUploadFn } from './shared/snippet';
 export type {
   SupportConversation,
   SupportClientConfig,

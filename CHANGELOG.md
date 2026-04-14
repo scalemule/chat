@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.0.30 — 2026-04-14
+
+**Added: Snippets — auto-promote long content (>40K) to a file-backed collapsible block.**
+
+When a user types content that exceeds the chat limit (40K code points), the new snippet flow uploads the body as a `text/plain` attachment and sends a snippet message with a 280-char preview. Renders as a collapsible card with the file name, size, and expand/collapse controls. Matches Slack's snippet pattern.
+
+- New `uploadSnippet(content, filename, uploadFn)` helper exported from `@scalemule/chat` and `@scalemule/chat/react`. Returns `{ attachment, preview }`. Code-point-safe truncation (Unicode-aware, no surrogate-pair splits).
+- `SendMessageType` widens to include `'snippet'`.
+- `ChatInput` adds `enableSnippetPromote` and `snippetFilename` props. When over `maxLength` AND `onUploadAttachment` is provided AND `enableSnippetPromote=true`, the Send button stays enabled with label "Send as snippet". Click triggers the promote flow automatically.
+- `ChatThread` forwards `enableSnippetPromote` and `snippetFilename` props through to `ChatInput`.
+- `ChatMessageItem` renders snippet messages as a `SnippetCard`: collapsed shows the 280-char preview; expanded fetches the full body (via `onFetchAttachmentUrl` if presigned URL is missing/expired) and renders in `<pre><code>`. Retries once on 403 with a fresh URL.
+
+**Snippet body source for rich editors:** Use `quill.getText()` (visible text) for the snippet body, NOT semantic HTML. Mime type is `text/plain`. The user is informed that formatting is stripped.
+
+**Bundle budget:** React ESM budget bumped 160K → 170K to accommodate the SnippetCard component (~5KB).
+
 ## 0.0.29 — 2026-04-14
 
 **Added:** Graceful handling of message send failures. `useChat().sendMessage` now sets `error` state on API failures (matches `editMessage`/`deleteMessage` pattern). `ChatInput` adds `onSendError?` prop and an optional `maxLength` character counter. On send failure, `ChatInput` keeps the user's text and attachments intact — they can edit and retry instead of losing their message.

@@ -266,6 +266,210 @@ function AttachmentRenderer({
   );
 }
 
+/**
+ * Renders a snippet message — a collapsible card backed by a text/* attachment.
+ * Used when message content exceeds the chat limit and is auto-promoted to a snippet.
+ *
+ * Collapsed: shows the preview (message.content) in a code-style frame.
+ * Expanded: fetches the full body and renders in <pre><code>. Retries once on 403
+ *           (expired URL) via onFetchAttachmentUrl.
+ */
+function SnippetCard({
+  preview,
+  attachment,
+  fetcher,
+  isOwn,
+}: {
+  preview: string;
+  attachment: Attachment;
+  fetcher?: (fileId: string) => Promise<string>;
+  isOwn: boolean;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const [body, setBody] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const fetchedOnce = useRef(false);
+
+  // Load body the first time the user expands the card.
+  useEffect(() => {
+    if (!expanded || fetchedOnce.current || body != null) return;
+    fetchedOnce.current = true;
+    setLoading(true);
+    setError(null);
+
+    (async () => {
+      let url = attachment.presigned_url;
+      try {
+        // If we don't have a URL yet, fetch one
+        if (!url && fetcher) {
+          url = await fetcher(attachment.file_id);
+        }
+        if (!url) throw new Error('No URL for snippet');
+
+        let res = await fetch(url);
+        // Retry once on 403 (URL expired) by minting a fresh one
+        if (res.status === 403 && fetcher) {
+          const freshUrl = await fetcher(attachment.file_id);
+          if (freshUrl) {
+            res = await fetch(freshUrl);
+          }
+        }
+        if (!res.ok) throw new Error(`Failed to load snippet: ${res.status}`);
+        const text = await res.text();
+        setBody(text);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load snippet');
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [expanded, attachment.file_id, attachment.presigned_url, fetcher, body]);
+
+  const retry = () => {
+    fetchedOnce.current = false;
+    setBody(null);
+    setError(null);
+    setExpanded(false);
+    setTimeout(() => setExpanded(true), 0);
+  };
+
+  const sizeLabel = formatFileSize(attachment.file_size);
+
+  return (
+    <div
+      style={{
+        borderRadius: 8,
+        border: '1px solid var(--sm-border-color, #e5e7eb)',
+        background: 'var(--sm-surface-muted, #f8fafc)',
+        overflow: 'hidden',
+        minWidth: 240,
+        maxWidth: 480,
+      }}
+    >
+      {/* Header */}
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        aria-expanded={expanded}
+        style={{
+          display: 'flex',
+          width: '100%',
+          alignItems: 'center',
+          gap: 8,
+          padding: '8px 12px',
+          background: 'transparent',
+          border: 'none',
+          borderBottom: expanded ? '1px solid var(--sm-border-color, #e5e7eb)' : 'none',
+          cursor: 'pointer',
+          color: 'var(--sm-text-color, #111827)',
+          textAlign: 'left',
+        }}
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          style={{ flexShrink: 0 }}
+          aria-hidden="true"
+        >
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+          <polyline points="14 2 14 8 20 8" />
+        </svg>
+        <span style={{ flex: 1, fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {attachment.file_name}
+        </span>
+        {sizeLabel && (
+          <span style={{ fontSize: 11, color: 'var(--sm-muted-text, #6b7280)' }}>{sizeLabel}</span>
+        )}
+        <span style={{ fontSize: 12, color: 'var(--sm-muted-text, #6b7280)', marginLeft: 4 }}>
+          {expanded ? '▾' : '▸'}
+        </span>
+      </button>
+
+      {/* Preview (collapsed) */}
+      {!expanded && preview && (
+        <div
+          style={{
+            padding: '10px 12px',
+            fontSize: 12,
+            fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+            color: 'var(--sm-muted-text, #6b7280)',
+            whiteSpace: 'pre-wrap',
+            wordBreak: 'break-word',
+            maxHeight: 80,
+            overflow: 'hidden',
+          }}
+        >
+          {preview}
+        </div>
+      )}
+
+      {/* Body (expanded) */}
+      {expanded && (
+        <div style={{ maxHeight: 480, overflow: 'auto' }}>
+          {loading && (
+            <div style={{ padding: 16, fontSize: 13, color: 'var(--sm-muted-text, #6b7280)' }}>
+              Loading snippet…
+            </div>
+          )}
+          {error && (
+            <div style={{ padding: 16 }}>
+              <div style={{ fontSize: 13, color: 'var(--sm-error-text, #dc2626)', marginBottom: 8 }}>
+                {error}
+              </div>
+              <button
+                type="button"
+                onClick={retry}
+                style={{
+                  fontSize: 12,
+                  padding: '4px 10px',
+                  borderRadius: 6,
+                  border: '1px solid var(--sm-border-color, #e5e7eb)',
+                  background: 'var(--sm-surface, #fff)',
+                  cursor: 'pointer',
+                }}
+              >
+                Retry
+              </button>
+            </div>
+          )}
+          {body != null && (
+            <pre
+              style={{
+                margin: 0,
+                padding: 12,
+                fontSize: 12,
+                fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+                color: 'var(--sm-text-color, #111827)',
+                background: 'var(--sm-code-bg, #f3f4f6)',
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+              }}
+            >
+              <code>{body}</code>
+            </pre>
+          )}
+        </div>
+      )}
+
+      {/* isOwn marker reserved for future per-own styling; referenced to avoid unused warning */}
+      {isOwn ? null : null}
+    </div>
+  );
+}
+
+function formatFileSize(bytes?: number): string {
+  if (!bytes || bytes <= 0) return '';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 export function ChatMessageItem({
   message,
   currentUserId,
@@ -435,6 +639,79 @@ export function ChatMessageItem({
     }
     setEditUploads([]);
     setEditing(false);
+  }
+
+  // Snippet messages — render as a collapsible file-backed card.
+  // Snippet convention: `content` is the 280-char preview, and the single
+  // attachment (text/*) holds the full body.
+  if (message.message_type === 'snippet') {
+    const snippetAtt = message.attachments?.[0];
+    if (snippetAtt) {
+      return (
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: isOwn ? 'flex-end' : 'flex-start',
+            padding: '3px 16px',
+            position: 'relative',
+          }}
+          onMouseEnter={() => setShowActions(true)}
+          onMouseLeave={() => setShowActions(false)}
+        >
+          {/* Avatar for received snippets */}
+          {!isOwn && (
+            <div
+              style={{
+                flexShrink: 0,
+                width: 32,
+                height: 32,
+                borderRadius: 999,
+                background: 'var(--sm-surface-muted, #f3f4f6)',
+                overflow: 'hidden',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 12,
+                fontWeight: 500,
+                color: 'var(--sm-muted-text, #6b7280)',
+                marginRight: 10,
+                marginTop: 2,
+              }}
+            >
+              {avatarUrl ? (
+                <img src={avatarUrl} alt={displayName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                initials
+              )}
+            </div>
+          )}
+          <div style={{ maxWidth: '75%', minWidth: 0 }}>
+            {!isOwn && (
+              <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4, color: 'var(--sm-other-text, #111827)' }}>
+                {displayName}
+              </div>
+            )}
+            <SnippetCard
+              preview={message.content}
+              attachment={snippetAtt}
+              fetcher={onFetchAttachmentUrl}
+              isOwn={isOwn}
+            />
+            <div style={{ display: 'flex', justifyContent: isOwn ? 'flex-end' : 'flex-start', marginTop: 4 }}>
+              <span style={{ fontSize: 10, color: 'var(--sm-muted-text, #9ca3af)' }}>
+                {formatMessageTime(message.created_at)}
+              </span>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    // Snippet with no attachment — fall through to system-style "broken" message
+    return (
+      <div style={{ textAlign: 'center', fontSize: 12, color: 'var(--sm-muted-text, #6b7280)', padding: '8px 0', fontStyle: 'italic' }}>
+        [Snippet unavailable]
+      </div>
+    );
   }
 
   // System messages

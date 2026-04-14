@@ -218,9 +218,10 @@ export type ChatMessageType = 'text' | 'image' | 'file' | 'system' | 'snippet';
 /**
  * Message types SDK callers are allowed to SEND.
  * - `system` is excluded — reserved for internal services.
- * - `snippet` will be added in Phase B once backend migration 011 ships.
+ * - `snippet` is used when auto-promoting oversized content (>40K chars) to
+ *   a file-backed collapsible block. Triggered via `uploadSnippet` helper.
  */
-export type SendMessageType = 'text' | 'image' | 'file';
+export type SendMessageType = 'text' | 'image' | 'file' | 'snippet';
 
 export interface SendMessageOptions {
   content: string;
