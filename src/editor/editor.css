@@ -445,6 +445,202 @@
   font-size: 14px;
 }
 
+/* -------- Link tooltip -------- */
+
+.sm-rich-link-tooltip {
+  position: absolute;
+  z-index: 40;
+  transform: translateY(-100%);
+  background: var(--sm-surface, #fff);
+  border: 1px solid var(--sm-border-color, #e5e7eb);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  padding: 10px 12px;
+  min-width: 220px;
+  max-width: 360px;
+  font-size: 13px;
+}
+
+.sm-rich-link-tooltip-close {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--sm-muted-text, #6b7280);
+  padding: 2px;
+  border-radius: 4px;
+  display: inline-flex;
+}
+.sm-rich-link-tooltip-close:hover {
+  background: var(--sm-surface-muted, rgba(0, 0, 0, 0.05));
+  color: var(--sm-text-color, #111827);
+}
+
+.sm-rich-link-tooltip-text {
+  font-weight: 600;
+  color: var(--sm-text-color, #111827);
+  margin-right: 20px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sm-rich-link-tooltip-url {
+  display: block;
+  color: var(--sm-link-color, var(--sm-primary, #2563eb));
+  text-decoration: underline;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-top: 2px;
+  font-size: 12px;
+}
+
+.sm-rich-link-tooltip-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.sm-rich-link-tooltip-btn {
+  appearance: none;
+  background: var(--sm-surface-muted, #f3f4f6);
+  color: var(--sm-text-color, #111827);
+  border: 1px solid var(--sm-border-color, #e5e7eb);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.sm-rich-link-tooltip-btn:hover {
+  background: var(--sm-border-color, #e5e7eb);
+}
+.sm-rich-link-tooltip-btn-danger {
+  color: #b91c1c;
+  border-color: #fecaca;
+  background: #fef2f2;
+}
+.sm-rich-link-tooltip-btn-danger:hover {
+  background: #fee2e2;
+}
+
+/* -------- Link edit modal -------- */
+
+.sm-rich-link-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.sm-rich-link-modal {
+  width: 400px;
+  max-width: calc(100vw - 32px);
+  background: var(--sm-surface, #fff);
+  border-radius: 10px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.24);
+  overflow: hidden;
+}
+
+.sm-rich-link-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--sm-border-color, #e5e7eb);
+  padding: 12px 18px;
+}
+.sm-rich-link-modal-header h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--sm-text-color, #111827);
+}
+
+.sm-rich-link-modal-close {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--sm-muted-text, #6b7280);
+  padding: 4px;
+  border-radius: 4px;
+  display: inline-flex;
+}
+.sm-rich-link-modal-close:hover {
+  background: var(--sm-surface-muted, rgba(0, 0, 0, 0.05));
+}
+
+.sm-rich-link-modal-body {
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sm-rich-link-modal-label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--sm-muted-text, #6b7280);
+}
+
+.sm-rich-link-modal-input {
+  appearance: none;
+  border: 1px solid var(--sm-border-color, #e5e7eb);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 13px;
+  color: var(--sm-text-color, #111827);
+  background: var(--sm-surface, #fff);
+  outline: none;
+}
+.sm-rich-link-modal-input:focus {
+  border-color: var(--sm-primary, #2563eb);
+  box-shadow: 0 0 0 1px var(--sm-primary, #2563eb);
+}
+
+.sm-rich-link-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 18px;
+  border-top: 1px solid var(--sm-border-color, #e5e7eb);
+}
+
+.sm-rich-link-modal-btn {
+  appearance: none;
+  background: var(--sm-surface, #fff);
+  color: var(--sm-text-color, #111827);
+  border: 1px solid var(--sm-border-color, #e5e7eb);
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.sm-rich-link-modal-btn:hover:not(:disabled) {
+  background: var(--sm-surface-muted, #f3f4f6);
+}
+.sm-rich-link-modal-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.sm-rich-link-modal-btn-primary {
+  background: var(--sm-primary, #2563eb);
+  color: #fff;
+  border-color: var(--sm-primary, #2563eb);
+}
+.sm-rich-link-modal-btn-primary:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
 /* -------- Mention span rendered inside the editor -------- */
 
 .sm-rich-editor-container .ql-editor .sm-mention,
