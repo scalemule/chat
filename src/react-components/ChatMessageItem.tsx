@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import type { ChatMessage, Attachment, ApiResponse } from '../types';
 import { EmojiPickerTrigger } from './EmojiPicker';
 import { ReactionBar } from './ReactionBar';
+import { sanitizeHtml, stripTags } from './sanitize';
 import { formatMessageTime } from './utils';
 
 interface PendingUpload {
@@ -55,7 +56,12 @@ interface ChatMessageItemProps {
   getProfile?: (userId: string) => UserProfile | undefined;
   onAddReaction?: (messageId: string, emoji: string) => void | Promise<void>;
   onRemoveReaction?: (messageId: string, emoji: string) => void | Promise<void>;
-  onEdit?: (messageId: string, content: string, attachments?: Attachment[]) => void | Promise<void>;
+  onEdit?: (
+    messageId: string,
+    content: string,
+    attachments?: Attachment[],
+    contentFormat?: 'plain' | 'html',
+  ) => void | Promise<void>;
   onDelete?: (messageId: string) => void | Promise<void>;
   onReport?: (messageId: string) => void;
   onFetchAttachmentUrl?: (fileId: string) => Promise<string>;
@@ -497,13 +503,20 @@ export function ChatMessageItem({
   const profile = profileProp ?? getProfile?.(message.sender_id);
   const [showActions, setShowActions] = useState(false);
   const [editing, setEditing] = useState(false);
-  const [editContent, setEditContent] = useState(message.content);
+  // For rich-HTML messages the inline edit UI is plain-text only (Phase A scope),
+  // so seed the textarea with plain_text / stripped HTML. Saving text changes
+  // sends contentFormat: 'plain' so the backend re-purifies correctly.
+  const initialEditText =
+    message.content_format === 'html'
+      ? (message.plain_text ?? stripTags(message.content))
+      : message.content;
+  const [editContent, setEditContent] = useState(initialEditText);
   const [editAttachments, setEditAttachments] = useState<Attachment[]>(message.attachments ?? []);
   const [editUploads, setEditUploads] = useState<PendingUpload[]>([]);
   const editFileInputRef = useRef<HTMLInputElement>(null);
 
   function startEditing() {
-    setEditContent(message.content);
+    setEditContent(initialEditText);
     setEditAttachments(message.attachments ?? []);
     setEditUploads([]);
     setEditing(true);
@@ -520,19 +533,19 @@ export function ChatMessageItem({
         void onDeleteAttachment?.(u.attachment.file_id);
       }
     }
-    setEditContent(message.content);
+    setEditContent(initialEditText);
     setEditAttachments(message.attachments ?? []);
     setEditUploads([]);
     setEditing(false);
-  }, [editUploads, message.content, message.attachments, onDeleteAttachment]);
+  }, [editUploads, initialEditText, message.attachments, onDeleteAttachment]);
 
   // Sync edit state when message updates from another user while editing
   useEffect(() => {
     if (!editing) {
-      setEditContent(message.content);
+      setEditContent(initialEditText);
       setEditAttachments(message.attachments ?? []);
     }
-  }, [message.content, message.attachments, editing]);
+  }, [initialEditText, message.attachments, editing]);
 
   const handleEditFileSelect = useCallback(
     async (files: FileList | null) => {
@@ -611,7 +624,7 @@ export function ChatMessageItem({
       originalAttachmentIds.size !== mergedAttachmentIds.size ||
       [...originalAttachmentIds].some((id) => !mergedAttachmentIds.has(id)) ||
       [...mergedAttachmentIds].some((id) => !originalAttachmentIds.has(id));
-    const contentChanged = editContent.trim() !== message.content;
+    const contentChanged = editContent.trim() !== initialEditText;
     const hasContent = editContent.trim() || allAttachments.length > 0;
 
     // Delete-on-empty: clearing all text + attachments deletes the message
@@ -627,10 +640,16 @@ export function ChatMessageItem({
     }
 
     if (contentChanged || attachmentsChanged) {
+      // When editing a rich-HTML message as plain text, tell the backend to
+      // re-type the format so the stored HTML is replaced with the new plain
+      // text (instead of wrapping it in `<p>` and re-purifying as HTML).
+      const contentFormat: 'plain' | 'html' | undefined =
+        contentChanged && message.content_format === 'html' ? 'plain' : undefined;
       void onEdit?.(
         message.id,
         editContent.trim(),
         attachmentsChanged ? allAttachments : undefined,
+        contentFormat,
       );
     }
     // Clean up preview URLs (files are now saved, don't delete from server)
@@ -1158,15 +1177,23 @@ export function ChatMessageItem({
               ) : null}
             </>
           ) : message.content ? (
-            <p
-              style={{
-                margin: 0,
-                whiteSpace: 'pre-wrap',
-                wordBreak: 'break-word',
-              }}
-            >
-              {message.content}
-            </p>
+            message.content_format === 'html' ? (
+              <div
+                className="sm-rich-content"
+                style={{ margin: 0, wordBreak: 'break-word' }}
+                dangerouslySetInnerHTML={{ __html: sanitizeHtml(message.content) }}
+              />
+            ) : (
+              <p
+                style={{
+                  margin: 0,
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word',
+                }}
+              >
+                {message.content}
+              </p>
+            )
           ) : null}
 
           {/* Timestamp + edited */}

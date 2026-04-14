@@ -29,7 +29,10 @@ const budgets = [
     // Bumped 160K -> 170K to accommodate the SnippetCard component (Phase B).
     // The snippet renderer adds ~5KB but it's a new feature that replaces what
     // would otherwise be host-app duplication. Monitor on next major release.
-    limit: 170_000,
+    // Bumped 170K -> 175K for Phase A of the rich-editor port: adds the
+    // HTML allowlist sanitizer (sanitize.ts ~3KB) used by ChatMessageItem to
+    // render content_format="html" messages via dangerouslySetInnerHTML.
+    limit: 175_000,
     label: 'React ESM',
   },
 ];

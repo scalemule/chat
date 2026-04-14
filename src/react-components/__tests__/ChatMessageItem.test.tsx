@@ -165,3 +165,67 @@ describe('ChatMessageItem — render-prop escape hatches', () => {
     expect(screen.getByText('test content xyz')).toBeTruthy();
   });
 });
+
+describe('ChatMessageItem — rich HTML rendering', () => {
+  it('renders html messages as formatted HTML via sanitizer', () => {
+    const message = buildMessage({
+      content: '<p>hello <strong>world</strong></p>',
+      content_format: 'html',
+    });
+    const { container } = render(
+      <ChatMessageItem message={message} currentUserId="user-1" />,
+    );
+    const rich = container.querySelector('.sm-rich-content');
+    expect(rich).toBeTruthy();
+    expect(rich?.querySelector('strong')?.textContent).toBe('world');
+  });
+
+  it('strips <script> and event handlers from html messages', () => {
+    const message = buildMessage({
+      content: '<p>safe</p><script>alert(1)</script>',
+      content_format: 'html',
+    });
+    const { container } = render(
+      <ChatMessageItem message={message} currentUserId="user-1" />,
+    );
+    const rich = container.querySelector('.sm-rich-content');
+    expect(rich?.innerHTML).not.toContain('script');
+    expect(rich?.innerHTML).toContain('safe');
+  });
+
+  it('falls back to plain paragraph when content_format is plain', () => {
+    const message = buildMessage({
+      content: 'just text',
+      content_format: 'plain',
+    });
+    const { container } = render(
+      <ChatMessageItem message={message} currentUserId="user-1" />,
+    );
+    expect(container.querySelector('.sm-rich-content')).toBeNull();
+    expect(screen.getByText('just text')).toBeTruthy();
+  });
+
+  it('falls back to plain paragraph when content_format is absent (legacy)', () => {
+    const message = buildMessage({ content: 'legacy text' });
+    const { container } = render(
+      <ChatMessageItem message={message} currentUserId="user-1" />,
+    );
+    expect(container.querySelector('.sm-rich-content')).toBeNull();
+    expect(screen.getByText('legacy text')).toBeTruthy();
+  });
+
+  it('preserves mentions markup on html messages', () => {
+    const message = buildMessage({
+      content:
+        '<p>hey <span class="sm-mention" data-sm-user-id="u1">@Alice</span></p>',
+      content_format: 'html',
+    });
+    const { container } = render(
+      <ChatMessageItem message={message} currentUserId="user-1" />,
+    );
+    const mention = container.querySelector('.sm-mention');
+    expect(mention).toBeTruthy();
+    expect(mention?.getAttribute('data-sm-user-id')).toBe('u1');
+    expect(mention?.textContent).toBe('@Alice');
+  });
+});

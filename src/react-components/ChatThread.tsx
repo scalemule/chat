@@ -211,7 +211,9 @@ export function ChatThread({
         onLoadMore={loadMore}
         onAddReaction={(messageId, emoji) => void addReaction(messageId, emoji)}
         onRemoveReaction={(messageId, emoji) => void removeReaction(messageId, emoji)}
-        onEdit={(messageId, content, attachments) => void editMessage(messageId, content, attachments)}
+        onEdit={(messageId, content, attachments, contentFormat) =>
+          void editMessage(messageId, content, attachments, contentFormat)
+        }
         onDelete={(messageId) => void deleteMessage(messageId)}
         onReport={(messageId) => void reportMessage(messageId, 'other')}
         onFetchAttachmentUrl={onFetchAttachmentUrl}
