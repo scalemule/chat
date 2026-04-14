@@ -35,6 +35,14 @@ const budgets = [
     limit: 175_000,
     label: 'React ESM',
   },
+  {
+    // Editor entry — Quill wrapper + toolbar + markdown shortcuts. Quill itself
+    // is a peer dep (external) so isn't counted here. Monolithic (splitting
+    // disabled for this entry) so a single fixed-file check is sufficient.
+    file: 'editor.js',
+    limit: 90_000,
+    label: 'Editor ESM',
+  },
 ];
 
 let hasFailure = false;

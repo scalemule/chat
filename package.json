@@ -1,6 +1,6 @@
 {
   "name": "@scalemule/chat",
-  "version": "0.0.31",
+  "version": "0.0.32",
   "description": "ScaleMule standalone chat SDK — real-time messaging, presence, typing indicators",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -43,7 +43,13 @@
       "import": "./dist/themes/shadcn.js",
       "require": "./dist/themes/shadcn.cjs"
     },
-    "./themes/shadcn.css": "./dist/themes/shadcn.css"
+    "./themes/shadcn.css": "./dist/themes/shadcn.css",
+    "./editor": {
+      "types": "./dist/editor.d.ts",
+      "import": "./dist/editor.js",
+      "require": "./dist/editor.cjs"
+    },
+    "./editor.css": "./dist/editor/editor.css"
   },
   "files": [
     "dist",
@@ -58,6 +64,7 @@
     "./dist/chat.embed.global.js",
     "./dist/support-widget.global.js",
     "./dist/themes/*.css",
+    "./dist/editor/editor.css",
     "*.css"
   ],
   "scripts": {
@@ -72,16 +79,22 @@
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest"
   },
-  "dependencies": {},
+  "dependencies": {
+    "quill-markdown-shortcuts-new": "^0.0.11"
+  },
   "peerDependencies": {
     "react": ">=17.0.0",
-    "react-dom": ">=17.0.0"
+    "react-dom": ">=17.0.0",
+    "quill": "^2.0.0"
   },
   "peerDependenciesMeta": {
     "react": {
       "optional": true
     },
     "react-dom": {
+      "optional": true
+    },
+    "quill": {
       "optional": true
     }
   },
@@ -91,6 +104,7 @@
     "@types/react": "^18.0.0",
     "@types/react-dom": "^18.0.0",
     "jsdom": "^26.0.0",
+    "quill": "^2.0.3",
     "tsup": "^8.0.0",
     "typescript": "^5.4.0",
     "vitest": "^2.0.0"

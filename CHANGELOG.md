@@ -1,5 +1,35 @@
 # Changelog
 
+## 0.0.32 — 2026-04-14
+
+**Added: `@scalemule/chat/editor` entry — Quill-backed `RichTextInput` for rich-text chat composers.**
+
+A new code-split entry point that exports `RichTextInput`, a drop-in upgrade for `ChatInput` powered by Quill 2.x. `ChatThread` now accepts `editor="rich"` to opt into it — the import is `React.lazy`, so plain-text consumers of `@scalemule/chat/react` don't pay the Quill cost.
+
+- New `<ChatThread editor="rich" />` prop (default `"plain"`). When set, the composer is lazy-loaded via `React.lazy(() => import('@scalemule/chat/editor'))`. A non-interactive `EditorLoadingSkeleton` renders while the chunk loads (~100–300ms on first visit, cached thereafter) — guarantees no draft-loss during swap.
+- `ChatThread` gains `placeholder`, `showToolbar`, `enableMarkdownShortcuts`, `enableEmoticonReplace`, `enableAutoLink` props — forwarded only to the rich variant.
+- `RichTextInput` props extend `ChatInputProps` so drop-in migration is a one-line swap. Send emits `content_format: 'html'` when the editor has formatting and `content_format: 'plain'` otherwise; snippet auto-promote keeps using `quill.getText()` + `text/plain` (formatting is intentionally dropped for snippets).
+- Responsive `Toolbar` with overflow dropdown; format buttons: bold / italic / underline / link / ordered-list / bullet-list / blockquote / code-block / inline-code.
+- Markdown shortcuts via `quill-markdown-shortcuts-new` (runtime dep); emoticon auto-replace on space (`:)` → 😊 and 36 more); auto-link URLs on space / paste; paste-file detection routes to `onUploadAttachment`; drag-drop on the editor surface matches `ChatInput`.
+- Keyboard bindings: Enter sends, Shift+Enter newline, Backspace at block-line-start clears the block format, ArrowDown exits a code block.
+- All editor class names use the `sm-rich-*` prefix to avoid colliding with host app styles.
+
+**Peer deps:**
+- `quill ^2.0.0` is an **optional** peer dep — add it to the host app when using `editor="rich"` (no install needed for plain-text consumers).
+- `quill-markdown-shortcuts-new ^0.0.11` is a runtime dep, marked `external` in the SDK build — still lazy-imported inside `useEffect` so it never evaluates on the server.
+
+**CSS packaging:** one new entry at `@scalemule/chat/editor.css` — the build step prepends `quill/dist/quill.snow.css` to the SDK editor overrides so customers import a single stylesheet.
+
+**SSR safety:** `@scalemule/chat/editor` has no top-level window / DOMParser access. Quill + markdown-shortcuts are dynamic-imported inside `useEffect`, matching the SSR story of `ChatInput`.
+
+**Bundle budget:**
+- New `editor.js` budget: 90KB (actual 39.75KB).
+- `react.js` contains zero Quill references — the `RichTextInput` lazy import becomes a separate chunk loaded on demand.
+
+**Known limitations:**
+- Mention dropdowns are Phase C: `onMentionSearch` / `mentionUsers` / `onChannelSearch` / `channelResults` props are accepted for forward compatibility but render no UI yet.
+- Link tooltip + inline edit modal are Phase D: the toolbar Link button uses `window.prompt` as a stopgap.
+
 ## 0.0.31 — 2026-04-13
 
 **Added: Rich HTML message rendering in `ChatMessageItem`.** Messages with `content_format: 'html'` are now rendered as formatted HTML (bold, italic, lists, code blocks, links, mentions) instead of raw markup. Previously the SDK accepted rich messages on send but displayed them as escaped text — this closes the known gap noted in 0.0.29.
