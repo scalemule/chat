@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.0.35 — 2026-04-14
+
+**Added: Link tooltip + edit modal in `RichTextInput`.**
+
+Clicking a link inside the editor now shows a small tooltip above the anchor with Edit / Remove buttons instead of navigating. Clicking the toolbar Link button (or Edit from the tooltip) opens an inline modal with Text / URL fields, Save / Cancel, Escape-to-dismiss, and a focus trap for Tab cycling. Replaces the `window.prompt` stopgap added in 0.0.32.
+
+- New exports from `@scalemule/chat/editor`: `LinkTooltip`, `LinkEditModal`, `LinkTooltipData`.
+- Tooltip is suppressed for mention spans (`.sm-mention`, `.sm-channel-mention`) — it only appears on real `<a href>` clicks.
+- Remove strips the link format while preserving the visible text; Save reformats the span with the new URL and display text.
+- All selectors use the `sm-rich-link-*` / `sm-rich-link-modal-*` prefix.
+
+**Bundle:** `editor.js` 55.66 KB → 66.25 KB (budget 90 KB).
+
 ## 0.0.34 — 2026-04-14
 
 Version bump only — 0.0.33 was already taken on npm (a prior auto-publish with different content). The mention-support release ships under 0.0.34.

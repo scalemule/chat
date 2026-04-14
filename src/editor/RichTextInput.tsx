@@ -41,6 +41,7 @@ import { EMOTICON_MAP } from './emoticons';
 import { Toolbar } from './Toolbar';
 import { MentionMenu } from './MentionMenu';
 import { ChannelMentionMenu } from './ChannelMentionMenu';
+import { LinkTooltip, LinkEditModal, type LinkTooltipData } from './LinkTooltip';
 import { registerMentionBlots, MENTION_BLOT, CHANNEL_MENTION_BLOT } from './blots';
 import type {
   ChannelMentionItem,
@@ -184,6 +185,15 @@ export const RichTextInput = forwardRef<RichTextInputHandle, RichTextInputProps>
     onMentionSearchRef.current = props.onMentionSearch;
     const onChannelSearchRef = useRef(props.onChannelSearch);
     onChannelSearchRef.current = props.onChannelSearch;
+
+    // Link tooltip + edit modal state
+    const [linkTooltip, setLinkTooltip] = useState<LinkTooltipData | null>(null);
+    const [linkModal, setLinkModal] = useState<{
+      url: string;
+      text: string;
+      index: number;
+      length: number;
+    } | null>(null);
 
     const hasReadyAttachments = attachments.some((a) => a.status === 'ready');
     const hasUploadingAttachments = attachments.some(
@@ -728,6 +738,65 @@ export const RichTextInput = forwardRef<RichTextInputHandle, RichTextInputProps>
           { capture: true },
         );
 
+        // Link click inside the editor → show our tooltip instead of
+        // navigating. Skip when the anchor is a mention span with no real
+        // href (mentions are spans, not anchors, so this is defensive only).
+        quill.root.addEventListener('click', (e: MouseEvent) => {
+          const target = e.target as HTMLElement;
+          const anchor = target.closest('a');
+          if (!anchor) return;
+          if (anchor.classList.contains('sm-mention')) return;
+          if (anchor.classList.contains('sm-channel-mention')) return;
+          const href = anchor.getAttribute('href') ?? '';
+          if (!href) return;
+          e.preventDefault();
+          e.stopPropagation();
+
+          const text = anchor.textContent ?? href;
+          // Locate the link's index+length using Quill's blot API.
+          let index = 0;
+          let length = text.length;
+          try {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const QuillStatic = quill.constructor as any;
+            const blot = QuillStatic.find(anchor, false);
+            if (blot && 'parent' in blot) {
+              index = quill.getIndex(blot);
+              length = blot.length();
+            }
+          } catch {
+            // Fallback: scan the doc for the same href.
+            const total = quill.getLength();
+            for (let i = 0; i < total; i++) {
+              const fmt = quill.getFormat(i, 1) as Record<string, unknown>;
+              if (fmt.link === href) {
+                index = i;
+                length = 0;
+                while (i + length < total) {
+                  const f = quill.getFormat(i + length, 1) as Record<string, unknown>;
+                  if (f.link !== href) break;
+                  length++;
+                }
+                break;
+              }
+            }
+          }
+
+          const container = quill.root.closest('.sm-rich-editor');
+          if (!container) return;
+          const rect = anchor.getBoundingClientRect();
+          const containerRect = container.getBoundingClientRect();
+          setLinkTooltip({
+            url: href,
+            text,
+            index,
+            length,
+            top: rect.top - containerRect.top - 4,
+            left: rect.left - containerRect.left,
+          });
+          setLinkModal(null);
+        });
+
         // Drop on the Quill editor → route to attachment upload instead of
         // letting Quill try to embed it as content.
         quill.root.addEventListener('drop', (e: DragEvent) => {
@@ -848,18 +917,10 @@ export const RichTextInput = forwardRef<RichTextInputHandle, RichTextInputProps>
           const sel = q.getSelection();
           const selText =
             sel && sel.length > 0 ? q.getText(sel.index, sel.length) : '';
-          // Minimal: prompt the user for a URL. A proper LinkTooltip + modal
-          // comes in Phase D — for Phase B we keep this lightweight.
-          const url = typeof window !== 'undefined' ? window.prompt('URL', '') : null;
-          if (url && url.trim()) {
-            if (sel && sel.length > 0) {
-              q.formatText(sel.index, sel.length, 'link', url.trim(), 'user');
-            } else {
-              const idx = sel ? sel.index : q.getLength() - 1;
-              q.insertText(idx, selText || url.trim(), 'link', url.trim(), 'user');
-              q.setSelection(idx + (selText || url.trim()).length, 0);
-            }
-          }
+          const index = sel ? sel.index : q.getLength() - 1;
+          const length = sel ? sel.length : 0;
+          setLinkTooltip(null);
+          setLinkModal({ url: '', text: selText, index, length });
           return;
         }
         case 'blockquote':
@@ -1206,6 +1267,78 @@ export const RichTextInput = forwardRef<RichTextInputHandle, RichTextInputProps>
             onClose={() => {
               channelStartRef.current = null;
               setChannelActive(false);
+            }}
+          />
+        )}
+
+        {linkTooltip && (
+          <LinkTooltip
+            data={linkTooltip}
+            onClose={() => setLinkTooltip(null)}
+            onEdit={() => {
+              setLinkModal({
+                url: linkTooltip.url,
+                text: linkTooltip.text,
+                index: linkTooltip.index,
+                length: linkTooltip.length,
+              });
+              setLinkTooltip(null);
+            }}
+            onRemove={() => {
+              const q = quillRef.current;
+              if (q && linkTooltip.length > 0) {
+                q.focus();
+                const text = q.getText(linkTooltip.index, linkTooltip.length);
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                q.deleteText(linkTooltip.index, linkTooltip.length, 'user' as any);
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                q.insertText(linkTooltip.index, text, 'user' as any);
+                q.setSelection(linkTooltip.index + text.length, 0);
+              }
+              setLinkTooltip(null);
+            }}
+          />
+        )}
+
+        {linkModal && (
+          <LinkEditModal
+            initialText={linkModal.text}
+            initialUrl={linkModal.url}
+            onCancel={() => setLinkModal(null)}
+            onSave={(text, url) => {
+              const q = quillRef.current;
+              if (!q || !url) {
+                setLinkModal(null);
+                return;
+              }
+              q.focus();
+              const display = text || url;
+              if (linkModal.length > 0) {
+                // Editing an existing link: replace text + reapply link fmt.
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                q.deleteText(linkModal.index, linkModal.length, 'user' as any);
+                q.insertText(
+                  linkModal.index,
+                  display,
+                  'link',
+                  url,
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  'user' as any,
+                );
+                q.setSelection(linkModal.index + display.length, 0);
+              } else {
+                // Inserting a new link.
+                q.insertText(
+                  linkModal.index,
+                  display,
+                  'link',
+                  url,
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  'user' as any,
+                );
+                q.setSelection(linkModal.index + display.length, 0);
+              }
+              setLinkModal(null);
             }}
           />
         )}

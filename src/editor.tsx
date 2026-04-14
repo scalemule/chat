@@ -18,6 +18,8 @@ export { MentionMenu } from './editor/MentionMenu';
 export type { MentionMenuProps } from './editor/MentionMenu';
 export { ChannelMentionMenu } from './editor/ChannelMentionMenu';
 export type { ChannelMentionMenuProps } from './editor/ChannelMentionMenu';
+export { LinkTooltip, LinkEditModal } from './editor/LinkTooltip';
+export type { LinkTooltipData } from './editor/LinkTooltip';
 export type {
   MentionUser,
   ChannelMentionItem,
