@@ -16,9 +16,23 @@ export default defineConfig([
     dts: false,
     sourcemap: false,
     clean: true,
-    external: ['react', 'react-dom'],
+    external: ['react', 'react-dom', 'quill', 'quill-markdown-shortcuts-new'],
     treeshake: true,
     splitting: true,
+  },
+  // Rich-text editor entry — code-split so plain-text consumers don't pay for
+  // Quill. Splitting disabled so editor.js is a single monolithic chunk that's
+  // trivial to audit with a fixed-file bundle budget. Revisit once we have
+  // more editor submodules (mention menus, link tooltip) and want them lazy.
+  {
+    entry: { editor: 'src/editor.tsx' },
+    format: ['esm', 'cjs'],
+    dts: false,
+    sourcemap: false,
+    clean: false,
+    external: ['react', 'react-dom', 'quill', 'quill-markdown-shortcuts-new'],
+    treeshake: true,
+    splitting: false,
   },
   // UMD bundle (script tag: window.ScaleMuleChat)
   {

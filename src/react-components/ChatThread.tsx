@@ -1,4 +1,12 @@
-import React, { useEffect, useMemo, useCallback, useState, useRef } from 'react';
+import React, {
+  Suspense,
+  lazy,
+  useEffect,
+  useMemo,
+  useCallback,
+  useState,
+  useRef,
+} from 'react';
 
 import { useChat, useChatClient, useTyping, usePresence } from '../react';
 import type { Attachment, ApiResponse } from '../types';
@@ -7,6 +15,34 @@ import { ChatMessageList } from './ChatMessageList';
 import { TypingIndicator } from './TypingIndicator';
 import type { ChatTheme } from './theme';
 import { themeToStyle } from './theme';
+
+// Lazy entry for the rich-text editor — keeps Quill out of the core React
+// bundle for plain-text consumers.
+const LazyRichTextInput = lazy(() =>
+  import('../editor').then((m) => ({ default: m.RichTextInput })),
+);
+
+function EditorLoadingSkeleton({
+  placeholder,
+}: {
+  placeholder?: string;
+}): React.JSX.Element {
+  return (
+    <div
+      style={{
+        borderTop: '1px solid var(--sm-border-color, #e5e7eb)',
+        background: 'var(--sm-surface, #fff)',
+        padding: '20px 16px',
+        color: 'var(--sm-muted-text, #6b7280)',
+        fontSize: 13,
+      }}
+      aria-busy="true"
+      aria-live="polite"
+    >
+      {placeholder ?? 'Loading editor…'}
+    </div>
+  );
+}
 
 interface UserProfile {
   display_name: string;
@@ -36,6 +72,20 @@ interface ChatThreadProps {
   enableSnippetPromote?: boolean;
   /** Filename for snippet uploads. Default "message.txt". */
   snippetFilename?: string;
+  /**
+   * Composer variant. `"plain"` (default) uses the built-in textarea; `"rich"`
+   * lazy-loads `@scalemule/chat/editor`'s Quill-backed `RichTextInput`. The
+   * `rich` variant requires `quill` installed in the host app (it's a peer dep)
+   * and the host's CSS to include `@scalemule/chat/editor.css`.
+   */
+  editor?: 'plain' | 'rich';
+  /** Placeholder text for the composer. */
+  placeholder?: string;
+  /** Forwarded to the rich editor only — ignored when `editor="plain"`. */
+  showToolbar?: boolean;
+  enableMarkdownShortcuts?: boolean;
+  enableEmoticonReplace?: boolean;
+  enableAutoLink?: boolean;
 }
 
 function inferMessageType(content: string, attachments: Attachment[]): 'text' | 'image' | 'file' {
@@ -61,6 +111,12 @@ export function ChatThread({
   maxLength,
   enableSnippetPromote,
   snippetFilename,
+  editor = 'plain',
+  placeholder,
+  showToolbar,
+  enableMarkdownShortcuts,
+  enableEmoticonReplace,
+  enableAutoLink,
 }: ChatThreadProps): React.JSX.Element {
   const [sendError, setSendError] = useState<string | null>(null);
   const sendErrorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -268,29 +324,63 @@ export function ChatThread({
         </div>
       )}
 
-      <ChatInput
-        onSend={async (content, attachments, options) => {
-          return await sendMessage(content, {
-            attachments,
-            message_type:
-              options?.message_type ??
-              (inferMessageType(content, attachments ?? []) as 'text' | 'image' | 'file'),
-            content_format: options?.content_format,
-          });
-        }}
-        onSendError={(err) => setSendError(err.message)}
-        onTypingChange={(isTyping) => {
-          sendTyping(isTyping);
-        }}
-        onUploadAttachment={uploadAttachment}
-        onDeleteAttachment={onDeleteAttachment}
-        onValidateFile={onValidateFile ? inputValidateFile : undefined}
-        maxAttachments={maxAttachments}
-        accept={accept}
-        maxLength={maxLength ?? 40000}
-        enableSnippetPromote={enableSnippetPromote}
-        snippetFilename={snippetFilename}
-      />
+      {editor === 'rich' ? (
+        <Suspense fallback={<EditorLoadingSkeleton placeholder={placeholder} />}>
+          <LazyRichTextInput
+            onSend={async (content, attachments, options) => {
+              return await sendMessage(content, {
+                attachments,
+                message_type:
+                  options?.message_type ??
+                  (inferMessageType(content, attachments ?? []) as 'text' | 'image' | 'file'),
+                content_format: options?.content_format,
+              });
+            }}
+            onSendError={(err) => setSendError(err.message)}
+            onTypingChange={(isTyping) => {
+              sendTyping(isTyping);
+            }}
+            onUploadAttachment={uploadAttachment}
+            onDeleteAttachment={onDeleteAttachment}
+            onValidateFile={onValidateFile ? inputValidateFile : undefined}
+            maxAttachments={maxAttachments}
+            accept={accept}
+            maxLength={maxLength ?? 40000}
+            enableSnippetPromote={enableSnippetPromote}
+            snippetFilename={snippetFilename}
+            placeholder={placeholder}
+            showToolbar={showToolbar}
+            enableMarkdownShortcuts={enableMarkdownShortcuts}
+            enableEmoticonReplace={enableEmoticonReplace}
+            enableAutoLink={enableAutoLink}
+          />
+        </Suspense>
+      ) : (
+        <ChatInput
+          onSend={async (content, attachments, options) => {
+            return await sendMessage(content, {
+              attachments,
+              message_type:
+                options?.message_type ??
+                (inferMessageType(content, attachments ?? []) as 'text' | 'image' | 'file'),
+              content_format: options?.content_format,
+            });
+          }}
+          onSendError={(err) => setSendError(err.message)}
+          onTypingChange={(isTyping) => {
+            sendTyping(isTyping);
+          }}
+          onUploadAttachment={uploadAttachment}
+          onDeleteAttachment={onDeleteAttachment}
+          onValidateFile={onValidateFile ? inputValidateFile : undefined}
+          maxAttachments={maxAttachments}
+          accept={accept}
+          maxLength={maxLength ?? 40000}
+          enableSnippetPromote={enableSnippetPromote}
+          snippetFilename={snippetFilename}
+          placeholder={placeholder}
+        />
+      )}
     </div>
   );
 }

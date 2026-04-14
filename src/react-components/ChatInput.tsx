@@ -6,6 +6,27 @@ import { countCodePoints } from './utils';
 /** Result returned by ChatInput.onSend. Allows sync or async, with or without ApiResponse. */
 export type ChatInputSendResult = void | ApiResponse<ChatMessage> | undefined;
 
+/**
+ * Signature of the `onUploadAttachment` callback used by `ChatInput` and
+ * `RichTextInput` (SDK editor). Exported so drop-in editor replacements can
+ * extend `ChatInputProps` without re-declaring this complex shape.
+ */
+export type UploadAttachmentFn = (
+  file: File | Blob,
+  onProgress?: (percent: number) => void,
+  signal?: AbortSignal,
+) => Promise<{ data: Attachment | null; error: { message: string } | null } | undefined>;
+
+/**
+ * Signature of `ChatInput.onSend` / `RichTextInput.onSend`. Shared so the
+ * rich-text editor entry point can keep parity without duplicating the type.
+ */
+export type ChatInputOnSendFn = (
+  content: string,
+  attachments?: Attachment[],
+  options?: Pick<SendMessageOptions, 'content_format' | 'message_type'>,
+) => ChatInputSendResult | Promise<ChatInputSendResult>;
+
 interface PendingAttachment {
   id: string;
   file: File;
@@ -17,20 +38,12 @@ interface PendingAttachment {
   abortController?: AbortController;
 }
 
-interface ChatInputProps {
-  onSend: (
-    content: string,
-    attachments?: Attachment[],
-    options?: Pick<SendMessageOptions, 'content_format' | 'message_type'>,
-  ) => ChatInputSendResult | Promise<ChatInputSendResult>;
+export interface ChatInputProps {
+  onSend: ChatInputOnSendFn;
   /** Called when send fails (API returned error or threw). Receives ApiError. */
   onSendError?: (error: ApiError) => void;
   onTypingChange?: (isTyping: boolean) => void;
-  onUploadAttachment?: (
-    file: File | Blob,
-    onProgress?: (percent: number) => void,
-    signal?: AbortSignal,
-  ) => Promise<{ data: Attachment | null; error: { message: string } | null } | undefined>;
+  onUploadAttachment?: UploadAttachmentFn;
   onDeleteAttachment?: (fileId: string) => void | Promise<void>;
   onValidateFile?: (file: File) => { valid: boolean; error?: string };
   placeholder?: string;
