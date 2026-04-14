@@ -646,11 +646,28 @@ class ScaleMuleChatElement extends HTMLElement {
         .map((attachment) => attachment.attachment as Attachment);
 
       if ((!content && !readyAttachments.length) || !this.controller) return;
-      inputEl.value = '';
-      await this.controller.sendMessage(content, readyAttachments);
-      this.pendingAttachments = [];
-      renderPendingAttachments();
-      await this.controller.markRead();
+
+      // Snapshot what we're sending — do NOT clear input until success.
+      const sentContent = content;
+      const sentAttachmentIds = new Set(readyAttachments.map((a) => a.file_id));
+
+      try {
+        await this.controller.sendMessage(sentContent, readyAttachments);
+        // SUCCESS: clear input only if user hasn't typed something new in flight.
+        if (inputEl.value.trim() === sentContent) {
+          inputEl.value = '';
+        }
+        this.pendingAttachments = this.pendingAttachments.filter(
+          (a) => !a.attachment || !sentAttachmentIds.has(a.attachment.file_id),
+        );
+        renderPendingAttachments();
+        await this.controller.markRead();
+      } catch (err) {
+        // Keep input + attachments — user can edit and retry. Caller can override
+        // via the controller's error event for richer UX.
+        // eslint-disable-next-line no-console
+        console.warn('[scalemule-chat] send failed:', err);
+      }
     };
 
     attachBtn.addEventListener('click', () => {

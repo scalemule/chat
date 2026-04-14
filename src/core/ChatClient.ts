@@ -183,6 +183,7 @@ export class ChatClient extends EventEmitter<ChatEventMap> {
       `/v1/chat/conversations/${conversationId}/messages`,
       {
         content: options.content,
+        content_format: options.content_format,
         message_type: options.message_type ?? 'text',
         attachments: options.attachments,
         thread_id: options.thread_id,
@@ -259,10 +260,18 @@ export class ChatClient extends EventEmitter<ChatEventMap> {
     );
   }
 
-  async editMessage(messageId: string, content: string, attachments?: Attachment[]): Promise<ApiResponse<void>> {
+  async editMessage(
+    messageId: string,
+    content: string,
+    attachments?: Attachment[],
+    contentFormat?: 'plain' | 'html',
+  ): Promise<ApiResponse<void>> {
     const body: Record<string, unknown> = { content };
     if (attachments !== undefined) {
       body.attachments = attachments;
+    }
+    if (contentFormat !== undefined) {
+      body.content_format = contentFormat;
     }
     return this.http.patch<void>(`/v1/chat/messages/${messageId}`, body);
   }
@@ -654,6 +663,8 @@ export class ChatClient extends EventEmitter<ChatEventMap> {
     return {
       id: (payload.id as string) ?? (payload.message_id as string) ?? '',
       content: (payload.content as string) ?? '',
+      content_format: payload.content_format as 'plain' | 'html' | undefined,
+      plain_text: payload.plain_text as string | undefined,
       message_type: ((payload.message_type as ChatMessage['message_type']) ?? 'text'),
       sender_id: (payload.sender_id as string) ?? (payload.sender_user_id as string) ?? '',
       sender_type: payload.sender_type as string | undefined,
@@ -684,6 +695,9 @@ export class ChatClient extends EventEmitter<ChatEventMap> {
     return {
       id: existing?.id ?? messageId,
       content: update.content ?? update.new_content ?? existing?.content ?? '',
+      content_format:
+        update.new_content_format ?? update.content_format ?? existing?.content_format,
+      plain_text: update.new_plain_text ?? update.plain_text ?? existing?.plain_text,
       message_type: existing?.message_type ?? 'text',
       sender_id: existing?.sender_id ?? '',
       sender_type: existing?.sender_type,

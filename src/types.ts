@@ -65,7 +65,11 @@ export interface Participant {
 export interface ChatMessage {
   id: string;
   content: string;
-  message_type: 'text' | 'image' | 'file' | 'system';
+  /** Content format: 'plain' (escaped on render) or 'html' (sanitized HTML allowed). */
+  content_format?: 'plain' | 'html';
+  /** Plain text extraction, used for previews/search/notifications. */
+  plain_text?: string;
+  message_type: ChatMessageType;
   sender_id: string;
   sender_type?: string;
   sender_agent_model?: string;
@@ -115,6 +119,10 @@ export interface MessageEditedEvent {
   conversation_id: string;
   content?: string;
   new_content?: string;
+  content_format?: 'plain' | 'html';
+  new_content_format?: 'plain' | 'html';
+  plain_text?: string;
+  new_plain_text?: string;
   new_attachments?: Attachment[];
   attachments?: Attachment[];
   editor_user_id?: string;
@@ -204,9 +212,21 @@ export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 're
 
 // ============ Request Types ============
 
+/** All message types the server can emit (for incoming/rendered messages). */
+export type ChatMessageType = 'text' | 'image' | 'file' | 'system' | 'snippet';
+
+/**
+ * Message types SDK callers are allowed to SEND.
+ * - `system` is excluded — reserved for internal services.
+ * - `snippet` will be added in Phase B once backend migration 011 ships.
+ */
+export type SendMessageType = 'text' | 'image' | 'file';
+
 export interface SendMessageOptions {
   content: string;
-  message_type?: 'text' | 'image' | 'file';
+  /** Content format. Defaults to 'plain' on the server. */
+  content_format?: 'plain' | 'html';
+  message_type?: SendMessageType;
   attachments?: Attachment[];
   thread_id?: string;
   is_thread_broadcast?: boolean;

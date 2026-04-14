@@ -1,6 +1,10 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 
-import type { Attachment } from '../types';
+import type { ApiError, ApiResponse, Attachment, ChatMessage, SendMessageOptions } from '../types';
+import { countCodePoints } from './utils';
+
+/** Result returned by ChatInput.onSend. Allows sync or async, with or without ApiResponse. */
+export type ChatInputSendResult = void | ApiResponse<ChatMessage> | undefined;
 
 interface PendingAttachment {
   id: string;
@@ -14,7 +18,13 @@ interface PendingAttachment {
 }
 
 interface ChatInputProps {
-  onSend: (content: string, attachments?: Attachment[]) => void | Promise<void>;
+  onSend: (
+    content: string,
+    attachments?: Attachment[],
+    options?: Pick<SendMessageOptions, 'content_format' | 'message_type'>,
+  ) => ChatInputSendResult | Promise<ChatInputSendResult>;
+  /** Called when send fails (API returned error or threw). Receives ApiError. */
+  onSendError?: (error: ApiError) => void;
   onTypingChange?: (isTyping: boolean) => void;
   onUploadAttachment?: (
     file: File | Blob,
@@ -27,6 +37,11 @@ interface ChatInputProps {
   disabled?: boolean;
   maxAttachments?: number;
   accept?: string;
+  /** Maximum content length in Unicode code points. When set, shows a counter
+   *  and disables send when exceeded. Backend enforces 40,000 by default. */
+  maxLength?: number;
+  /** Show counter when content length exceeds warnThreshold * maxLength. Default 0.9. */
+  warnThreshold?: number;
   /**
    * Render-prop escape hatch: replace the default send button with a fully
    * custom element. Host apps use this to drop in their own themed button
@@ -45,6 +60,7 @@ interface ChatInputProps {
 
 export function ChatInput({
   onSend,
+  onSendError,
   onTypingChange,
   onUploadAttachment,
   onDeleteAttachment,
@@ -53,6 +69,8 @@ export function ChatInput({
   disabled = false,
   maxAttachments = 5,
   accept = 'image/*,video/*',
+  maxLength,
+  warnThreshold = 0.9,
   renderSendButton,
 }: ChatInputProps): React.JSX.Element {
   const [text, setText] = useState('');
@@ -68,8 +86,16 @@ export function ChatInput({
   const hasUploadingAttachments = attachments.some(
     (a) => a.status === 'uploading',
   );
+  // Use code-point count (matches Rust chars().count()) — emoji = 1, not 2 like text.length
+  const codePointCount = countCodePoints(text);
+  const overLimit = maxLength != null && codePointCount > maxLength;
+  const showCounter =
+    maxLength != null && codePointCount > Math.floor(maxLength * warnThreshold);
   const canSend: boolean = Boolean(
-    (text.trim() || hasReadyAttachments) && !hasUploadingAttachments && !isSending,
+    (text.trim() || hasReadyAttachments) &&
+      !hasUploadingAttachments &&
+      !isSending &&
+      !overLimit,
   );
 
   // Cleanup on unmount
@@ -206,12 +232,19 @@ export function ChatInput({
 
     setIsSending(true);
     try {
-      await onSend(
+      const result = await onSend(
         text.trim(),
         readyAttachments.length > 0 ? readyAttachments : undefined,
       );
 
-      // Clear state -- don't delete sent files (they're now part of the message)
+      // If onSend returned an ApiResponse with an error, treat as failure.
+      // Keep input populated so the user can edit and retry.
+      if (result && typeof result === 'object' && 'error' in result && result.error) {
+        onSendError?.(result.error);
+        return;
+      }
+
+      // Success: clear state -- don't delete sent files (they're now part of the message)
       for (const att of attachments) {
         URL.revokeObjectURL(att.preview);
       }
@@ -221,10 +254,14 @@ export function ChatInput({
       if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
       if (textareaRef.current) textareaRef.current.style.height = 'auto';
       textareaRef.current?.focus();
+    } catch (err: unknown) {
+      // Thrown exception (network error etc.) — keep input populated, fire error callback
+      const message = err instanceof Error ? err.message : 'Send failed';
+      onSendError?.({ code: 'send_failed', message, status: 0 });
     } finally {
       setIsSending(false);
     }
-  }, [text, attachments, canSend, onSend, onTypingChange]);
+  }, [text, attachments, canSend, onSend, onSendError, onTypingChange]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -637,6 +674,26 @@ export function ChatInput({
           </button>
         )}
       </div>
+      {showCounter && maxLength != null && (
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'flex-end',
+            padding: '0 16px 4px',
+            fontSize: 11,
+            color: overLimit
+              ? 'var(--sm-error-text, #dc2626)'
+              : codePointCount > maxLength * 0.95
+                ? 'var(--sm-warning-text, #ea580c)'
+                : 'var(--sm-muted-text, #6b7280)',
+            fontVariantNumeric: 'tabular-nums',
+          }}
+          role="status"
+          aria-live="polite"
+        >
+          {codePointCount.toLocaleString()} / {maxLength.toLocaleString()}
+        </div>
+      )}
     </div>
   );
 }

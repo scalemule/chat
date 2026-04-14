@@ -215,7 +215,11 @@ export function useChat(conversationId?: string) {
   const sendMessage = useCallback(
     async (content: string, options?: Partial<SendMessageOptions>) => {
       if (!conversationId) return;
-      return client.sendMessage(conversationId, { content, ...options });
+      const result = await client.sendMessage(conversationId, { content, ...options });
+      if (result?.error) {
+        setError(result.error.message);
+      }
+      return result;
     },
     [client, conversationId],
   );
@@ -231,8 +235,13 @@ export function useChat(conversationId?: string) {
   }, [client, conversationId, messages]);
 
   const editMessage = useCallback(
-    async (messageId: string, content: string, attachments?: Attachment[]) => {
-      const result = await client.editMessage(messageId, content, attachments);
+    async (
+      messageId: string,
+      content: string,
+      attachments?: Attachment[],
+      contentFormat?: 'plain' | 'html',
+    ) => {
+      const result = await client.editMessage(messageId, content, attachments, contentFormat);
       if (result.error) {
         setError(result.error.message);
       }
