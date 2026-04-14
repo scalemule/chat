@@ -55,6 +55,10 @@ interface ChatThreadProps {
   theme?: ChatTheme;
   currentUserId?: string;
   profiles?: Map<string, UserProfile>;
+  /** Avatar display size in pixels. Default 32. */
+  avatarSize?: number;
+  /** Transform a profile's avatar_url into an optimized thumbnail URL. */
+  getAvatarUrl?: (profile: UserProfile) => string | undefined;
   title?: string;
   subtitle?: string;
   onFetchAttachmentUrl?: (fileId: string) => Promise<string>;
@@ -101,6 +105,8 @@ export function ChatThread({
   theme,
   currentUserId,
   profiles,
+  avatarSize,
+  getAvatarUrl,
   title = 'Chat',
   subtitle,
   onFetchAttachmentUrl,
@@ -262,6 +268,8 @@ export function ChatThread({
         currentUserId={resolvedUserId}
         conversationId={conversationId}
         profiles={profiles}
+        avatarSize={avatarSize}
+        getAvatarUrl={getAvatarUrl}
         hasMore={hasMore}
         isLoading={isLoading}
         onLoadMore={loadMore}

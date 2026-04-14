@@ -69,6 +69,10 @@ interface ChatMessageListProps {
     profile: UserProfile | undefined,
     message: ChatMessage,
   ) => React.ReactNode;
+  /** Avatar display size in pixels. Forwarded to ChatMessageItem. Default 32. */
+  avatarSize?: number;
+  /** Transform a profile's avatar_url into an optimized thumbnail URL. Forwarded to ChatMessageItem. */
+  getAvatarUrl?: (profile: UserProfile) => string | undefined;
   /** Forwarded to ChatMessageItem for adding attachments during edit. */
   onUploadAttachment?: (
     file: File | Blob,
@@ -131,6 +135,8 @@ export function ChatMessageList({
   renderMessage,
   renderAttachment,
   renderAvatar,
+  avatarSize,
+  getAvatarUrl,
   onUploadAttachment,
   onDeleteAttachment,
   onValidateFile,
@@ -450,6 +456,8 @@ export function ChatMessageList({
                     highlight={showUnreadDivider || isHighlighted}
                     renderAttachment={renderAttachment}
                     renderAvatar={renderAvatar}
+                    avatarSize={avatarSize}
+                    getAvatarUrl={getAvatarUrl}
                   />
                 )}
               </div>

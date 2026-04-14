@@ -67,6 +67,10 @@ interface ChatMessageItemProps {
   onFetchAttachmentUrl?: (fileId: string) => Promise<string>;
   isOwnMessage?: boolean;
   highlight?: boolean;
+  /** Avatar display size in pixels. Default 32. Set to 36 for pre-generated thumbnail cache hits. */
+  avatarSize?: number;
+  /** Transform a profile's avatar_url into an optimized thumbnail URL (e.g. photo service transform). */
+  getAvatarUrl?: (profile: UserProfile) => string | undefined;
   /**
    * Custom avatar renderer. Replaces the default 32px circle avatar for
    * incoming messages. Receives the resolved profile (or undefined) and the
@@ -490,6 +494,8 @@ export function ChatMessageItem({
   onFetchAttachmentUrl,
   isOwnMessage: isOwnMessageProp,
   highlight = false,
+  avatarSize = 32,
+  getAvatarUrl,
   renderAvatar,
   renderAttachment,
   onUploadAttachment,
@@ -597,7 +603,7 @@ export function ChatMessageItem({
 
   const displayName = profile?.display_name ?? 'User';
   const username = profile?.username;
-  const avatarUrl = profile?.avatar_url;
+  const avatarUrl = (profile && getAvatarUrl?.(profile)) ?? profile?.avatar_url;
   const initials = displayName.charAt(0).toUpperCase();
   const canReact = Boolean(onAddReaction || onRemoveReaction);
 
@@ -682,8 +688,8 @@ export function ChatMessageItem({
             <div
               style={{
                 flexShrink: 0,
-                width: 32,
-                height: 32,
+                width: avatarSize,
+                height: avatarSize,
                 borderRadius: 999,
                 background: 'var(--sm-surface-muted, #f3f4f6)',
                 overflow: 'hidden',
@@ -792,8 +798,8 @@ export function ChatMessageItem({
           <div
             style={{
               flexShrink: 0,
-              width: 32,
-              height: 32,
+              width: avatarSize,
+              height: avatarSize,
               borderRadius: 999,
               background: 'var(--sm-surface-muted, #f3f4f6)',
               overflow: 'hidden',
