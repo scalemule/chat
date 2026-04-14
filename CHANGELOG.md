@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.0.31 — 2026-04-13
+
+**Added: Rich HTML message rendering in `ChatMessageItem`.** Messages with `content_format: 'html'` are now rendered as formatted HTML (bold, italic, lists, code blocks, links, mentions) instead of raw markup. Previously the SDK accepted rich messages on send but displayed them as escaped text — this closes the known gap noted in 0.0.29.
+
+- New `sanitizeHtml(html)` helper in `react-components/sanitize.ts`. DOMParser-based allowlist that mirrors the backend `HtmlAllowlistSanitizer` (tags: p/br/b/strong/i/em/u/s/ul/ol/li/blockquote/pre/code/span/a; href schemes: http/https/mailto; mention markup preserved). Defense-in-depth — the backend remains the authoritative sanitizer.
+- SSR-safe: on the server (no `DOMParser`) the helper escapes HTML to text. Hydration re-renders through DOMParser on the client.
+- `ChatMessageItem` branches on `content_format === 'html'` to render via `dangerouslySetInnerHTML` with `.sm-rich-content` class.
+- New `src/themes/rich-content.css` (concatenated into `themes/tailwind.css` and `themes/shadcn.css` at build). Styles target `.sm-rich-content` descendants only and pull from existing `--sm-*` tokens.
+- `build:assets` is now a Node script (`scripts/build-assets.mjs`) that concatenates rich-content.css into the theme outputs.
+
+**Added: Rich-message editing fallback.** Editing a message with `content_format: 'html'` opens the plain textarea seeded with `plain_text` (or a stripped-HTML fallback). Saving text changes sends `contentFormat: 'plain'` so the backend re-types the message. Attachment-only edits preserve the existing HTML format.
+
+- `ChatMessageItem.onEdit`, `ChatMessageList.onEdit`, and `ChatThread`'s internal wiring now all accept an optional 4th `contentFormat?: 'plain' | 'html'` argument.
+- `useChat.editMessage` already forwarded `contentFormat` as of 0.0.29.
+
+**Bundle budget:** React ESM budget bumped 170K → 175K for the sanitizer (~3KB).
+
 ## 0.0.30 — 2026-04-14
 
 **Added: Snippets — auto-promote long content (>40K) to a file-backed collapsible block.**

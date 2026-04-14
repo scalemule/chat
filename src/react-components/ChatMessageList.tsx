@@ -19,7 +19,12 @@ interface ChatMessageListProps {
   onLoadMore?: () => void;
   onAddReaction?: (messageId: string, emoji: string) => void | Promise<void>;
   onRemoveReaction?: (messageId: string, emoji: string) => void | Promise<void>;
-  onEdit?: (messageId: string, content: string, attachments?: Attachment[]) => void | Promise<void>;
+  onEdit?: (
+    messageId: string,
+    content: string,
+    attachments?: Attachment[],
+    contentFormat?: 'plain' | 'html',
+  ) => void | Promise<void>;
   onDelete?: (messageId: string) => void | Promise<void>;
   onReport?: (messageId: string) => void;
   onFetchAttachmentUrl?: (fileId: string) => Promise<string>;

@@ -1,0 +1,111 @@
+/**
+ * Rich content styles for @scalemule/chat React components.
+ *
+ * Applied to HTML messages rendered inside `.sm-rich-content` in
+ * `ChatMessageItem`. Kept scope-narrow — only targets direct descendants of
+ * the sanitized container so it never leaks into host app markup.
+ *
+ * Imported into `themes/tailwind.css` and `themes/shadcn.css` at build time
+ * (via scripts/build-assets.mjs). Customers that import either theme CSS file
+ * get rich content styling automatically.
+ *
+ * All colors pull from `--sm-*` tokens so they inherit the host theme.
+ */
+
+.sm-rich-content {
+  line-height: 1.5;
+}
+
+.sm-rich-content p {
+  margin: 0 0 4px 0;
+}
+.sm-rich-content p:last-child {
+  margin-bottom: 0;
+}
+
+.sm-rich-content strong,
+.sm-rich-content b {
+  font-weight: 600;
+}
+
+.sm-rich-content em,
+.sm-rich-content i {
+  font-style: italic;
+}
+
+.sm-rich-content u {
+  text-decoration: underline;
+}
+
+.sm-rich-content s {
+  text-decoration: line-through;
+  opacity: 0.75;
+}
+
+.sm-rich-content a {
+  color: var(--sm-link-color, var(--sm-primary, #2563eb));
+  text-decoration: underline;
+  word-break: break-word;
+}
+.sm-rich-content a:hover {
+  opacity: 0.85;
+}
+
+.sm-rich-content a.sm-mention,
+.sm-rich-content .sm-mention {
+  color: var(--sm-mention-text, var(--sm-primary, #2563eb));
+  background: var(--sm-mention-bg, rgba(37, 99, 235, 0.08));
+  padding: 0 4px;
+  border-radius: 4px;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.sm-rich-content a.sm-channel-mention,
+.sm-rich-content .sm-channel-mention {
+  color: var(--sm-channel-mention-text, var(--sm-primary, #2563eb));
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.sm-rich-content code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.9em;
+  background: var(--sm-code-bg, rgba(0, 0, 0, 0.06));
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+.sm-rich-content pre.ql-syntax,
+.sm-rich-content pre {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.9em;
+  background: var(--sm-code-block-bg, rgba(0, 0, 0, 0.08));
+  color: var(--sm-code-block-text, inherit);
+  padding: 8px 12px;
+  border-radius: 6px;
+  margin: 4px 0;
+  overflow-x: auto;
+  white-space: pre;
+}
+.sm-rich-content pre code {
+  background: transparent;
+  padding: 0;
+  font-size: inherit;
+}
+
+.sm-rich-content blockquote {
+  border-left: 3px solid var(--sm-border-color, #e5e7eb);
+  padding-left: 10px;
+  margin: 4px 0;
+  color: var(--sm-muted-text, #6b7280);
+}
+
+.sm-rich-content ul,
+.sm-rich-content ol {
+  margin: 4px 0;
+  padding-left: 20px;
+}
+.sm-rich-content li {
+  margin: 2px 0;
+}
