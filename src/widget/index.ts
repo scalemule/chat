@@ -1165,14 +1165,15 @@ class SupportWidget {
     const attachments = this.getReadyAttachments();
     if (!content && !attachments.length) return;
 
-    this.inputEl!.value = '';
-    this.inputEl!.style.height = 'auto';
-    this.pendingAttachments = [];
-    this.renderPendingAttachments();
+    // Snapshot what we're sending — do NOT clear input until success.
+    // If we cleared first and the API rejects (e.g. content too long),
+    // the user loses what they typed.
+    const sentContent = content;
+    const sentAttachmentIds = new Set(attachments.map((a) => a.file_id));
 
     const optimisticMessage = buildOptimisticMessage(
       this.client.visitorUserId ?? 'visitor',
-      content,
+      sentContent,
       attachments,
     );
 
@@ -1189,12 +1190,12 @@ class SupportWidget {
 
     try {
       if (this.controller) {
-        await this.controller.sendMessage(content, attachments);
+        await this.controller.sendMessage(sentContent, attachments);
       } else {
         const result = await this.client.chat.sendMessage(this.conversation.conversation_id, {
-          content,
+          content: sentContent,
           attachments,
-          message_type: inferMessageType(content, attachments),
+          message_type: inferMessageType(sentContent, attachments),
         });
         if (result.error) {
           throw new Error(result.error.message);
@@ -1202,8 +1203,20 @@ class SupportWidget {
         await this.loadPollingSnapshot(false);
       }
       await this.markConversationRead();
+
+      // SUCCESS: clear input only if user hasn't typed something new in flight,
+      // and remove only the attachments we actually sent.
+      if (this.inputEl && this.inputEl.value.trim() === sentContent) {
+        this.inputEl.value = '';
+        this.inputEl.style.height = 'auto';
+      }
+      this.pendingAttachments = this.pendingAttachments.filter(
+        (a) => !a.attachment || !sentAttachmentIds.has(a.attachment.file_id),
+      );
+      this.renderPendingAttachments();
     } catch (error) {
       this.renderError(error instanceof Error ? error.message : 'Failed to send message');
+      // Keep input + attachments — user can edit and retry
     }
   }
 

@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.0.29 — 2026-04-14
+
+**Added:** Graceful handling of message send failures. `useChat().sendMessage` now sets `error` state on API failures (matches `editMessage`/`deleteMessage` pattern). `ChatInput` adds `onSendError?` prop and an optional `maxLength` character counter. On send failure, `ChatInput` keeps the user's text and attachments intact — they can edit and retry instead of losing their message.
+
+**Added:** `countCodePoints(value)` helper exported from `react-components/utils`. Counts Unicode scalars (code points), matching Rust's `chars().count()`. Use this for length checks against backend `MaxLengthValidator` to handle emoji and combining characters correctly.
+
+**Added:** `ChatInput.onSend` callback now accepts an optional 3rd `options` argument with `content_format` and `message_type`. Return type broadened to allow synchronous `ApiResponse<ChatMessage>` returns (was `Promise<void>`-only). `ChatThread` returns the `sendMessage` result so error state propagates correctly.
+
+**Added:** `ChatThread` renders an inline error banner above the input when send fails. Auto-dismisses after 6s, manual dismiss available. `--sm-error-bg`, `--sm-error-text`, `--sm-error-border` tokens.
+
+**Added:** `ChatThread` defaults `maxLength={40000}` (Slack-parity). Override via prop.
+
+**Added:** `content_format` and `plain_text` fields wired through types, `ChatClient.sendMessage`, `ChatClient.editMessage`, `normalizeMessage` (realtime events), and `buildEditedMessage` (edit cache update). `MessageEditedEvent` extended with `content_format`/`plain_text`/`new_content_format`/`new_plain_text` fields.
+
+**Added:** Type split: `ChatMessageType` (all server-emitted types incl. `system`/`snippet`) vs `SendMessageType` (only `text`/`image`/`file` — what callers can send). Phase B will widen `SendMessageType` to include `snippet`.
+
+**Fixed:** Widget (`@scalemule/chat` UMD) and Web Component (`@scalemule/chat/element`) now defer clearing input + pending attachments until after a confirmed-success send. Previously they cleared optimistically; on failure (network error, 4xx) the user lost their text. Race-safe: only clears if the input still contains the sent content (user can keep typing during in-flight send).
+
 ## 0.0.28 — 2026-04-13
 
 **Fixed:** Republish with theme CSS files (`tailwind.css`, `shadcn.css`) included in tarball. Versions 0.0.25-0.0.27 were missing these files due to a stale dist directory during publish.

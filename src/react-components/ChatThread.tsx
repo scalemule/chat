@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useCallback } from 'react';
+import React, { useEffect, useMemo, useCallback, useState, useRef } from 'react';
 
 import { useChat, useChatClient, useTyping, usePresence } from '../react';
 import type { Attachment, ApiResponse } from '../types';
@@ -30,6 +30,8 @@ interface ChatThreadProps {
   maxAttachments?: number;
   /** File input accept filter. Default "image/*,video/*". */
   accept?: string;
+  /** Max content length in Unicode code points. Default 40,000 (Slack-parity). */
+  maxLength?: number;
 }
 
 function inferMessageType(content: string, attachments: Attachment[]): 'text' | 'image' | 'file' {
@@ -52,7 +54,21 @@ export function ChatThread({
   onValidateFile,
   maxAttachments,
   accept,
+  maxLength,
 }: ChatThreadProps): React.JSX.Element {
+  const [sendError, setSendError] = useState<string | null>(null);
+  const sendErrorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Auto-dismiss send error after 6 seconds
+  useEffect(() => {
+    if (!sendError) return;
+    if (sendErrorTimerRef.current) clearTimeout(sendErrorTimerRef.current);
+    sendErrorTimerRef.current = setTimeout(() => setSendError(null), 6000);
+    return () => {
+      if (sendErrorTimerRef.current) clearTimeout(sendErrorTimerRef.current);
+    };
+  }, [sendError]);
+
   const client = useChatClient();
   const resolvedUserId = currentUserId ?? client.userId;
   const {
@@ -208,13 +224,53 @@ export function ChatThread({
         resolveUserName={(userId) => profiles?.get(userId)?.display_name ?? 'Someone'}
       />
 
+      {sendError && (
+        <div
+          role="alert"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            margin: '0 16px 8px',
+            padding: '8px 12px',
+            background: 'var(--sm-error-bg, #fef2f2)',
+            color: 'var(--sm-error-text, #991b1b)',
+            border: '1px solid var(--sm-error-border, #fecaca)',
+            borderRadius: 8,
+            fontSize: 13,
+          }}
+        >
+          <span style={{ flex: 1 }}>{sendError}</span>
+          <button
+            type="button"
+            onClick={() => setSendError(null)}
+            aria-label="Dismiss error"
+            style={{
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              color: 'inherit',
+              fontSize: 18,
+              lineHeight: 1,
+              padding: 0,
+            }}
+          >
+            ×
+          </button>
+        </div>
+      )}
+
       <ChatInput
-        onSend={async (content, attachments) => {
-          await sendMessage(content, {
+        onSend={async (content, attachments, options) => {
+          return await sendMessage(content, {
             attachments,
-            message_type: inferMessageType(content, attachments ?? []),
+            message_type:
+              options?.message_type ??
+              (inferMessageType(content, attachments ?? []) as 'text' | 'image' | 'file'),
+            content_format: options?.content_format,
           });
         }}
+        onSendError={(err) => setSendError(err.message)}
         onTypingChange={(isTyping) => {
           sendTyping(isTyping);
         }}
@@ -223,6 +279,7 @@ export function ChatThread({
         onValidateFile={onValidateFile ? inputValidateFile : undefined}
         maxAttachments={maxAttachments}
         accept={accept}
+        maxLength={maxLength ?? 40000}
       />
     </div>
   );
