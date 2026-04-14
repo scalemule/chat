@@ -14,6 +14,10 @@
 
 export { RichTextInput } from './editor/RichTextInput';
 export type { RichTextInputProps } from './editor/RichTextInput';
+export { MentionMenu } from './editor/MentionMenu';
+export type { MentionMenuProps } from './editor/MentionMenu';
+export { ChannelMentionMenu } from './editor/ChannelMentionMenu';
+export type { ChannelMentionMenuProps } from './editor/ChannelMentionMenu';
 export type {
   MentionUser,
   ChannelMentionItem,

@@ -343,3 +343,117 @@
   font-size: 14px;
   font-weight: 500;
 }
+
+/* -------- Mention dropdowns (user + channel) -------- */
+
+.sm-mention-menu {
+  position: absolute;
+  z-index: 50;
+  max-height: 280px;
+  min-width: 240px;
+  max-width: 320px;
+  overflow-y: auto;
+  background: var(--sm-surface, #fff);
+  border: 1px solid var(--sm-border-color, #e5e7eb);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  padding: 4px 0;
+  transform: translateY(-100%);
+}
+
+.sm-mention-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 12px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  font-size: 13px;
+  color: var(--sm-text-color, #111827);
+}
+
+.sm-mention-menu-item:hover,
+.sm-mention-menu-item-active {
+  background: var(--sm-primary-bg, rgba(37, 99, 235, 0.08));
+  color: var(--sm-primary, #2563eb);
+}
+
+.sm-mention-avatar-wrap {
+  position: relative;
+  flex-shrink: 0;
+  display: inline-flex;
+}
+
+.sm-mention-avatar-img,
+.sm-mention-avatar-initials {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  object-fit: cover;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.sm-mention-status-dot {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--sm-online, #10b981);
+  border: 1.5px solid var(--sm-surface, #fff);
+}
+.sm-mention-status-dot-offline {
+  background: var(--sm-offline, #9ca3af);
+}
+
+.sm-mention-name {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sm-mention-meta {
+  font-size: 11px;
+  color: var(--sm-muted-text, #9ca3af);
+  flex-shrink: 0;
+}
+
+.sm-channel-mention-icon {
+  flex-shrink: 0;
+  color: var(--sm-muted-text, #6b7280);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+}
+.sm-channel-mention-hash {
+  display: inline-block;
+  width: 16px;
+  text-align: center;
+  font-weight: 500;
+  font-size: 14px;
+}
+
+/* -------- Mention span rendered inside the editor -------- */
+
+.sm-rich-editor-container .ql-editor .sm-mention,
+.sm-rich-editor-container .ql-editor .sm-channel-mention {
+  display: inline-block;
+  padding: 0 4px;
+  border-radius: 4px;
+  background: var(--sm-mention-bg, rgba(37, 99, 235, 0.08));
+  color: var(--sm-mention-text, var(--sm-primary, #2563eb));
+  font-weight: 500;
+  cursor: default;
+}

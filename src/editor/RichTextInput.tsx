@@ -39,6 +39,9 @@ import { countCodePoints } from '../react-components/utils';
 import { createKeyboardBindings } from './keyboard';
 import { EMOTICON_MAP } from './emoticons';
 import { Toolbar } from './Toolbar';
+import { MentionMenu } from './MentionMenu';
+import { ChannelMentionMenu } from './ChannelMentionMenu';
+import { registerMentionBlots, MENTION_BLOT, CHANNEL_MENTION_BLOT } from './blots';
 import type {
   ChannelMentionItem,
   MentionUser,
@@ -158,6 +161,29 @@ export const RichTextInput = forwardRef<RichTextInputHandle, RichTextInputProps>
     const [contentLength, setContentLength] = useState(0);
     const [plainLength, setPlainLength] = useState(0);
     const [isReady, setIsReady] = useState(false);
+
+    // Mention state (user + channel). Refs are needed in Quill event handlers
+    // that close over the first render.
+    const [mentionActive, setMentionActive] = useState(false);
+    const [mentionIndex, setMentionIndex] = useState(0);
+    const [mentionPos, setMentionPos] = useState({ top: 0, left: 0 });
+    const mentionStartRef = useRef<number | null>(null);
+    const mentionActiveRef = useRef(false);
+    mentionActiveRef.current = mentionActive;
+    const mentionSelectTriggerRef = useRef<(() => void) | null>(null);
+
+    const [channelActive, setChannelActive] = useState(false);
+    const [channelIndex, setChannelIndex] = useState(0);
+    const [channelPos, setChannelPos] = useState({ top: 0, left: 0 });
+    const channelStartRef = useRef<number | null>(null);
+    const channelActiveRef = useRef(false);
+    channelActiveRef.current = channelActive;
+    const channelSelectTriggerRef = useRef<(() => void) | null>(null);
+
+    const onMentionSearchRef = useRef(props.onMentionSearch);
+    onMentionSearchRef.current = props.onMentionSearch;
+    const onChannelSearchRef = useRef(props.onChannelSearch);
+    onChannelSearchRef.current = props.onChannelSearch;
 
     const hasReadyAttachments = attachments.some((a) => a.status === 'ready');
     const hasUploadingAttachments = attachments.some(
@@ -391,6 +417,7 @@ export const RichTextInput = forwardRef<RichTextInputHandle, RichTextInputProps>
             true,
           );
         }
+        registerMentionBlots(Quill);
 
         const editorDiv = document.createElement('div');
         containerRef.current.appendChild(editorDiv);
@@ -402,6 +429,10 @@ export const RichTextInput = forwardRef<RichTextInputHandle, RichTextInputProps>
             bindings: createKeyboardBindings({
               quill: lazyRef,
               onSubmit: () => handleSendRef.current(),
+              mentionActive: mentionActiveRef,
+              mentionSelect: mentionSelectTriggerRef,
+              channelMentionActive: channelActiveRef,
+              channelSelect: channelSelectTriggerRef,
             }),
           },
         };
@@ -420,6 +451,8 @@ export const RichTextInput = forwardRef<RichTextInputHandle, RichTextInputProps>
             'blockquote',
             'code-block',
             'code',
+            MENTION_BLOT,
+            CHANNEL_MENTION_BLOT,
           ],
           modules,
         });
@@ -526,7 +559,130 @@ export const RichTextInput = forwardRef<RichTextInputHandle, RichTextInputProps>
               }
             }
           }
+
+          // Mention / channel detection — deferred so Quill's selection is
+          // synced. Runs after auto-format logic above so the cursor position
+          // is accurate.
+          Promise.resolve().then(() => {
+            const s = quill.getSelection();
+            const cursorPos = s ? s.index : quill.getLength() - 1;
+            const fullText = quill.getText(0, cursorPos);
+
+            // @user detection
+            const atIdx = fullText.lastIndexOf('@');
+            if (atIdx >= 0) {
+              const beforeAt = atIdx > 0 ? fullText[atIdx - 1] : ' ';
+              const query = fullText.slice(atIdx + 1).replace(/\n$/, '');
+              if (
+                (beforeAt === ' ' || beforeAt === '\n' || atIdx === 0) &&
+                (query === '' || !/\s/.test(query))
+              ) {
+                mentionStartRef.current = atIdx;
+                setMentionActive(true);
+                setMentionIndex(0);
+                onMentionSearchRef.current?.(query);
+                const bounds = quill.getBounds(atIdx);
+                if (bounds) {
+                  const editorRect = quill.root.getBoundingClientRect();
+                  const containerRect = quill.root
+                    .closest('.sm-rich-editor')
+                    ?.getBoundingClientRect();
+                  if (containerRect) {
+                    setMentionPos({
+                      top: editorRect.top + bounds.top - containerRect.top,
+                      left: editorRect.left + bounds.left - containerRect.left,
+                    });
+                  }
+                }
+                return;
+              }
+            }
+            if (mentionStartRef.current !== null) {
+              mentionStartRef.current = null;
+              setMentionActive(false);
+            }
+
+            // #channel detection
+            const hashIdx = fullText.lastIndexOf('#');
+            if (hashIdx >= 0) {
+              const beforeHash = hashIdx > 0 ? fullText[hashIdx - 1] : ' ';
+              const cQuery = fullText.slice(hashIdx + 1).replace(/\n$/, '');
+              if (
+                (beforeHash === ' ' || beforeHash === '\n' || hashIdx === 0) &&
+                (cQuery === '' || !/\s/.test(cQuery))
+              ) {
+                channelStartRef.current = hashIdx;
+                setChannelActive(true);
+                setChannelIndex(0);
+                onChannelSearchRef.current?.(cQuery);
+                const bounds = quill.getBounds(hashIdx);
+                if (bounds) {
+                  const editorRect = quill.root.getBoundingClientRect();
+                  const containerRect = quill.root
+                    .closest('.sm-rich-editor')
+                    ?.getBoundingClientRect();
+                  if (containerRect) {
+                    setChannelPos({
+                      top: editorRect.top + bounds.top - containerRect.top,
+                      left: editorRect.left + bounds.left - containerRect.left,
+                    });
+                  }
+                }
+                return;
+              }
+            }
+            if (channelStartRef.current !== null) {
+              channelStartRef.current = null;
+              setChannelActive(false);
+            }
+          });
         });
+
+        // Mention / channel keyboard navigation. We add a keydown listener on
+        // Quill's root so we can preempt its own Enter handling — `capture:
+        // true` + `stopPropagation()` keeps the keyboard binding from firing
+        // when a menu is active.
+        quill.root.addEventListener(
+          'keydown',
+          (e: KeyboardEvent) => {
+            if (channelActiveRef.current && channelStartRef.current !== null) {
+              if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                setChannelIndex((p) => p + 1);
+              } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                setChannelIndex((p) => Math.max(0, p - 1));
+              } else if (e.key === 'Enter' || e.key === 'Tab') {
+                e.preventDefault();
+                e.stopPropagation();
+                channelSelectTriggerRef.current?.();
+              } else if (e.key === 'Escape') {
+                e.preventDefault();
+                channelStartRef.current = null;
+                setChannelActive(false);
+              }
+              return;
+            }
+            if (mentionActiveRef.current && mentionStartRef.current !== null) {
+              if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                setMentionIndex((p) => p + 1);
+              } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                setMentionIndex((p) => Math.max(0, p - 1));
+              } else if (e.key === 'Enter' || e.key === 'Tab') {
+                e.preventDefault();
+                e.stopPropagation();
+                mentionSelectTriggerRef.current?.();
+              } else if (e.key === 'Escape') {
+                e.preventDefault();
+                mentionStartRef.current = null;
+                setMentionActive(false);
+              }
+            }
+          },
+          true /* capture */,
+        );
 
         quill.on('selection-change', (range) => {
           if (range) {
@@ -757,6 +913,107 @@ export const RichTextInput = forwardRef<RichTextInputHandle, RichTextInputProps>
     );
 
     /* --------------------------------------------------------------------- */
+    /* Mention selection                                                      */
+    /* --------------------------------------------------------------------- */
+
+    const mentionUsers = props.mentionUsers ?? [];
+    const channelResults = props.channelResults ?? [];
+    const mentionClampedIndex = Math.min(
+      mentionIndex,
+      Math.max(0, mentionUsers.length - 1),
+    );
+    const channelClampedIndex = Math.min(
+      channelIndex,
+      Math.max(0, channelResults.length - 1),
+    );
+
+    const handleMentionSelect = useCallback((user: MentionUser) => {
+      const q = quillRef.current;
+      const start = mentionStartRef.current;
+      if (!q || start === null) return;
+      const sel = q.getSelection();
+      const cursorPos = sel ? sel.index : q.getLength();
+      const deleteLen = cursorPos - start;
+      const name =
+        user.display_name || user.email || user.id.slice(0, 8);
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      q.deleteText(start, deleteLen, 'user' as any);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      q.insertEmbed(start, MENTION_BLOT, { userId: user.id, name }, 'user' as any);
+      // Insert a trailing space so the user can keep typing naturally.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      q.insertText(start + 1, ' ', 'user' as any);
+      q.setSelection(start + 2, 0);
+
+      mentionStartRef.current = null;
+      setMentionActive(false);
+    }, []);
+
+    const handleChannelSelect = useCallback((ch: ChannelMentionItem) => {
+      const q = quillRef.current;
+      const start = channelStartRef.current;
+      if (!q || start === null) return;
+      const sel = q.getSelection();
+      const cursorPos = sel ? sel.index : q.getLength();
+      const deleteLen = cursorPos - start;
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      q.deleteText(start, deleteLen, 'user' as any);
+      q.insertEmbed(
+        start,
+        CHANNEL_MENTION_BLOT,
+        { channelId: ch.id, name: ch.name },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        'user' as any,
+      );
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      q.insertText(start + 1, ' ', 'user' as any);
+      q.setSelection(start + 2, 0);
+
+      channelStartRef.current = null;
+      setChannelActive(false);
+    }, []);
+
+    // Publish the select handlers via refs so the keydown listener
+    // registered once during init can call the latest closure.
+    mentionSelectTriggerRef.current = () => {
+      if (mentionUsers.length > 0 && mentionClampedIndex >= 0) {
+        handleMentionSelect(mentionUsers[mentionClampedIndex]);
+      }
+    };
+    channelSelectTriggerRef.current = () => {
+      if (channelResults.length > 0 && channelClampedIndex >= 0) {
+        handleChannelSelect(channelResults[channelClampedIndex]);
+      }
+    };
+
+    // Close menus on click outside the editor.
+    useEffect(() => {
+      if (!mentionActive && !channelActive) return;
+      function handleClickOutside(e: MouseEvent) {
+        const target = e.target as Node;
+        const inEditor = containerRef.current?.contains(target);
+        const inMenu =
+          document
+            .querySelector('.sm-mention-menu, .sm-channel-mention-menu')
+            ?.contains(target) ?? false;
+        if (!inEditor && !inMenu) {
+          if (mentionActive) {
+            mentionStartRef.current = null;
+            setMentionActive(false);
+          }
+          if (channelActive) {
+            channelStartRef.current = null;
+            setChannelActive(false);
+          }
+        }
+      }
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [mentionActive, channelActive]);
+
+    /* --------------------------------------------------------------------- */
     /* Render                                                                 */
     /* --------------------------------------------------------------------- */
 
@@ -925,31 +1182,37 @@ export const RichTextInput = forwardRef<RichTextInputHandle, RichTextInputProps>
           )}
         </div>
 
-        {/* Props are accepted for stable API; the visible dropdown UI lands
-            in Phase C — but keeping the refs live here means the detection
-            logic doesn't have to change when menus are added. */}
-        <MentionDataSink
-          onMentionSearch={props.onMentionSearch}
-          mentionUsers={props.mentionUsers}
-          onChannelSearch={props.onChannelSearch}
-          channelResults={props.channelResults}
-        />
+        {mentionActive && mentionUsers.length > 0 && (
+          <MentionMenu
+            users={mentionUsers}
+            selectedIndex={mentionClampedIndex}
+            position={mentionPos}
+            onSelect={handleMentionSelect}
+            onHover={(i) => setMentionIndex(i)}
+            onClose={() => {
+              mentionStartRef.current = null;
+              setMentionActive(false);
+            }}
+          />
+        )}
+
+        {channelActive && channelResults.length > 0 && (
+          <ChannelMentionMenu
+            channels={channelResults}
+            selectedIndex={channelClampedIndex}
+            position={channelPos}
+            onSelect={handleChannelSelect}
+            onHover={(i) => setChannelIndex(i)}
+            onClose={() => {
+              channelStartRef.current = null;
+              setChannelActive(false);
+            }}
+          />
+        )}
       </div>
     );
   },
 );
-
-// A no-op receiver for mention props so TS doesn't drop them from the surface
-// in Phase B. Keeps the contract forward-compatible with Phase C without any
-// runtime cost.
-function MentionDataSink(_props: {
-  onMentionSearch?: (query: string) => void;
-  mentionUsers?: MentionUser[];
-  onChannelSearch?: (query: string) => void;
-  channelResults?: ChannelMentionItem[];
-}): null {
-  return null;
-}
 
 function escapeHtml(value: string): string {
   return value
