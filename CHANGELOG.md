@@ -1,5 +1,37 @@
 # Changelog
 
+## 0.0.33 — 2026-04-14
+
+**Added: `@` user mentions and `#` channel mentions in `RichTextInput`.**
+
+Typing `@` (or `#`) after whitespace / at the start of a line fires the host's `onMentionSearch(query)` (or `onChannelSearch(query)`). As the host populates `mentionUsers` / `channelResults`, a dropdown renders above the cursor with keyboard navigation (ArrowUp/Down, Enter/Tab to select, Escape to dismiss). Selecting inserts a custom Quill embed that serializes as the exact markup the backend `HtmlAllowlistSanitizer` allows:
+
+```
+<span class="sm-mention" data-sm-user-id="uuid">@DisplayName</span>
+<span class="sm-channel-mention" data-sm-channel-id="uuid">#name</span>
+```
+
+- New exports from `@scalemule/chat/editor`: `MentionMenu`, `ChannelMentionMenu`, `MentionMenuProps`, `ChannelMentionMenuProps`.
+- New `blots.ts` with `registerMentionBlots(Quill)` — atomic `Embed` subclasses so mentions behave as single tokens (cursor can't land inside, Backspace deletes the whole thing).
+- Detection logic in `RichTextInput` runs after every `text-change` (deferred microtask so Quill's selection is synced); dropdown position uses Quill's `getBounds()` relative to `.sm-rich-editor`.
+- Outside-click dismisses the menu; existing keyboard bindings preempt Enter when a menu is active.
+- `Toolbar`, keyboard bindings, and theme `--sm-*` tokens used for menu styling — no new host dependencies.
+
+**Bundle:** `editor.js` grew 39.75 KB → 55.66 KB (budget 90 KB) for the two menu components + blot registration.
+
+**Host wiring** (typical):
+
+```tsx
+<ChatThread
+  editor="rich"
+  onMentionSearch={(q) => dispatch(fetchUsers(q))}
+  mentionUsers={users}
+  onChannelSearch={(q) => dispatch(fetchChannels(q))}
+  channelResults={channels}
+  /* ... */
+/>
+```
+
 ## 0.0.32 — 2026-04-14
 
 **Added: `@scalemule/chat/editor` entry — Quill-backed `RichTextInput` for rich-text chat composers.**
