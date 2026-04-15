@@ -5,6 +5,7 @@ import { HttpTransport } from '../transport/HttpTransport';
 import { WebSocketTransport } from '../transport/WebSocketTransport';
 import { DEFAULT_API_BASE_URL } from '../constants';
 import { uploadToPresignedUrl } from '../shared/upload';
+import { readJson, writeJson } from '../shared/safeStorage';
 import type {
   Attachment,
   ApiResponse,
@@ -46,12 +47,19 @@ export class ChatClient extends EventEmitter<ChatEventMap> {
   private conversationSubs = new Map<string, () => void>();
   private conversationTypes = new Map<string, Conversation['conversation_type']>();
   private currentUserId?: string;
+  private applicationId?: string;
+  private presenceConversations = new Set<string>();
+  private selfStatus: 'active' | 'away' = 'active';
 
   constructor(config: ChatConfig) {
     super();
 
     const baseUrl = config.apiBaseUrl ?? DEFAULT_API_BASE_URL;
     this.currentUserId = config.userId;
+    this.applicationId = config.applicationId;
+    // Seed self-status from storage so a reload preserves the user's
+    // last explicit choice. Silent fallback on SSR / blocked storage.
+    this.selfStatus = readSelfStatus(this.applicationId, this.currentUserId);
 
     this.http = new HttpTransport({
       baseUrl,
@@ -103,6 +111,16 @@ export class ChatClient extends EventEmitter<ChatEventMap> {
     this.ws.on('presence:join', ({ channel, user }) => {
       const conversationId = channel.replace(/^conversation:(?:lr:|bc:|support:)?/, '');
       this.emit('presence:join', { userId: user.user_id, conversationId, userData: user.user_data });
+      // When our own user's presence resumes (initial join OR resubscribe
+      // after a reconnect), re-assert the cached self-status so remote
+      // observers see the right dot without a manual toggle.
+      if (
+        this.currentUserId &&
+        user.user_id === this.currentUserId &&
+        this.selfStatus === 'away'
+      ) {
+        this.updatePresence(conversationId, 'away');
+      }
     });
 
     this.ws.on('presence:leave', ({ channel, userId }) => {
@@ -423,11 +441,13 @@ export class ChatClient extends EventEmitter<ChatEventMap> {
 
   joinPresence(conversationId: string, userData?: unknown): void {
     const channel = this.channelName(conversationId);
+    this.presenceConversations.add(conversationId);
     this.ws.joinPresence(channel, userData);
   }
 
   leavePresence(conversationId: string): void {
     const channel = this.channelName(conversationId);
+    this.presenceConversations.delete(conversationId);
     this.ws.leavePresence(channel);
   }
 
@@ -435,6 +455,41 @@ export class ChatClient extends EventEmitter<ChatEventMap> {
   updatePresence(conversationId: string, status: 'online' | 'away' | 'dnd', userData?: unknown): void {
     const channel = this.channelName(conversationId);
     this.ws.send({ type: 'presence_update', channel, status, user_data: userData });
+  }
+
+  /**
+   * Read the current self-status. Seeded from `localStorage` on
+   * construction (per-user scoped key); defaults to `'active'`.
+   */
+  getStatus(): 'active' | 'away' {
+    return this.selfStatus;
+  }
+
+  /**
+   * Set the current self-status. Persists to `localStorage`, emits the
+   * internal `status:changed` event, and broadcasts `updatePresence`
+   * (`online` | `away`) to every conversation where presence has been
+   * joined via `joinPresence`. Safe to call before any presence join —
+   * the status is cached and re-applied automatically when a
+   * conversation's presence resumes (see the `presence:join` wiring in
+   * the constructor).
+   *
+   * **Does not touch the WebSocket ping keepalive.** The "away =
+   * suppress heartbeat" model was considered and rejected (the
+   * keepalive is a transport-layer concern; pausing it would make the
+   * connection stale and trigger reconnects). Away is purely a
+   * presence-level annotation — the server broadcasts the new status
+   * to other users who receive the amber dot via `presence:update`.
+   */
+  setStatus(status: 'active' | 'away'): void {
+    if (this.selfStatus === status) return;
+    this.selfStatus = status;
+    writeSelfStatus(this.applicationId, this.currentUserId, status);
+    this.emit('status:changed', { status });
+    const presenceStatus = status === 'active' ? 'online' : 'away';
+    for (const conversationId of this.presenceConversations) {
+      this.updatePresence(conversationId, presenceStatus);
+    }
   }
 
   // ============ Channel Types ============
@@ -969,4 +1024,44 @@ export class ChatClient extends EventEmitter<ChatEventMap> {
       });
     }
   }
+}
+
+// ============ Self-status persistence ============
+//
+// Scoped per `applicationId` + `userId` so multi-tenant hosts don't
+// cross-leak status between users on the same browser profile. Keys
+// that can't be scoped (e.g. SSR or before auth resolves) degrade to a
+// non-persistent default; `safeStorage` already handles storage-blocked
+// environments silently.
+
+const SELF_STATUS_KEY_PREFIX = 'sm-chat-self-status-v1';
+
+function statusKey(applicationId?: string, userId?: string): string | null {
+  if (!applicationId || !userId) return null;
+  return `${SELF_STATUS_KEY_PREFIX}:${applicationId}:${userId}`;
+}
+
+function readSelfStatus(
+  applicationId?: string,
+  userId?: string,
+): 'active' | 'away' {
+  const key = statusKey(applicationId, userId);
+  if (!key) return 'active';
+  const raw = readJson<{ status?: 'active' | 'away' } | 'active' | 'away'>(key);
+  if (!raw) return 'active';
+  if (raw === 'active' || raw === 'away') return raw;
+  if (typeof raw === 'object' && (raw.status === 'active' || raw.status === 'away')) {
+    return raw.status;
+  }
+  return 'active';
+}
+
+function writeSelfStatus(
+  applicationId: string | undefined,
+  userId: string | undefined,
+  status: 'active' | 'away',
+): void {
+  const key = statusKey(applicationId, userId);
+  if (!key) return;
+  writeJson(key, status);
 }
