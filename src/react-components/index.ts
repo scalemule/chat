@@ -21,6 +21,8 @@ export type { UserProfile } from './ChatMessageItem';
 export { ChatMessageList } from './ChatMessageList';
 export { ChatThread } from './ChatThread';
 export { ConversationList } from './ConversationList';
+export { OfflineBanner } from './OfflineBanner';
+export type { OfflineBannerProps } from './OfflineBanner';
 export {
   defaultFormatSystemMessage,
   parseSystemMessage,

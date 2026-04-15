@@ -8,7 +8,7 @@ import React, {
   useRef,
 } from 'react';
 
-import { useChat, useChatClient, useTyping, usePresence } from '../react';
+import { useChat, useChatClient, useConnectionStatus, useTyping, usePresence } from '../react';
 import type { Attachment, ApiResponse } from '../types';
 import { ChatInput } from './ChatInput';
 import { ChatMessageList } from './ChatMessageList';
@@ -133,6 +133,14 @@ interface ChatThreadProps {
    * border via the `sm-message-highlighted` class. Forwarded.
    */
   highlightMessageId?: string;
+  /**
+   * When true, the composer (plain or rich) is disabled while the
+   * WebSocket is not connected. Default `false` for back-compat. Pair
+   * with `<OfflineBanner>` for visible feedback. Combines with the
+   * composer's existing `disabled` state — never overrides a host's
+   * own disable.
+   */
+  disableWhenOffline?: boolean;
 }
 
 function inferMessageType(content: string, attachments: Attachment[]): 'text' | 'image' | 'file' {
@@ -175,6 +183,7 @@ export function ChatThread({
   linkifyPlainText,
   renderEmbeds,
   highlightMessageId,
+  disableWhenOffline = false,
 }: ChatThreadProps): React.JSX.Element {
   const [sendError, setSendError] = useState<string | null>(null);
   const sendErrorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -190,6 +199,8 @@ export function ChatThread({
   }, [sendError]);
 
   const client = useChatClient();
+  const { isOnline } = useConnectionStatus();
+  const composerDisabled = disableWhenOffline && !isOnline;
   const resolvedUserId = currentUserId ?? client.userId;
   const {
     messages,
@@ -422,6 +433,7 @@ export function ChatThread({
             enableMarkdownShortcuts={enableMarkdownShortcuts}
             enableEmoticonReplace={enableEmoticonReplace}
             enableAutoLink={enableAutoLink}
+            disabled={composerDisabled}
           />
         </Suspense>
       ) : (
@@ -448,6 +460,7 @@ export function ChatThread({
           enableSnippetPromote={enableSnippetPromote}
           snippetFilename={snippetFilename}
           placeholder={placeholder}
+          disabled={composerDisabled}
         />
       )}
     </div>
