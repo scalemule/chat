@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.0.59 — 2026-04-15
+
+**Added: locale-aware typing indicator + below-composer placement.**
+
+`<TypingIndicator>` gains a few knobs; `<ChatThread>` gains a position prop.
+
+- **Smart user-list formatting** — when multiple users are typing, the name list is built with `Intl.ListFormat` (conjunction, long) for correct localized separators. Graceful fallback to a manual "A, B, and C" join when `Intl.ListFormat` is unavailable. Examples (English locale):
+  - 1 user: `"Alice is typing..."`
+  - 2 users: `"Alice and Bob are typing..."`
+  - 3 users (default `maxNames=3`): `"Alice, Bob, and Carol are typing..."`
+  - 4+ users: `"Alice, Bob, Carol, and N others are typing..."` (singular "other" at N=1).
+  - `isLargeRoom=true` still collapses to `"N people typing..."` unchanged.
+
+- **New `<TypingIndicator>` props:**
+  - `locale?: string` — BCP-47 tag for `Intl.ListFormat`.
+  - `formatTyping?: (names: string[]) => string` — full sentence override for i18n ("Alice et Bob sont en train d'écrire...") or custom phrasing. Receives the already-truncated name list (with an "N others" suffix entry when applicable).
+  - `alwaysReserveHeight?: boolean` — default `false` (back-compat: returns `null` when empty). Set `true` to reserve layout height so surrounding chrome doesn't jump as the indicator appears/disappears.
+
+- **New `<ChatThread>` props:**
+  - `typingIndicatorPosition?: 'above-composer' | 'below-composer' | 'none'` — default `'above-composer'` (back-compat). `'below-composer'` matches the common "typing text under the input" pattern and automatically uses `alwaysReserveHeight` so the composer doesn't jump. `'none'` suppresses entirely so hosts can render their own.
+  - `typingIndicatorLocale?: string` — forwarded.
+  - `formatTyping?: (names: string[]) => string` — forwarded.
+
+**Breaking behavior inside the default:** when `typingUsers.length > maxNames` (default 3), the text now collapses **only the overflow** into "and N others" rather than replacing the whole list with "N people typing...". Hosts wanting the old count-only phrasing should pass `formatTyping` or `isLargeRoom`.
+
+**CSS hook** `.sm-typing-indicator`; tokens `--sm-typing-indicator-color`, `--sm-typing-indicator-font-size`.
+
+**Bundle:** `react.js` 236.91K → 238.86K within 239.26K budget (tight; may bump in the next release if features stack).
+
 ## 0.0.58 — 2026-04-15
 
 **Added: offline banner + composer disable on disconnect.**

@@ -141,6 +141,20 @@ interface ChatThreadProps {
    * own disable.
    */
   disableWhenOffline?: boolean;
+  /**
+   * Where to render the built-in `<TypingIndicator>`.
+   *   - `"above-composer"` (default, back-compat) — between the message
+   *     list and the composer.
+   *   - `"below-composer"` — after the composer, matching the common
+   *     "typing text sits under the input" pattern.
+   *   - `"none"` — suppress entirely so hosts can render their own
+   *     indicator wherever they want.
+   */
+  typingIndicatorPosition?: 'above-composer' | 'below-composer' | 'none';
+  /** BCP-47 locale for the typing indicator's `Intl.ListFormat`. */
+  typingIndicatorLocale?: string;
+  /** Full sentence override for the typing indicator; see `<TypingIndicator>`. */
+  formatTyping?: (names: string[]) => string;
 }
 
 function inferMessageType(content: string, attachments: Attachment[]): 'text' | 'image' | 'file' {
@@ -184,6 +198,9 @@ export function ChatThread({
   renderEmbeds,
   highlightMessageId,
   disableWhenOffline = false,
+  typingIndicatorPosition = 'above-composer',
+  typingIndicatorLocale,
+  formatTyping,
 }: ChatThreadProps): React.JSX.Element {
   const [sendError, setSendError] = useState<string | null>(null);
   const sendErrorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -363,10 +380,14 @@ export function ChatThread({
         highlightMessageId={highlightMessageId}
       />
 
-      <TypingIndicator
-        typingUsers={otherTypingUsers}
-        resolveUserName={(userId) => profiles?.get(userId)?.display_name ?? 'Someone'}
-      />
+      {typingIndicatorPosition === 'above-composer' && (
+        <TypingIndicator
+          typingUsers={otherTypingUsers}
+          resolveUserName={(userId) => profiles?.get(userId)?.display_name ?? 'Someone'}
+          locale={typingIndicatorLocale}
+          formatTyping={formatTyping}
+        />
+      )}
 
       {sendError && (
         <div
@@ -461,6 +482,16 @@ export function ChatThread({
           snippetFilename={snippetFilename}
           placeholder={placeholder}
           disabled={composerDisabled}
+        />
+      )}
+
+      {typingIndicatorPosition === 'below-composer' && (
+        <TypingIndicator
+          typingUsers={otherTypingUsers}
+          resolveUserName={(userId) => profiles?.get(userId)?.display_name ?? 'Someone'}
+          locale={typingIndicatorLocale}
+          formatTyping={formatTyping}
+          alwaysReserveHeight
         />
       )}
     </div>
