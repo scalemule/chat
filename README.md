@@ -64,6 +64,20 @@ import { ChatThread } from '@scalemule/chat/react'
 <ChatThread conversationId="conv-uuid" currentUserId="user-uuid" />
 ```
 
+### Date separators
+
+By default, the message list renders separators as **Today / Yesterday / weekday name (last 6 days) / Apr 4 / Apr 4, 2025**.
+
+Three knobs are available on both `<ChatThread>` and `<ChatMessageList>`:
+
+| Prop | Purpose |
+| --- | --- |
+| `formatDateLabel(iso)` | Replace the default formatter entirely. |
+| `dateLabelLocale` | BCP-47 locale (e.g. `'en-GB'`, `'de-DE'`). |
+| `dateLabelTimeZone` | IANA zone (e.g. `'America/New_York'`). |
+
+**SSR hosts should pass `dateLabelTimeZone`** (or `formatDateLabel`) so the server and client agree on the day boundary — otherwise "Today" vs "Yesterday" can flip during hydration around midnight.
+
 ---
 
 ## Quick start — named channels

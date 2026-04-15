@@ -90,6 +90,17 @@ interface ChatThreadProps {
   enableMarkdownShortcuts?: boolean;
   enableEmoticonReplace?: boolean;
   enableAutoLink?: boolean;
+  /**
+   * Override the date-separator label. See `ChatMessageList.formatDateLabel`.
+   */
+  formatDateLabel?: (iso: string) => string;
+  /** BCP-47 locale for the default date-label formatter. */
+  dateLabelLocale?: string;
+  /**
+   * IANA time-zone for the default date-label formatter. Recommended for SSR
+   * to avoid Today/Yesterday hydration mismatches.
+   */
+  dateLabelTimeZone?: string;
 }
 
 function inferMessageType(content: string, attachments: Attachment[]): 'text' | 'image' | 'file' {
@@ -123,6 +134,9 @@ export function ChatThread({
   enableMarkdownShortcuts,
   enableEmoticonReplace,
   enableAutoLink,
+  formatDateLabel,
+  dateLabelLocale,
+  dateLabelTimeZone,
 }: ChatThreadProps): React.JSX.Element {
   const [sendError, setSendError] = useState<string | null>(null);
   const sendErrorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -289,6 +303,9 @@ export function ChatThread({
         unreadSince={ownReadStatus}
         onReachBottom={() => void markRead()}
         emptyState={isLoading ? 'Loading messages...' : 'Start the conversation'}
+        formatDateLabel={formatDateLabel}
+        dateLabelLocale={dateLabelLocale}
+        dateLabelTimeZone={dateLabelTimeZone}
       />
 
       <TypingIndicator

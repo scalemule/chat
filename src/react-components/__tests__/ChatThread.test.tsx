@@ -89,4 +89,14 @@ describe('ChatThread', () => {
     // ChatMessageList + ChatMessageItem tests.
     expect(document.body.textContent).toBeDefined();
   });
+
+  it('forwards formatDateLabel through to the message list separator', () => {
+    const { container } = render(
+      <ChatThread
+        conversationId="conv-1"
+        formatDateLabel={() => 'STUB-LABEL'}
+      />,
+    );
+    expect(container.textContent).toContain('STUB-LABEL');
+  });
 });

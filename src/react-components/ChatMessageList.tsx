@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 
 import type { Attachment, ApiResponse, ChatMessage } from '../types';
 import { ChatMessageItem } from './ChatMessageItem';
+import { defaultFormatDateLabel, isSameCalendarDay } from './dateLabel';
 
 interface UserProfile {
   display_name: string;
@@ -53,8 +54,31 @@ interface ChatMessageListProps {
       profile: UserProfile | undefined;
       currentUserId: string | undefined;
       conversationId: string | undefined;
+      /** True when this message starts a new calendar-day group. */
+      showDateSeparator: boolean;
+      /** Resolved date label for the separator above this message. `null`
+       *  when `showDateSeparator` is false. */
+      dateLabel: string | null;
     },
   ) => React.ReactNode;
+  /**
+   * Override the date-separator label. Receives the message's ISO timestamp
+   * and the resolved options (locale, timeZone). Default is
+   * `defaultFormatDateLabel`, which renders Today / Yesterday / weekday name
+   * (last 6 days) / "Apr 4" / "Apr 4, 2025".
+   *
+   * SSR hosts: pass either this prop or `dateLabelTimeZone` to keep the
+   * server's "Today" boundary in sync with the client's.
+   */
+  formatDateLabel?: (iso: string) => string;
+  /** BCP-47 locale for the default date-label formatter. */
+  dateLabelLocale?: string;
+  /**
+   * IANA time-zone for the default date-label formatter. Recommended for SSR
+   * to avoid Today/Yesterday hydration mismatches when server and client
+   * disagree on the local date.
+   */
+  dateLabelTimeZone?: string;
   /**
    * Forwarded to the default `ChatMessageItem` for per-attachment custom
    * rendering (e.g. click-to-expand image lightbox, branded video player).
@@ -89,29 +113,6 @@ interface ChatMessageListProps {
   accept?: string;
 }
 
-function getDateLabel(dateStr: string): string {
-  const date = new Date(dateStr);
-  const now = new Date();
-  const dateDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const diffDays = Math.round(
-    (today.getTime() - dateDay.getTime()) / (1000 * 60 * 60 * 24),
-  );
-
-  if (diffDays === 0) return 'Today';
-  if (diffDays === 1) return 'Yesterday';
-  return date.toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    year:
-      date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
-  });
-}
-
-function isSameDay(a: string, b: string): boolean {
-  return new Date(a).toDateString() === new Date(b).toDateString();
-}
-
 export function ChatMessageList({
   messages,
   currentUserId,
@@ -142,7 +143,29 @@ export function ChatMessageList({
   onValidateFile,
   maxAttachments,
   accept,
+  formatDateLabel,
+  dateLabelLocale,
+  dateLabelTimeZone,
 }: ChatMessageListProps): React.JSX.Element {
+  const resolveDateLabel = useCallback(
+    (iso: string) =>
+      formatDateLabel
+        ? formatDateLabel(iso)
+        : defaultFormatDateLabel(iso, {
+            locale: dateLabelLocale,
+            timeZone: dateLabelTimeZone,
+          }),
+    [formatDateLabel, dateLabelLocale, dateLabelTimeZone],
+  );
+  const sameDay = useCallback(
+    (a: string, b: string) =>
+      isSameCalendarDay(a, b, {
+        locale: dateLabelLocale,
+        timeZone: dateLabelTimeZone,
+      }),
+    [dateLabelLocale, dateLabelTimeZone],
+  );
+
   const containerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const unreadDividerRef = useRef<HTMLDivElement>(null);
@@ -342,7 +365,10 @@ export function ChatMessageList({
         {messages.map((msg, i) => {
           const prevMsg = i > 0 ? messages[i - 1] : null;
           const showDateSeparator =
-            !prevMsg || !isSameDay(msg.created_at, prevMsg.created_at);
+            !prevMsg || !sameDay(msg.created_at, prevMsg.created_at);
+          const dateLabel = showDateSeparator
+            ? resolveDateLabel(msg.created_at)
+            : null;
           const showUnreadDivider = resolvedFirstUnreadId === msg.id;
           const isHighlighted = highlightMessageId === msg.id;
           const isOwn = msg.sender_id === currentUserId;
@@ -415,7 +441,7 @@ export function ChatMessageList({
                       fontWeight: 500,
                     }}
                   >
-                    {getDateLabel(msg.created_at)}
+                    {dateLabel}
                   </span>
                   <div
                     style={{
@@ -434,6 +460,8 @@ export function ChatMessageList({
                     profile: profiles?.get(msg.sender_id),
                     currentUserId,
                     conversationId,
+                    showDateSeparator,
+                    dateLabel,
                   })
                 ) : (
                   <ChatMessageItem
