@@ -50,7 +50,16 @@ interface ChatMessageListProps {
     message: ChatMessage,
     context: {
       isOwnMessage: boolean;
+      /**
+       * Union of `isSearchHit || isUnreadStart`. Kept for backwards
+       * compatibility with renderers written before 0.0.45 — new code
+       * should branch on the split flags below.
+       */
       highlight: boolean;
+      /** True when `highlightMessageId === message.id` (jump-to target). */
+      isSearchHit: boolean;
+      /** True when this message is the first unread message in the thread. */
+      isUnreadStart: boolean;
       profile: UserProfile | undefined;
       currentUserId: string | undefined;
       conversationId: string | undefined;
@@ -505,6 +514,8 @@ export function ChatMessageList({
                   renderMessage(msg, {
                     isOwnMessage: isOwn,
                     highlight: showUnreadDivider || isHighlighted,
+                    isSearchHit: isHighlighted,
+                    isUnreadStart: showUnreadDivider,
                     profile: profiles?.get(msg.sender_id),
                     currentUserId,
                     conversationId,
@@ -530,7 +541,8 @@ export function ChatMessageList({
                     maxAttachments={maxAttachments}
                     accept={accept}
                     isOwnMessage={isOwn}
-                    highlight={showUnreadDivider || isHighlighted}
+                    isSearchHit={isHighlighted}
+                    isUnreadStart={showUnreadDivider}
                     isGrouped={isGrouped}
                     onMentionClick={onMentionClick}
                     onChannelMentionClick={onChannelMentionClick}

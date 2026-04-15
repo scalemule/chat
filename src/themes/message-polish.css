@@ -17,6 +17,38 @@
    * style on the wrapper. The class is a stable hook for host CSS. */
 }
 
+/* Search-hit highlight — applied when the user jumps to a message via
+ * `ChatMessageList.highlightMessageId` (e.g. from search results). The
+ * left border stays for the full animation duration; the background fades
+ * back to transparent. CSS-only — no JS timer needed.
+ *
+ * Tokens:
+ *   --sm-highlight-bg     (default soft amber so the hit reads as "search",
+ *                          not "selected" — distinct from the unread color)
+ *   --sm-highlight-border (default --sm-primary)
+ */
+@keyframes sm-search-highlight-fade {
+  0%   { background-color: var(--sm-highlight-bg, rgba(251, 191, 36, 0.22)); }
+  100% { background-color: transparent; }
+}
+
+.sm-message-highlighted {
+  position: relative;
+  animation: sm-search-highlight-fade 2s ease-out forwards;
+  border-left: 3px solid
+    var(--sm-highlight-border, var(--sm-primary, #2563eb));
+}
+
+/* First-unread emphasis — replaces the prior inline boxShadow on the bubble
+ * so the unread divider's "look here" cue extends to the bubble itself
+ * without the louder fade animation reserved for search hits.
+ */
+.sm-message-unread-start {
+  position: relative;
+  box-shadow: inset 3px 0 0
+    var(--sm-unread-divider-color, rgba(37, 99, 235, 0.4));
+}
+
 /* Auto-detected URLs in plain-text messages.
  *
  * `ChatMessageItem` applies an inline color (own bubble: white-tinted; other:

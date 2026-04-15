@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.0.45 — 2026-04-15
+
+**Polished: scroll-to-message highlight; split from unread emphasis.**
+
+The "search hit" jump (via `highlightMessageId`) and the "first unread" emphasis are no longer collapsed into the same boxShadow. Each gets a distinct CSS class on the message wrapper and a distinct visual treatment:
+
+- `.sm-message-highlighted` — 2-second amber fade animation + 3px left border in `--sm-highlight-border` (default `--sm-primary`). Pure CSS keyframes, no JS timer. Reads as "search," not "selected."
+- `.sm-message-unread-start` — subtle inset 3px left line in `--sm-unread-divider-color`, distinct from the louder search-hit animation. Replaces the prior inline `boxShadow` on the bubble.
+
+New `ChatMessageItem` props:
+
+- `isSearchHit?: boolean` — set when the message is the search-jump target.
+- `isUnreadStart?: boolean` — set on the first unread message.
+
+New tokens:
+
+- `--sm-highlight-bg` (default soft amber `rgba(251, 191, 36, 0.22)`)
+- `--sm-highlight-border` (default `--sm-primary`)
+
+`ChatThread` now forwards `highlightMessageId` (was previously list-only — wiring search-result jumps from a host's higher-level container is now a one-prop add).
+
+`renderMessage` context gains `isSearchHit` and `isUnreadStart` alongside the existing `highlight` (kept as the union for backwards compat — still equals `isSearchHit || isUnreadStart`).
+
+The `highlight` prop on `ChatMessageItem` is `@deprecated` — when set without the new flags it still renders the search-hit class for the bridging window. Will be removed in 0.1.0.
+
+**Bundle:** `react.js` 174.42K within 175.78K budget. CSS animation lives in `themes/message-polish.css` so hosts importing the theme bundles get it automatically.
+
 ## 0.0.44 — 2026-04-15
 
 **Added: `@scalemule/chat/embeds` entry — YouTube rich-link embeds.**
