@@ -51,4 +51,7 @@ export const EMOTICON_MAP: ReadonlyArray<readonly [string, string]> = [
   ['D:', '😧'],
   ['T_T', '😭'],
   ['>.<', '😣'],
+  // Kiss / affection
+  [':-*', '😘'],
+  [':*', '😘'],
 ];
