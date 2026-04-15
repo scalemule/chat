@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.0.38 — 2026-04-14
+
+**Fixed: `VideoAttachmentPlayer` now plays non-HLS chat attachments.**
+
+Gallop's engine is HLS-only (hls.js or Safari native HLS). Chat attachments are almost always raw mp4/webm/mov files from S3 presigned URLs, which hls.js can't parse — the player mounted but the video never started, showing an infinite spinner under the Gallop chrome.
+
+Fix: `VideoAttachmentPlayer` now detects the source type. HLS sources (`.m3u8` URL or `application/vnd.apple.mpegurl` / `application/x-mpegurl` mime) render through `GallopPlayer` for adaptive bitrate + quality switcher. Raw file sources render native `<video controls>` inside the same rounded wrapper — same visual chrome, playback that works.
+
+`@scalemule/gallop/react` is now imported via `React.lazy` so hosts that never serve HLS attachments don't evaluate the module (and don't need `@scalemule/gallop` installed).
+
 ## 0.0.37 — 2026-04-14
 
 **Added: `@scalemule/chat/video` entry — Gallop-powered `VideoAttachmentPlayer`.**
