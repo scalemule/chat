@@ -244,6 +244,44 @@ CSS hooks: `.sm-conv-section`, `.sm-conv-section-{type}`, `.sm-conv-section-head
 
 `resolveConversationDisplayName`, `buildDefaultGroupName`, and `otherParticipantNames` are exported from `@scalemule/chat` (SSR-safe, React-free) for use in previews / notifications / system-message templates.
 
+### Cross-conversation search
+
+```tsx
+import { useConversations } from '@scalemule/chat/react'
+import { useGlobalSearch, SearchResultsPanel } from '@scalemule/chat/search'
+
+const { conversations } = useConversations()
+const [q, setQ] = useState('')
+const [open, setOpen] = useState(false)
+
+const { results, isLoading, progress, errors } = useGlobalSearch(q, {
+  conversations,    // REQUIRED — hook does not fetch the list itself
+})
+
+<SearchResultsPanel
+  open={open}
+  onClose={() => setOpen(false)}
+  results={results}
+  isLoading={isLoading}
+  progress={progress}
+  errors={errors}
+  profiles={profilesByUserId}
+  onSelect={(result) => {
+    // Router-agnostic — host navigates and hands the message id to
+    // <ChatThread highlightMessageId> (shipped in 0.0.45) for the
+    // scroll-and-highlight polish.
+    router.push(
+      `/messages/${result.conversationId}?highlight=${result.message.id}`,
+    )
+    setOpen(false)
+  }}
+/>
+```
+
+`useGlobalSearch` fans out `searchMessages` calls with a default concurrency of 6 and a 300ms debounce. Results are annotated with `conversationId` (and `conversation` if you pass the full rows) and sorted newest-first. Per-conversation errors are captured in `errors[]` without blocking the others. When a new query arrives before results return, the prior query's results are discarded.
+
+`<SearchResultsPanel>` is a slide-out overlay with focus trap + focus-restore-on-close + keyboard navigation. Theme the width via `--sm-search-panel-width`.
+
 ### Search UX (opt-in entry)
 
 Search UX ships in a separate code-split entry so hosts that don't render search pay no bundle cost:

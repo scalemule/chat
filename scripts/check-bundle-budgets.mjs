@@ -77,12 +77,12 @@ const budgets = [
     label: 'Embeds ESM',
   },
   {
-    // Search entry — opt-in search UX. 0.0.53 ships history dropdown,
+    // Search entry — opt-in search UX. 0.0.53 shipped history dropdown,
     // excerpt renderer, and the pure sanitizer. 0.0.54 adds the global
-    // search hook + results panel. Budget reserves headroom for the
-    // 0.0.54 additions so we don't pump the limit at every release.
+    // search hook + results panel — raises the entry from ~9KB to
+    // ~27KB, so the budget moves from 20K to 34K with headroom.
     file: 'search.js',
-    limit: 20_000,
+    limit: 34_000,
     label: 'Search ESM',
   },
 ];

@@ -1,5 +1,53 @@
 # Changelog
 
+## 0.0.54 — 2026-04-15
+
+**Added: cross-conversation search — `useGlobalSearch` + `<SearchResultsPanel>`.**
+
+New additions to the `@scalemule/chat/search` entry from 0.0.53.
+
+```tsx
+import {
+  useGlobalSearch,
+  SearchResultsPanel,
+} from '@scalemule/chat/search';
+
+const { results, isLoading, progress, errors } = useGlobalSearch(query, {
+  conversations,   // REQUIRED — caller supplies the conversation set
+});
+
+<SearchResultsPanel
+  open={panelOpen}
+  onClose={() => setPanelOpen(false)}
+  results={results}
+  isLoading={isLoading}
+  progress={progress}
+  errors={errors}
+  profiles={profilesByUserId}
+  onSelect={(result) => {
+    router.push(
+      `/messages/${result.conversationId}?highlight=${result.message.id}`,
+    );
+  }}
+/>
+```
+
+**`useGlobalSearch(query, opts)`** fans out `searchMessages` calls with a configurable concurrency cap (default 6) and debounced query changes (default 300ms). Results are annotated with `conversationId` (and `conversation` when full rows were supplied), sorted newest-first by `created_at`, and per-conversation failures are captured in `errors[]` without blocking the other conversations.
+
+**One of `conversations` or `conversationIds` is required** — the hook never implicitly fetches the conversation list. Callers compose with `useConversations` (or their own store) and pass the set to search. An empty or missing input surfaces a loud error entry rather than silently doing nothing.
+
+**Cancellation:** when the query changes mid-flight, late-arriving results from the prior query are discarded via an internal sequence-id. No HTTP `AbortSignal` required (transport layer unchanged).
+
+**`<SearchResultsPanel>`** is a slide-out overlay on the right edge of the viewport. It captures the currently-focused element on open and restores focus to it when the panel closes or unmounts, so keyboard users land back where they started. Tab/Shift+Tab cycles inside the panel. Escape and backdrop click both close. A progress bar renders across the top while the fan-out is in flight. Per-conversation errors are listed in a collapsible footer. Pass `renderResult` to fully replace row chrome, or `profiles` + `conversationLabel` + `formatTimestamp` to theme the default rows.
+
+**New type:** `GlobalSearchResult` — `ChatSearchResult & { conversationId; conversation? }`. Exported from both `@scalemule/chat/search` and `@scalemule/chat` core types so hosts can reference it in server code before rendering.
+
+**Internal refactor:** `ChatContext` extracted to `src/shared/ChatContext.ts` so secondary entries (search now; any future entry that needs the chat client) can read the context without dragging the whole `react.tsx` module into their bundle. `react.tsx` continues to export the same `__ChatContext` internal symbol — no public API change.
+
+**Bundle:** `search.js` grows 9.57K → 26.72K; budget raised 20K → 34K. `react.js` **unchanged at 230K** — verified code-split.
+
+CSS (appended to `themes/message-polish.css`): `.sm-search-panel`, `.sm-search-panel-backdrop`, `.sm-search-result-row`, `.sm-search-result-meta`, `.sm-search-panel-progress`. New token `--sm-search-panel-width` (default 420px).
+
 ## 0.0.53 — 2026-04-15
 
 **Added: `@scalemule/chat/search` entry — search history + highlighted excerpts.**

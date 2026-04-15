@@ -53,6 +53,26 @@ export type {
   SearchHistoryOptions,
 } from './search/useSearchHistory';
 
+export { useGlobalSearch } from './search/useGlobalSearch';
+export type {
+  GlobalSearch,
+  GlobalSearchOptions,
+  GlobalSearchProgress,
+  GlobalSearchError,
+} from './search/useGlobalSearch';
+
+export { SearchResultsPanel } from './search/SearchResultsPanel';
+export type {
+  SearchResultsPanelProps,
+  SearchResultsPanelProfile,
+  SearchResultsPanelRowContext,
+} from './search/SearchResultsPanel';
+
+// GlobalSearchResult lives on the core types so hosts that don't import
+// `/search` can still reference the annotated shape (e.g. in server
+// code that produces results before rendering).
+export type { GlobalSearchResult } from './types';
+
 // Pure helper — also exposed so hosts can render excerpts outside of
 // this entry's React components (e.g. a custom row renderer).
 export { sanitizeSearchExcerpt } from './shared/searchExcerpt';

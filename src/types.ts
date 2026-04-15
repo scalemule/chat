@@ -354,3 +354,18 @@ export interface ChatSearchResponse {
   total: number;
   query: string;
 }
+
+/**
+ * A per-conversation search result annotated with its source so callers
+ * can render / navigate across conversations. Produced by
+ * `useGlobalSearch` from `@scalemule/chat/search`.
+ *
+ * Extends the single-conversation `ChatSearchResult` shape rather than
+ * embedding it so host code that already handles `ChatSearchResult`
+ * properties keeps working.
+ */
+export interface GlobalSearchResult extends ChatSearchResult {
+  conversationId: string;
+  /** Populated when the fan-out input was a `Conversation[]`. */
+  conversation?: Conversation;
+}
