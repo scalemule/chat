@@ -9,6 +9,8 @@ export type {
   ChannelEditModalProps,
   ChannelEditFormValues,
 } from './ChannelEditModal';
+export { ChannelInvitationsModal } from './ChannelInvitationsModal';
+export type { ChannelInvitationsModalProps } from './ChannelInvitationsModal';
 export { ChannelHeader } from './ChannelHeader';
 export { ChannelList } from './ChannelList';
 export { ChatInput } from './ChatInput';

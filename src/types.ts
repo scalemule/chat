@@ -209,7 +209,25 @@ export interface ChatEventMap {
   'support:new': { conversationId: string; visitorName?: string };
   'support:assigned': { conversationId: string; visitorName?: string; visitorEmail?: string };
   'channel:changed': void;
+  'channel:invitation:received': { invitation: ChannelInvitation };
+  'channel:invitation:resolved': { invitationId: string; status: 'accepted' | 'rejected' };
   'error': { code: string; message: string };
+}
+
+/**
+ * Pending channel invitation. The chat service emits these via the
+ * `channel:invitation:received` event and surfaces them through
+ * `listChannelInvitations()`. When the user accepts or rejects, the
+ * service emits `channel:invitation:resolved`.
+ */
+export interface ChannelInvitation {
+  id: string;
+  channel_id: string;
+  channel_name?: string;
+  channel_description?: string;
+  invited_by: string;
+  invited_by_display_name?: string;
+  created_at: string;
 }
 
 // ============ Connection Status ============

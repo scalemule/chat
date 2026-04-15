@@ -90,6 +90,32 @@ The grouped wrapper carries the `sm-message-grouped` class — override in host 
 
 Custom `renderMessage` consumers receive `isGrouped` in context and should honor it to preserve list polish.
 
+### Channel invitations
+
+```tsx
+import {
+  ChannelInvitationsModal,
+  useChannelInvitations,
+} from '@scalemule/chat/react'
+
+// Badge in the header
+const { unseenCount } = useChannelInvitations()
+<button onClick={() => setOpen(true)}>
+  Invitations {unseenCount > 0 ? `(${unseenCount})` : ''}
+</button>
+
+// Modal
+<ChannelInvitationsModal
+  open={open}
+  onClose={() => setOpen(false)}
+  onAccepted={(inv) => router.push(`/c/${inv.channel_id}`)}
+/>
+```
+
+The hook seeds from `listChannelInvitations()` and reacts to `channel:invitation:received` / `channel:invitation:resolved` realtime events. Accept / reject are optimistic; rows restore on error. Unseen count persists across reloads via `localStorage`.
+
+`ChatClient` exposes `listChannelInvitations`, `inviteToChannel`, `acceptChannelInvitation`, `rejectChannelInvitation` for hosts that want to integrate without the modal.
+
 ### Channel admin
 
 ```tsx

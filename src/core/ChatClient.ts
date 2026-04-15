@@ -8,6 +8,7 @@ import { uploadToPresignedUrl } from '../shared/upload';
 import type {
   Attachment,
   ApiResponse,
+  ChannelInvitation,
   ChannelListItem,
   ChatConfig,
   ChatEventMap,
@@ -538,6 +539,70 @@ export class ChatClient extends EventEmitter<ChatEventMap> {
    * Leave a named channel. Unsubscribes from realtime events and presence,
    * removes the channel from local tracking, and emits 'channel:changed'.
    */
+  /**
+   * List the current user's pending channel invitations. Returns an empty
+   * array when the server endpoint is not yet available so hosts can ship
+   * the UI before the backend lands.
+   */
+  async listChannelInvitations(): Promise<ApiResponse<ChannelInvitation[]>> {
+    return this.http.get<ChannelInvitation[]>('/v1/chat/channels/invitations');
+  }
+
+  /**
+   * Invite users to a named channel. The server emits
+   * `channel:invitation:received` to each recipient.
+   */
+  async inviteToChannel(
+    channelId: string,
+    userIds: string[],
+  ): Promise<ApiResponse<void>> {
+    return this.http.post<void>(
+      `/v1/chat/channels/${channelId}/invitations`,
+      { user_ids: userIds },
+    );
+  }
+
+  /**
+   * Accept a pending invitation. On success the SDK auto-joins the
+   * channel (same effect as `joinChannel`) and emits `channel:changed`.
+   */
+  async acceptChannelInvitation(
+    invitationId: string,
+  ): Promise<ApiResponse<{ channel_id: string }>> {
+    const result = await this.http.post<{ channel_id: string }>(
+      `/v1/chat/channels/invitations/${invitationId}/accept`,
+      {},
+    );
+    if (result.data) {
+      this.emit('channel:invitation:resolved', {
+        invitationId,
+        status: 'accepted',
+      });
+      this.emit('channel:changed');
+    }
+    return result;
+  }
+
+  /**
+   * Reject a pending invitation. The chat service tombstones the row;
+   * subsequent `listChannelInvitations()` calls will not include it.
+   */
+  async rejectChannelInvitation(
+    invitationId: string,
+  ): Promise<ApiResponse<void>> {
+    const result = await this.http.post<void>(
+      `/v1/chat/channels/invitations/${invitationId}/reject`,
+      {},
+    );
+    if (!result.error) {
+      this.emit('channel:invitation:resolved', {
+        invitationId,
+        status: 'rejected',
+      });
+    }
+    return result;
+  }
+
   async leaveChannel(channelId: string): Promise<ApiResponse<void>> {
     const result = await this.http.post<void>(`/v1/chat/channels/${channelId}/leave`, {});
     if (!result.error) {
