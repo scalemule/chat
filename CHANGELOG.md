@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.0.55 — 2026-04-15
+
+**Docs: search → jump-to-message wiring.**
+
+README adds an end-to-end example showing the full flow from a controlled input through `useSearchHistory`, `useGlobalSearch`, `<SearchResultsPanel>`, and finally to `<ChatThread highlightMessageId>` (which scrolls to the target and paints the amber fade animation shipped in 0.0.45). Navigation stays host-controlled — the SDK never touches the router.
+
+No code changes. Bundles unchanged.
+
 ## 0.0.54 — 2026-04-15
 
 **Added: cross-conversation search — `useGlobalSearch` + `<SearchResultsPanel>`.**

@@ -244,6 +244,93 @@ CSS hooks: `.sm-conv-section`, `.sm-conv-section-{type}`, `.sm-conv-section-head
 
 `resolveConversationDisplayName`, `buildDefaultGroupName`, and `otherParticipantNames` are exported from `@scalemule/chat` (SSR-safe, React-free) for use in previews / notifications / system-message templates.
 
+### Search → jump to message (end-to-end)
+
+The search UX composes cleanly with the scroll-and-highlight polish shipped in 0.0.45. When the user clicks a result, the host navigates to the conversation and hands the message id to `<ChatThread highlightMessageId>`, which scrolls the list to center the message and paints the amber fade animation.
+
+```tsx
+import { useConversations, ChatThread } from '@scalemule/chat/react'
+import {
+  useGlobalSearch,
+  useSearchHistory,
+  SearchHistoryDropdown,
+  SearchResultsPanel,
+} from '@scalemule/chat/search'
+
+function SearchableInbox({ currentUserId }: { currentUserId: string }) {
+  const { conversations } = useConversations()
+  const [q, setQ] = useState('')
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const [panelOpen, setPanelOpen] = useState(false)
+
+  const history = useSearchHistory({
+    storageKey: `sm-search-history-v1:${currentUserId}`,
+  })
+  const search = useGlobalSearch(q, { conversations })
+
+  const [selectedConv, setSelectedConv] = useState<string | null>(null)
+  const [highlightMessageId, setHighlightMessageId] = useState<string | undefined>()
+
+  return (
+    <>
+      <div style={{ position: 'relative' }}>
+        <input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          onFocus={() => setHistoryOpen(true)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              history.push(q)
+              setHistoryOpen(false)
+              setPanelOpen(true)
+            }
+          }}
+          placeholder="Search all conversations…"
+        />
+        {historyOpen && (
+          <div style={{ position: 'absolute', top: '100%', left: 0, right: 0 }}>
+            <SearchHistoryDropdown
+              history={history.history}
+              onSelect={(v) => {
+                setQ(v)
+                setHistoryOpen(false)
+                setPanelOpen(true)
+              }}
+              onClose={() => setHistoryOpen(false)}
+              onClear={history.clear}
+            />
+          </div>
+        )}
+      </div>
+
+      <SearchResultsPanel
+        open={panelOpen}
+        onClose={() => setPanelOpen(false)}
+        results={search.results}
+        isLoading={search.isLoading}
+        progress={search.progress}
+        errors={search.errors}
+        onSelect={(result) => {
+          setSelectedConv(result.conversationId)
+          setHighlightMessageId(result.message.id)
+          setPanelOpen(false)
+        }}
+      />
+
+      {selectedConv && (
+        <ChatThread
+          conversationId={selectedConv}
+          currentUserId={currentUserId}
+          highlightMessageId={highlightMessageId}
+        />
+      )}
+    </>
+  )
+}
+```
+
+Navigation is host-controlled. A Next.js / React Router app would swap `setSelectedConv` for `router.push(...)` and read the highlight id off the URL query string. The SDK never calls into a router.
+
 ### Cross-conversation search
 
 ```tsx
