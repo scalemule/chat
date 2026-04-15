@@ -244,6 +244,23 @@ CSS hooks: `.sm-conv-section`, `.sm-conv-section-{type}`, `.sm-conv-section-head
 
 `resolveConversationDisplayName`, `buildDefaultGroupName`, and `otherParticipantNames` are exported from `@scalemule/chat` (SSR-safe, React-free) for use in previews / notifications / system-message templates.
 
+### Typing indicator
+
+```tsx
+import { ChatThread } from '@scalemule/chat/react'
+
+<ChatThread
+  conversationId={id}
+  typingIndicatorPosition="below-composer"   // default 'above-composer'
+  typingIndicatorLocale="en-US"
+  formatTyping={(names) =>
+    names.length === 1 ? `${names[0]} writes…` : `${names.join(' & ')} write…`
+  }
+/>
+```
+
+Name list formatting uses `Intl.ListFormat` (conjunction / long) for locale-aware separators. Pass `formatTyping` for full-sentence i18n ("Alice et Bob sont en train d'écrire…"). `typingIndicatorPosition="none"` suppresses the built-in indicator so hosts can drop `<TypingIndicator>` anywhere.
+
 ### Offline detection
 
 ```tsx

@@ -134,3 +134,11 @@
  */
 .sm-offline-banner { /* hook */ }
 
+/* Typing indicator — rendered by <TypingIndicator>. Inline styling
+ * covers the default look; this class is a stable hook for host
+ * overrides (position, font, subtle animations). Tokens:
+ *   --sm-typing-indicator-color      (default --sm-muted-text)
+ *   --sm-typing-indicator-font-size  (default 12px)
+ */
+.sm-typing-indicator { /* hook */ }
+
