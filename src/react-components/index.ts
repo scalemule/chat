@@ -12,6 +12,11 @@ export type { UserProfile } from './ChatMessageItem';
 export { ChatMessageList } from './ChatMessageList';
 export { ChatThread } from './ChatThread';
 export { ConversationList } from './ConversationList';
+export { NewConversationModal } from './NewConversationModal';
+export type {
+  NewConversationModalProps,
+  NewConversationUser,
+} from './NewConversationModal';
 export { EmojiPicker, EmojiPickerTrigger } from './EmojiPicker';
 export { ReactionBar } from './ReactionBar';
 export { RepStatusToggle } from './RepStatusToggle';

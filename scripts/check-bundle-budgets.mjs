@@ -39,7 +39,11 @@ const budgets = [
     // — 0.0.46 display resolver + 0.0.47-0.0.52 coming in this track adds
     // NewConversationModal, ChannelEditModal, grouping, mention/call
     // indicators, invitations).
-    limit: 200_000,
+    // Bumped 200K -> 225K for 0.0.50 NewConversationModal (~17KB —
+    // multi-select picker, debounced search, focus trap). Remaining
+    // Section 4 features (channel edit/invitations modals) land under
+    // the same ceiling.
+    limit: 225_000,
     label: 'React ESM',
   },
   {
