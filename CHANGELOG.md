@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.0.36 — 2026-04-14
+
+**Added: `leftAccessory` prop on `RichTextInput`.** Optional node rendered at the very start of the composer's footer row, before the attach button. Hosts use this to pin a single-icon control (e.g., a plain/rich editor toggle, a voice-note button) into the existing footer cluster instead of stacking another row above the composer. Keeps the chrome compact.
+
 ## 0.0.35 — 2026-04-14
 
 **Added: Link tooltip + edit modal in `RichTextInput`.**
