@@ -90,6 +90,25 @@ The grouped wrapper carries the `sm-message-grouped` class — override in host 
 
 Custom `renderMessage` consumers receive `isGrouped` in context and should honor it to preserve list polish.
 
+### URL auto-linkify
+
+Plain-text messages auto-detect http/https/`www.` URLs and render them as `<a class="sm-link-auto" target="_blank" rel="noopener noreferrer nofollow">`. Trailing prose punctuation is trimmed; balanced parens are kept.
+
+| Prop | Purpose |
+| --- | --- |
+| `linkifyPlainText` | Default `true`. Pass `false` to render raw text. |
+
+The detection helper is also a public utility for previews, notifications, and search excerpts:
+
+```ts
+import { linkify, hasLinks } from '@scalemule/chat'
+
+const segments = linkify('see https://example.com docs')
+// → [{type:'text', value:'see '}, {type:'link', display:..., url:...}, ...]
+```
+
+It's SSR-safe (regex-only, no DOM).
+
 ### Mention click handling
 
 `<span class="sm-mention" data-sm-user-id>` and `<span class="sm-channel-mention" data-sm-channel-id>` chips inside HTML messages are clickable. Wire navigation via two callbacks:

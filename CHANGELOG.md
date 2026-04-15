@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.0.43 — 2026-04-15
+
+**Added: URL auto-linkify in plain-text messages.**
+
+`ChatMessageItem` now detects http/https/`www.` URLs inside plain-text messages and renders them as `<a class="sm-link-auto" target="_blank" rel="noopener noreferrer nofollow">`. Trailing prose punctuation (`.`, `,`, `;`, `:`, `!`, `?`, closing parens/brackets/quotes) is stripped from matches; balanced parens inside URLs (e.g. Wikipedia article URLs) are preserved.
+
+HTML messages are unaffected — the rich editor (Quill) auto-links at compose time and the sanitizer preserves the markup.
+
+New props on `ChatMessageList` and `ChatThread`:
+
+- `linkifyPlainText?: boolean` — default `true`. Set to `false` for hosts where messages are pre-formatted or where unsolicited link rendering is undesirable.
+
+The detection helper is published as a public utility from the React-free root entry:
+
+```ts
+import { linkify, hasLinks } from '@scalemule/chat';
+import type { LinkifySegment } from '@scalemule/chat';
+```
+
+Useful for thread previews, push-notification snippets, search-result excerpts. SSR-safe (regex only, no DOM access).
+
+CSS additions in `themes/message-polish.css`:
+
+- `.sm-link-auto` — empty by default (renderer applies inline coloring per bubble), exported as a stable hook for hosts that want focus rings, dotted underlines, etc.
+
+**Bundle:** `react.js` 173.82K within 180K budget.
+
 ## 0.0.42 — 2026-04-15
 
 **Added: clickable mention chips in rendered HTML messages.**
