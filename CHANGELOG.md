@@ -1,5 +1,40 @@
 # Changelog
 
+## 0.0.50 — 2026-04-15
+
+**Added: `<NewConversationModal>` — accessible multi-select user picker.**
+
+New component for "start a new conversation" flows. Router-agnostic: the host passes `searchUsers(query)` and `onCreate(participantIds)`; the SDK handles pills, debounced search, keyboard navigation, focus trap, and error surfacing.
+
+```tsx
+import { NewConversationModal } from '@scalemule/chat/react';
+
+<NewConversationModal
+  open={open}
+  onClose={() => setOpen(false)}
+  searchUsers={(q) => api.searchUsers(q)}
+  onCreate={async (ids) => {
+    const conv = await api.createDM(ids);
+    router.push(`/messages/${conv.id}`);
+  }}
+  currentUserId={currentUserId}
+/>
+```
+
+Behavior:
+
+- **Debounced search** — default 250ms; configurable via `debounceMs`.
+- **Keyboard navigation** — `ArrowUp` / `ArrowDown` walk results, `Enter` selects the highlighted result, `Cmd/Ctrl+Enter` submits, `Backspace` at an empty search removes the last pill, `Escape` closes.
+- **Focus trap** — `Tab` / `Shift+Tab` cycle inside the modal; no need for an external trap wrapper.
+- **Error surfacing** — when `onCreate` throws, the modal stays open and renders the error in a `role="alert"` banner.
+- **Max participants** — default 10; configurable via `maxParticipants`.
+- **i18n** — `title`, `searchPlaceholder`, `createLabel` props.
+- **Current-user filter** — rows whose `id === currentUserId` are excluded from results.
+
+CSS hooks: `.sm-new-conv-modal`, `.sm-new-conv-search`, `.sm-new-conv-pill`, `.sm-new-conv-result`, `.sm-new-conv-result-active`.
+
+**Bundle:** `react.js` budget bumped 200K → 225K (current 200.59K). The modal adds ~17K — multi-select picker, debouncer, focus trap, error surface. Headroom reserved for the channel-admin + invitations modals coming in 0.0.51–0.0.52.
+
 ## 0.0.49 — 2026-04-15
 
 **Added: active-call indicator for conversation rows.**

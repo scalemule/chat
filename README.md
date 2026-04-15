@@ -90,6 +90,25 @@ The grouped wrapper carries the `sm-message-grouped` class — override in host 
 
 Custom `renderMessage` consumers receive `isGrouped` in context and should honor it to preserve list polish.
 
+### New-conversation modal
+
+```tsx
+import { NewConversationModal } from '@scalemule/chat/react'
+
+<NewConversationModal
+  open={open}
+  onClose={() => setOpen(false)}
+  searchUsers={(q) => api.searchUsers(q)}
+  onCreate={async (ids) => {
+    const conv = await api.createDM(ids)
+    router.push(`/messages/${conv.id}`)
+  }}
+  currentUserId={currentUserId}
+/>
+```
+
+Multi-select user picker with debounced search (250ms default), keyboard navigation, focus trap, and error surfacing. Router-agnostic — host provides `searchUsers` and `onCreate`.
+
 ### Active call indicator
 
 ```tsx

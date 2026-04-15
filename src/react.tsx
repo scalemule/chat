@@ -781,6 +781,7 @@ export {
   ChannelHeader,
   ChannelList,
   ConversationList,
+  NewConversationModal,
   EmojiPicker,
   EmojiPickerTrigger,
   ReactionBar,
