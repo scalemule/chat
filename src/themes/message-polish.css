@@ -104,3 +104,17 @@
   border-radius: 2px;
 }
 
+/* Presence status dots — pure visual. Consumer supplies the resolved
+ * status via `<StatusDot status>`. Renderer applies inline colors from
+ * tokens so hosts that skip the CSS bundle still get the dot;
+ * class hooks are stable for further host overrides (e.g. a subtle
+ * ring or hover affordance).
+ */
+.sm-status-dot {
+  /* Intentionally empty by default — sizing + background render
+   * inline. Hook class for host overrides. */
+}
+.sm-status-dot-online   { /* hook for online-only overrides */ }
+.sm-status-dot-away     { /* hook for away-only overrides */ }
+.sm-status-dot-offline  { /* hook for offline-only overrides */ }
+

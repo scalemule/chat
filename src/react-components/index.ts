@@ -35,6 +35,8 @@ export type {
 } from './NewConversationModal';
 export { EmojiPicker, EmojiPickerTrigger } from './EmojiPicker';
 export { ReactionBar } from './ReactionBar';
+export { StatusDot } from './StatusDot';
+export type { StatusDotProps, StatusDotStatus } from './StatusDot';
 export { RepStatusToggle } from './RepStatusToggle';
 export { ReportDialog } from './ReportDialog';
 export { SearchBar } from './SearchBar';
