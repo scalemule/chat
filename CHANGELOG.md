@@ -1,5 +1,38 @@
 # Changelog
 
+## 0.0.49 — 2026-04-15
+
+**Added: active-call indicator for conversation rows.**
+
+New `<ActiveCallDot active>` component (exported from `@scalemule/chat/react`) and a matching `renderActiveIndicator?: (conversation) => ReactNode` render-prop on `ConversationList`.
+
+The SDK stays free of conference-SDK dependencies — hosts wire the source of truth (e.g. `@scalemule/conference`'s own presence hook, WebRTC signaling, a Redux selector) and return the dot (or their own marker) per row:
+
+```tsx
+import { ActiveCallDot, ConversationList } from '@scalemule/chat/react';
+
+<ConversationList
+  renderActiveIndicator={(c) => (
+    <ActiveCallDot active={activeCallIds.has(c.id)} />
+  )}
+/>
+```
+
+`<ActiveCallDot>` is a pulsing green dot (CSS-only animation, no JS timer) with:
+
+- `active: boolean` — when false, renders nothing.
+- `ariaLabel?: string` — default `"Active call"`.
+- `size?: number` — default 8px.
+
+CSS animation lives in `themes/message-polish.css` (`@keyframes sm-call-pulse`, `.sm-active-call-dot::after`). Tokens:
+
+- `--sm-active-call-color` (default green `#22c55e`)
+- `--sm-active-call-pulse-opacity` (default `0.35` — set `0` to disable the pulse while keeping the dot)
+
+**Scoping decision:** the Section 4 plan floated a new `@scalemule/chat/conference-indicators` entry for conference-SDK-coupled helpers. Shipped instead as a standard `react-components` export because no conference-SDK import is needed — the render-prop seam is the right coupling boundary. If future indicator helpers genuinely need conference imports, a dedicated entry can be added then.
+
+**Bundle:** `react.js` 183.42K within 195.31K budget.
+
 ## 0.0.48 — 2026-04-15
 
 **Added: per-conversation mention count badges.**

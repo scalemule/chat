@@ -49,6 +49,31 @@
     var(--sm-unread-divider-color, rgba(37, 99, 235, 0.4));
 }
 
+/* Pulsing dot indicating an active call on a conversation row. Rendered
+ * by `<ActiveCallDot>` — visibility is host-driven (no SDK polling).
+ *
+ * Animates an expanding ring via an ::after pseudo-element so the base
+ * dot sizing stays simple and the pulse can be themed or disabled via
+ * `--sm-active-call-pulse-opacity: 0` without shadowing the class.
+ */
+@keyframes sm-call-pulse {
+  0%   { transform: scale(1);   opacity: var(--sm-active-call-pulse-opacity, 0.35); }
+  100% { transform: scale(2.4); opacity: 0; }
+}
+
+.sm-active-call-dot {
+  position: relative;
+}
+.sm-active-call-dot::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: var(--sm-active-call-color, #22c55e);
+  animation: sm-call-pulse 1.6s ease-out infinite;
+  pointer-events: none;
+}
+
 /* Auto-detected URLs in plain-text messages.
  *
  * `ChatMessageItem` applies an inline color (own bubble: white-tinted; other:

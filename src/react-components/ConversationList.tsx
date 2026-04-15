@@ -95,6 +95,26 @@ interface ConversationListProps {
    * Redux selector) without giving up the rendering.
    */
   mentionCounts?: Map<string, number>;
+  /**
+   * Render-prop for an indicator placed in the conversation-row header
+   * (before the mention/unread badges). Typical use: a pulsing dot
+   * showing an active call on that conversation.
+   *
+   * ```tsx
+   * import { ActiveCallDot } from '@scalemule/chat/react';
+   * import { useActiveCall } from '@scalemule/conference/react';
+   *
+   * <ConversationList
+   *   renderActiveIndicator={(c) => (
+   *     <ActiveCallDot active={useActiveCall(c.id).active} />
+   *   )}
+   * />
+   * ```
+   *
+   * The SDK stays free of conference-SDK dependencies — hosts wire the
+   * source of truth (conference presence, WebRTC signaling, etc.).
+   */
+  renderActiveIndicator?: (conversation: Conversation) => React.ReactNode;
 }
 
 function formatPreview(conversation: Conversation): string {
@@ -120,6 +140,7 @@ export function ConversationList({
   sectionOrder,
   showMentionBadge = true,
   mentionCounts: mentionCountsProp,
+  renderActiveIndicator,
 }: ConversationListProps): React.JSX.Element {
   const { conversations, isLoading } = useConversations({
     conversationType,
@@ -199,6 +220,7 @@ export function ConversationList({
             {resolveName(conversation)}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {renderActiveIndicator ? renderActiveIndicator(conversation) : null}
             {conversation.is_muted ? (
               <span style={{ fontSize: 11, color: 'var(--sm-muted-text, #6b7280)' }}>Muted</span>
             ) : null}
