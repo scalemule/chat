@@ -22,13 +22,18 @@ async function bundleThemeCss() {
   const richPath = resolve(root, 'src/themes/rich-content.css');
   const rich = await readFile(richPath, 'utf8');
 
+  const polishPath = resolve(root, 'src/themes/message-polish.css');
+  const polish = await readFile(polishPath, 'utf8');
+
   const outDir = resolve(root, 'dist/themes');
   await mkdir(outDir, { recursive: true });
 
   for (const name of ['tailwind', 'shadcn']) {
     const srcPath = resolve(root, `src/themes/${name}.css`);
     const src = await readFile(srcPath, 'utf8');
-    const out = `${src}\n/* ---- rich-content.css (concatenated) ---- */\n${rich}`;
+    const out =
+      `${src}\n/* ---- rich-content.css (concatenated) ---- */\n${rich}` +
+      `\n/* ---- message-polish.css (concatenated) ---- */\n${polish}`;
     const dst = resolve(outDir, `${name}.css`);
     await writeFile(dst, out, 'utf8');
     console.log(`wrote ${dst} (${out.length} bytes)`);

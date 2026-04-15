@@ -78,6 +78,18 @@ Three knobs are available on both `<ChatThread>` and `<ChatMessageList>`:
 
 **SSR hosts should pass `dateLabelTimeZone`** (or `formatDateLabel`) so the server and client agree on the day boundary — otherwise "Today" vs "Yesterday" can flip during hydration around midnight.
 
+### Message grouping
+
+Consecutive messages from the same sender within 5 minutes are grouped: the avatar and sender header are suppressed on follow-up messages, leaving a tighter visual cluster. System messages never group; date-separator and unread-divider boundaries always break grouping.
+
+| Prop | Purpose |
+| --- | --- |
+| `groupingWindowMs` | Window in ms (default `300_000`). Pass `0` to disable. |
+
+The grouped wrapper carries the `sm-message-grouped` class — override in host CSS for further customization (e.g. hover-only timestamps).
+
+Custom `renderMessage` consumers receive `isGrouped` in context and should honor it to preserve list polish.
+
 ---
 
 ## Quick start — named channels

@@ -59,6 +59,10 @@ interface ChatMessageListProps {
       /** Resolved date label for the separator above this message. `null`
        *  when `showDateSeparator` is false. */
       dateLabel: string | null;
+      /** True when this message groups with the previous one (same sender
+       *  within `groupingWindowMs`, no divider in between). Custom renderers
+       *  should suppress avatar/header to preserve list polish. */
+      isGrouped: boolean;
     },
   ) => React.ReactNode;
   /**
@@ -111,6 +115,13 @@ interface ChatMessageListProps {
   maxAttachments?: number;
   /** Forwarded to ChatMessageItem. File input accept filter. Default "image/*,video/*". */
   accept?: string;
+  /**
+   * Group consecutive messages from the same sender within this many ms
+   * (avatar + sender header are suppressed on grouped messages). System
+   * messages never group; date-separator and unread-divider boundaries
+   * always break grouping. Default 300_000 (5 minutes). Pass `0` to disable.
+   */
+  groupingWindowMs?: number;
 }
 
 export function ChatMessageList({
@@ -146,6 +157,7 @@ export function ChatMessageList({
   formatDateLabel,
   dateLabelLocale,
   dateLabelTimeZone,
+  groupingWindowMs = 300_000,
 }: ChatMessageListProps): React.JSX.Element {
   const resolveDateLabel = useCallback(
     (iso: string) =>
@@ -372,6 +384,18 @@ export function ChatMessageList({
           const showUnreadDivider = resolvedFirstUnreadId === msg.id;
           const isHighlighted = highlightMessageId === msg.id;
           const isOwn = msg.sender_id === currentUserId;
+          const isGrouped =
+            groupingWindowMs > 0 &&
+            !!prevMsg &&
+            !showDateSeparator &&
+            !showUnreadDivider &&
+            msg.message_type !== 'system' &&
+            prevMsg.message_type !== 'system' &&
+            !!msg.sender_id &&
+            msg.sender_id === prevMsg.sender_id &&
+            new Date(msg.created_at).getTime() -
+              new Date(prevMsg.created_at).getTime() <
+              groupingWindowMs;
 
           return (
             <React.Fragment key={msg.id}>
@@ -462,6 +486,7 @@ export function ChatMessageList({
                     conversationId,
                     showDateSeparator,
                     dateLabel,
+                    isGrouped,
                   })
                 ) : (
                   <ChatMessageItem
@@ -482,6 +507,7 @@ export function ChatMessageList({
                     accept={accept}
                     isOwnMessage={isOwn}
                     highlight={showUnreadDivider || isHighlighted}
+                    isGrouped={isGrouped}
                     renderAttachment={renderAttachment}
                     renderAvatar={renderAvatar}
                     avatarSize={avatarSize}

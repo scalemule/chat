@@ -1,0 +1,18 @@
+/* @scalemule/chat — message-polish.css
+ *
+ * Visual polish for ChatMessageList / ChatMessageItem that isn't tied to the
+ * sanitized rich-HTML pipeline. Concatenated into the tailwind.css and
+ * shadcn.css theme bundles by scripts/build-assets.mjs.
+ *
+ * Hosts override by re-defining the CSS tokens or shadowing the class.
+ */
+
+/* Grouped messages — set by ChatMessageList when consecutive messages share
+ * a sender within `groupingWindowMs` (default 5 minutes). The component also
+ * applies a tighter inline padding; this class is here for hosts that want
+ * to layer further customization (e.g. a left rail or hover-only timestamp).
+ */
+.sm-message-grouped {
+  /* Intentionally empty by default — visual tightening happens via inline
+   * style on the wrapper. The class is a stable hook for host CSS. */
+}

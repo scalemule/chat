@@ -67,6 +67,12 @@ interface ChatMessageItemProps {
   onFetchAttachmentUrl?: (fileId: string) => Promise<string>;
   isOwnMessage?: boolean;
   highlight?: boolean;
+  /**
+   * Suppress the avatar and sender header on this message because it groups
+   * with the previous one (same sender, recent enough). The composing list
+   * (`ChatMessageList`) decides; the item just renders. Default false.
+   */
+  isGrouped?: boolean;
   /** Avatar display size in pixels. Default 32. Set to 36 for pre-generated thumbnail cache hits. */
   avatarSize?: number;
   /** Transform a profile's avatar_url into an optimized thumbnail URL (e.g. photo service transform). */
@@ -494,6 +500,7 @@ export function ChatMessageItem({
   onFetchAttachmentUrl,
   isOwnMessage: isOwnMessageProp,
   highlight = false,
+  isGrouped = false,
   avatarSize = 32,
   getAvatarUrl,
   renderAvatar,
@@ -674,44 +681,55 @@ export function ChatMessageItem({
     if (snippetAtt) {
       return (
         <div
+          className={isGrouped ? 'sm-message-grouped' : undefined}
           style={{
             display: 'flex',
             justifyContent: isOwn ? 'flex-end' : 'flex-start',
-            padding: '3px 16px',
+            padding: isGrouped ? '1px 16px' : '3px 16px',
             position: 'relative',
           }}
           onMouseEnter={() => setShowActions(true)}
           onMouseLeave={() => setShowActions(false)}
         >
-          {/* Avatar for received snippets */}
-          {!isOwn && (
-            <div
-              style={{
-                flexShrink: 0,
-                width: avatarSize,
-                height: avatarSize,
-                borderRadius: 999,
-                background: 'var(--sm-surface-muted, #f3f4f6)',
-                overflow: 'hidden',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: 12,
-                fontWeight: 500,
-                color: 'var(--sm-muted-text, #6b7280)',
-                marginRight: 10,
-                marginTop: 2,
-              }}
-            >
-              {avatarUrl ? (
-                <img src={avatarUrl} alt={displayName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              ) : (
-                initials
-              )}
-            </div>
-          )}
+          {/* Avatar for received snippets — replaced by spacer when grouped */}
+          {!isOwn &&
+            (isGrouped ? (
+              <div
+                style={{
+                  flexShrink: 0,
+                  width: avatarSize,
+                  marginRight: 10,
+                }}
+                aria-hidden="true"
+              />
+            ) : (
+              <div
+                style={{
+                  flexShrink: 0,
+                  width: avatarSize,
+                  height: avatarSize,
+                  borderRadius: 999,
+                  background: 'var(--sm-surface-muted, #f3f4f6)',
+                  overflow: 'hidden',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: 12,
+                  fontWeight: 500,
+                  color: 'var(--sm-muted-text, #6b7280)',
+                  marginRight: 10,
+                  marginTop: 2,
+                }}
+              >
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt={displayName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  initials
+                )}
+              </div>
+            ))}
           <div style={{ maxWidth: '75%', minWidth: 0 }}>
-            {!isOwn && (
+            {!isOwn && !isGrouped && (
               <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4, color: 'var(--sm-other-text, #111827)' }}>
                 {displayName}
               </div>
@@ -781,18 +799,29 @@ export function ChatMessageItem({
 
   return (
     <div
+      className={isGrouped ? 'sm-message-grouped' : undefined}
       style={{
         display: 'flex',
         justifyContent: isOwn ? 'flex-end' : 'flex-start',
-        padding: '3px 16px',
+        padding: isGrouped ? '1px 16px' : '3px 16px',
         position: 'relative',
       }}
       onMouseEnter={() => setShowActions(true)}
       onMouseLeave={() => setShowActions(false)}
     >
-      {/* Avatar -- other's messages only */}
+      {/* Avatar -- other's messages only. Replaced by a spacer when grouped
+          so the bubble stays aligned under the previous message's avatar. */}
       {!isOwn &&
-        (renderAvatar ? (
+        (isGrouped ? (
+          <div
+            style={{
+              flexShrink: 0,
+              width: avatarSize,
+              marginRight: 10,
+            }}
+            aria-hidden="true"
+          />
+        ) : renderAvatar ? (
           renderAvatar(profile, message)
         ) : (
           <div
@@ -971,8 +1000,8 @@ export function ChatMessageItem({
             transition: 'box-shadow 0.2s ease',
           }}
         >
-          {/* Sender name + @username -- other's messages only */}
-          {!isOwn && (
+          {/* Sender name + @username -- other's messages, non-grouped only */}
+          {!isOwn && !isGrouped && (
             <div
               style={{
                 display: 'flex',
