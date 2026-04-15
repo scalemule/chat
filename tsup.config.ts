@@ -60,6 +60,20 @@ export default defineConfig([
     treeshake: true,
     splitting: false,
   },
+  // Search entry — opt-in search UX (history + dropdown + excerpt
+  // renderer in 0.0.53; global search hook + results panel in 0.0.54).
+  // Code-split so hosts that don't render search don't pay the bundle
+  // cost in react.js.
+  {
+    entry: { search: 'src/search.tsx' },
+    format: ['esm', 'cjs'],
+    dts: false,
+    sourcemap: false,
+    clean: false,
+    external: ['react', 'react-dom'],
+    treeshake: true,
+    splitting: false,
+  },
   // UMD bundle (script tag: window.ScaleMuleChat)
   {
     entry: { 'chat.umd': 'src/umd.ts' },

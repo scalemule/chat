@@ -86,3 +86,21 @@
   /* No-op by default; renderer applies inline styling. */
 }
 
+/* Search-result excerpts. Backend highlight fragments wrap the matched
+ * term in `<em>`; future versions may use `<mark>`. Both render with
+ * the same token-driven highlight treatment.
+ *
+ * Tokens:
+ *   --sm-search-highlight-bg   (default soft amber)
+ *   --sm-search-highlight-text (default `inherit` — keeps excerpt color
+ *                               in sync with the row's text color)
+ */
+.sm-search-result-excerpt em,
+.sm-search-result-excerpt mark {
+  background: var(--sm-search-highlight-bg, rgba(251, 191, 36, 0.35));
+  color: var(--sm-search-highlight-text, inherit);
+  font-style: inherit;
+  padding: 0 2px;
+  border-radius: 2px;
+}
+
