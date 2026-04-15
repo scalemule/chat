@@ -100,6 +100,30 @@ describe('ChatThread', () => {
     expect(container.textContent).toContain('STUB-LABEL');
   });
 
+  it('forwards onMentionClick through to the rendered message body', () => {
+    const onMentionClick = vi.fn();
+    const previous = chatState.messages;
+    chatState.messages = [
+      {
+        ...previous[0],
+        content: 'hello <span class="sm-mention" data-sm-user-id="user-42">@Alice</span>',
+        content_format: 'html' as const,
+      },
+    ];
+    try {
+      const { container } = render(
+        <ChatThread conversationId="conv-1" onMentionClick={onMentionClick} />,
+      );
+      const chip = container.querySelector('.sm-mention');
+      expect(chip).toBeTruthy();
+      chip!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      expect(onMentionClick).toHaveBeenCalledTimes(1);
+      expect(onMentionClick.mock.calls[0][0]).toBe('user-42');
+    } finally {
+      chatState.messages = previous;
+    }
+  });
+
   it('forwards groupingWindowMs through to the message list', () => {
     // Push a second message from the same sender, 1 minute apart.
     const previous = chatState.messages;

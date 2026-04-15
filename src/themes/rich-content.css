@@ -59,13 +59,28 @@
   border-radius: 4px;
   font-weight: 500;
   text-decoration: none;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+.sm-rich-content a.sm-mention:hover,
+.sm-rich-content .sm-mention:hover {
+  background: var(--sm-mention-hover-bg, rgba(37, 99, 235, 0.16));
 }
 
 .sm-rich-content a.sm-channel-mention,
 .sm-rich-content .sm-channel-mention {
   color: var(--sm-channel-mention-text, var(--sm-primary, #2563eb));
+  background: var(--sm-channel-mention-bg, transparent);
+  padding: 0 2px;
+  border-radius: 4px;
   font-weight: 500;
   text-decoration: none;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+.sm-rich-content a.sm-channel-mention:hover,
+.sm-rich-content .sm-channel-mention:hover {
+  background: var(--sm-channel-mention-hover-bg, rgba(37, 99, 235, 0.08));
 }
 
 .sm-rich-content code {

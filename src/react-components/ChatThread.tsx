@@ -107,6 +107,16 @@ interface ChatThreadProps {
    * disables grouping.
    */
   groupingWindowMs?: number;
+  /**
+   * Click handler for `.sm-mention` chips inside HTML messages. Forwarded.
+   * Hosts wire navigation (open profile, route to `/u/{id}`, etc).
+   */
+  onMentionClick?: (userId: string, message: import('../types').ChatMessage) => void;
+  /**
+   * Click handler for `.sm-channel-mention` chips inside HTML messages.
+   * Forwarded.
+   */
+  onChannelMentionClick?: (channelId: string, message: import('../types').ChatMessage) => void;
 }
 
 function inferMessageType(content: string, attachments: Attachment[]): 'text' | 'image' | 'file' {
@@ -144,6 +154,8 @@ export function ChatThread({
   dateLabelLocale,
   dateLabelTimeZone,
   groupingWindowMs,
+  onMentionClick,
+  onChannelMentionClick,
 }: ChatThreadProps): React.JSX.Element {
   const [sendError, setSendError] = useState<string | null>(null);
   const sendErrorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -314,6 +326,8 @@ export function ChatThread({
         dateLabelLocale={dateLabelLocale}
         dateLabelTimeZone={dateLabelTimeZone}
         groupingWindowMs={groupingWindowMs}
+        onMentionClick={onMentionClick}
+        onChannelMentionClick={onChannelMentionClick}
       />
 
       <TypingIndicator
