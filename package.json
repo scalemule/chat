@@ -1,6 +1,6 @@
 {
   "name": "@scalemule/chat",
-  "version": "0.0.38",
+  "version": "0.0.39",
   "description": "ScaleMule standalone chat SDK — real-time messaging, presence, typing indicators",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -88,7 +88,7 @@
     "quill-markdown-shortcuts-new": "^0.0.11"
   },
   "peerDependencies": {
-    "@scalemule/gallop": ">=0.0.3",
+    "@scalemule/gallop": ">=0.0.4",
     "quill": "^2.0.0",
     "react": ">=17.0.0",
     "react-dom": ">=17.0.0"
@@ -108,7 +108,7 @@
     }
   },
   "devDependencies": {
-    "@scalemule/gallop": "^0.0.3",
+    "@scalemule/gallop": "^0.0.4",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.3.2",
     "@types/react": "^18.0.0",

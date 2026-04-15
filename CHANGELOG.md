@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.0.39 — 2026-04-14
+
+**Changed: `VideoAttachmentPlayer` now uses Gallop for every video attachment**, including raw mp4 / webm / mov files from chat uploads.
+
+0.0.38 fell back to native `<video>` for non-HLS sources because Gallop couldn't play them. `@scalemule/gallop@0.0.4` added `NativeFileEngine` (progressive-download playback via `video.src`), so Gallop's chrome now wraps raw files too — users get one consistent player regardless of whether the source is an HLS manifest, a Safari-native stream, or a direct S3 presigned mp4.
+
+- Peer dep bumped: `@scalemule/gallop@>=0.0.4`.
+- `VideoAttachmentPlayer` drops the HLS-detection branch — Gallop's `createEngine` now picks the right streaming engine based on URL / `mimeType`.
+- No API change. Host apps that already use `VideoAttachmentPlayer` pick up the polished chrome on their existing mp4 attachments after bumping.
+
 ## 0.0.38 — 2026-04-14
 
 **Fixed: `VideoAttachmentPlayer` now plays non-HLS chat attachments.**
