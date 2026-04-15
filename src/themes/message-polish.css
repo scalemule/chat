@@ -118,3 +118,10 @@
 .sm-status-dot-away     { /* hook for away-only overrides */ }
 .sm-status-dot-offline  { /* hook for offline-only overrides */ }
 
+/* Self-status dropdown (AvatarStatusMenu). Rendered chrome is inline-
+ * styled so hosts that skip the CSS bundle still see a functional
+ * menu; these classes are hooks for further host overrides. */
+.sm-avatar-status-menu         { /* hook for the menu shell */ }
+.sm-avatar-status-option       { /* hook for option rows */ }
+.sm-avatar-status-option-active { /* hook for the currently-selected option */ }
+

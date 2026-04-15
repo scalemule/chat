@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.0.57 — 2026-04-15
+
+**Added: self-status (Active / Away) with automatic re-apply on reconnect.**
+
+Users can now toggle between `'active'` and `'away'` through the SDK, and the choice persists across reloads and WebSocket reconnects.
+
+- **`ChatClient.setStatus('active' | 'away')`** — caches the value, persists to `localStorage` under a per-user scoped key (`sm-chat-self-status-v1:{applicationId}:{userId}`; no persistence when either id is missing), emits the internal `status:changed` event, and broadcasts `updatePresence` (`online` | `away`) to every conversation where presence has been joined via `joinPresence`. Works before any presence join — the status is cached and re-applied automatically when a conversation's presence resumes.
+- **`ChatClient.getStatus(): 'active' | 'away'`** — reads the cached value. Seeded from storage on client construction.
+- **`useMyStatus()`** hook — returns `{ status, setStatus }`. Subscribes to `status:changed` so components re-render when any part of the app changes the status.
+- **`<AvatarStatusMenu>`** — small dropdown with Active / Away options. Host owns positioning (wrap in an absolute container anchored to the avatar/profile button). Focus trap, Escape + backdrop close, keyboard navigation. i18n via `activeLabel` / `awayLabel` / `headerLabel`.
+- **`ChatEventMap.status:changed`** — new event type.
+
+**Reconnect behavior:** The `ChatClient` watches its own `presence:join` events. When the current user's presence resumes (initial join or resubscribe after a reconnect), any cached `'away'` state is re-asserted via `updatePresence` so remote observers see the amber dot without a manual toggle.
+
+**Hard architectural invariants (unchanged from the Section 6 plan):**
+
+- Away is a presence annotation, not a connection state. **The WebSocket ping keepalive stays untouched** — pausing it would risk a stale connection and trigger reconnects. The explicit `setStatus` spec includes a test asserting `setStatus` only emits `presence_update` frames.
+- No client-side staleness lens. Still deferred until server-backed `last_active_at` exists.
+
+**Bundle:** `react.js` 231.25K → 235.18K (budget 234K → 245K). `support-widget.global.js` + `chat.embed.global.js` also bumped a small amount to accommodate the `safeStorage` path now reachable via `ChatClient`. Offline banner + composer disable ship in 0.0.58 to close the section.
+
 ## 0.0.56 — 2026-04-15
 
 **Added: presence status dot + conversation-scoped resolver.**

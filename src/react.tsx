@@ -479,6 +479,39 @@ export function usePresence(conversationId?: string) {
  * should either pick a shared conversation to scope against or show a
  * neutral avatar.
  */
+/**
+ * Current user's self-status (`'active'` or `'away'`) plus a setter.
+ *
+ * Reads from the `ChatClient`'s cached value (which seeds from
+ * `localStorage` on construction, scoped per `applicationId`+`userId`).
+ * Subscribes to the `status:changed` event so components re-render
+ * when any part of the app calls `setStatus`.
+ *
+ * The setter delegates to `ChatClient.setStatus`, which broadcasts
+ * `presence_update` to every currently-joined presence conversation
+ * and persists the choice. Away state survives reloads and is
+ * re-applied on reconnect automatically.
+ */
+export function useMyStatus(): {
+  status: 'active' | 'away';
+  setStatus: (status: 'active' | 'away') => void;
+} {
+  const { client } = useChatContext();
+  const [status, setLocalStatus] = useState<'active' | 'away'>(() =>
+    client.getStatus(),
+  );
+  useEffect(() => {
+    return client.on('status:changed', ({ status: next }) => {
+      setLocalStatus(next);
+    });
+  }, [client]);
+  const setStatus = useCallback(
+    (next: 'active' | 'away') => client.setStatus(next),
+    [client],
+  );
+  return { status, setStatus };
+}
+
 export function useConversationPresenceStatus(
   conversationId: string | undefined,
   userId: string | undefined,
@@ -922,6 +955,7 @@ export function useUnreadCount() {
 export {
   ActiveCallBanner,
   ActiveCallDot,
+  AvatarStatusMenu,
   CallTriggerButton,
   CallSystemMessage,
   ChatInput,

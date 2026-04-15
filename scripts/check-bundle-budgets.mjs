@@ -5,13 +5,18 @@ const DIST_DIR = resolve(process.cwd(), 'dist');
 
 const budgets = [
   {
+    // Bumped 75K -> 78K for 0.0.57 self-status (ChatClient.setStatus +
+    // seeded localStorage-backed self-status pulls the shared safeStorage
+    // helper into every bundle that includes ChatClient).
     file: 'support-widget.global.js',
-    limit: 75_000,
+    limit: 78_000,
     label: 'Widget IIFE',
   },
   {
+    // Same bump as the widget: ChatClient now seeds self-status from
+    // storage on construction.
     file: 'chat.embed.global.js',
-    limit: 25_000,
+    limit: 28_000,
     label: 'Embed IIFE',
   },
   {
@@ -47,7 +52,10 @@ const budgets = [
     // (ChannelInvitationsModal + useChannelInvitations hook + 4 new
     // ChatClient methods). Section 4 ceiling — no further bumps planned
     // before a 0.1.0 audit.
-    limit: 240_000,
+    // Bumped 240K -> 245K for 0.0.57 self-status — ChatClient.setStatus
+    // + getStatus + storage-seeded selfStatus brings AvatarStatusMenu +
+    // useMyStatus + the safeStorage path into the core bundle.
+    limit: 245_000,
     label: 'React ESM',
   },
   {

@@ -244,6 +244,37 @@ CSS hooks: `.sm-conv-section`, `.sm-conv-section-{type}`, `.sm-conv-section-head
 
 `resolveConversationDisplayName`, `buildDefaultGroupName`, and `otherParticipantNames` are exported from `@scalemule/chat` (SSR-safe, React-free) for use in previews / notifications / system-message templates.
 
+### Self-status (Active / Away)
+
+```tsx
+import {
+  AvatarStatusMenu,
+  useMyStatus,
+} from '@scalemule/chat/react'
+
+function AvatarButton() {
+  const { status } = useMyStatus()
+  const [open, setOpen] = useState(false)
+  return (
+    <div style={{ position: 'relative' }}>
+      <button onClick={() => setOpen((o) => !o)}>
+        <img src={myAvatar} alt="" />
+        {status === 'away' && <span>⏸</span>}
+      </button>
+      {open && (
+        <div style={{ position: 'absolute', top: '100%', right: 0 }}>
+          <AvatarStatusMenu onClose={() => setOpen(false)} />
+        </div>
+      )}
+    </div>
+  )
+}
+```
+
+Setting status to `'away'` broadcasts a `presence_update` to every conversation where the user has joined presence. Other users see the amber dot (via the existing `<StatusDot>` + `useConversationPresenceStatus` wiring from 0.0.56). The choice persists across reloads — scoped per-user via `applicationId` + `userId` — and is re-applied automatically on reconnect.
+
+The WebSocket ping keepalive is never touched. "Away" is a presence annotation, not a connection state.
+
 ### Presence status indicators
 
 ```tsx

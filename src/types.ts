@@ -219,6 +219,7 @@ export interface ChatEventMap {
   'channel:changed': void;
   'channel:invitation:received': { invitation: ChannelInvitation };
   'channel:invitation:resolved': { invitationId: string; status: 'accepted' | 'rejected' };
+  'status:changed': { status: 'active' | 'away' };
   'error': { code: string; message: string };
 }
 
