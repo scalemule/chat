@@ -90,6 +90,28 @@ The grouped wrapper carries the `sm-message-grouped` class — override in host 
 
 Custom `renderMessage` consumers receive `isGrouped` in context and should honor it to preserve list polish.
 
+### Conversation display names
+
+`ConversationList` resolves human-readable names for every row type:
+
+```tsx
+<ConversationList
+  currentUserId={currentUserId}
+  profiles={profilesByUserId}
+  selfLabel="— Saved"           // optional; default "(you)"
+  formatGroupName={(names) =>   // optional; default "Alice, Bob, and N others"
+    `${names.length} people`
+  }
+/>
+```
+
+- 1:1 DM with self → `"<your name> (you)"`
+- Named channels / groups → `conversation.name`
+- Unnamed groups → `"Alice, Bob, and N others"` (current user filtered out)
+- 1:1 DM → other participant's display name, falling back to `counterparty_user_id` → `conversation.name` → short id
+
+`resolveConversationDisplayName`, `buildDefaultGroupName`, and `otherParticipantNames` are exported from `@scalemule/chat` (SSR-safe, React-free) for use in previews / notifications / system-message templates.
+
 ### Scroll-to-message highlight
 
 Pass `highlightMessageId` (on `<ChatThread>` or `<ChatMessageList>`) to scroll to a specific message and paint the search-hit treatment — a 2-second amber fade + left border. Typically wired to a search-result click.
