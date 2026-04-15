@@ -95,6 +95,20 @@ interface ChatMessageItemProps {
    * at compose time and the sanitizer preserves the markup.
    */
   linkifyPlainText?: boolean;
+  /**
+   * Render rich-link embeds (e.g. YouTube cards) below the message body.
+   * Hosts opt in by importing from `@scalemule/chat/embeds`:
+   *
+   * ```tsx
+   * import { YouTubeEmbeds } from '@scalemule/chat/embeds';
+   * <ChatMessageList renderEmbeds={(m) => <YouTubeEmbeds html={m.content} />} />
+   * ```
+   *
+   * Returns `null` / `undefined` to skip. The default renderer renders
+   * nothing, keeping the embeds bundle out of the core React import for
+   * hosts that don't use it.
+   */
+  renderEmbeds?: (message: ChatMessage) => React.ReactNode;
   /** Avatar display size in pixels. Default 32. Set to 36 for pre-generated thumbnail cache hits. */
   avatarSize?: number;
   /** Transform a profile's avatar_url into an optimized thumbnail URL (e.g. photo service transform). */
@@ -526,6 +540,7 @@ export function ChatMessageItem({
   onMentionClick,
   onChannelMentionClick,
   linkifyPlainText = true,
+  renderEmbeds,
   avatarSize = 32,
   getAvatarUrl,
   renderAvatar,
@@ -1342,6 +1357,9 @@ export function ChatMessageItem({
             )}
           </div>
         </div>
+
+        {/* Embeds (host-supplied; e.g. YouTube cards from @scalemule/chat/embeds) */}
+        {renderEmbeds && renderEmbeds(message)}
 
         {/* Attachments */}
         {message.attachments && message.attachments.length > 0 && (

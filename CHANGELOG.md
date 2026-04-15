@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.0.44 — 2026-04-15
+
+**Added: `@scalemule/chat/embeds` entry — YouTube rich-link embeds.**
+
+New code-split entry exports `YouTubeEmbed`, `YouTubeEmbeds`, and `extractYouTubeIds`. Hosts opt in via a `renderEmbeds` prop on `ChatMessageList` / `ChatThread`:
+
+```tsx
+import { YouTubeEmbeds } from '@scalemule/chat/embeds';
+
+<ChatThread
+  conversationId={id}
+  renderEmbeds={(msg) => <YouTubeEmbeds html={msg.content} />}
+/>
+```
+
+Detection covers watch URLs, `youtu.be`, `/embed/`, and `/shorts/` variants. Titles fetch best-effort via YouTube's oEmbed endpoint and cache to `localStorage` under `sm-yt-oembed-v1:<id>` for 7 days. Cache misses don't block render — the iframe mounts immediately and the title slot fills in when the fetch resolves.
+
+`localStorage` access is wrapped in a `safeStorage()` helper that returns `null` in SSR, private browsing, sandboxed iframes, blocked-storage extensions, or quota errors. Every `getItem` / `setItem` is `try/catch`-guarded — a host that disables storage still gets a working embed; titles just don't persist across reloads.
+
+New props on `ChatMessageList` and `ChatThread`:
+
+- `renderEmbeds?: (message) => ReactNode` — render below the message body, above attachments.
+
+`extractYouTubeIds(text)` is exported standalone and is SSR-safe (regex-only). Useful for thread previews, push-notification snippets, or message-search index enrichment.
+
+**Bundle:** new `embeds.js` entry budgeted at 8 KB raw (initial size 4 KB). `react.js` unchanged at 173.97 KB — embed code is fully code-split.
+
 ## 0.0.43 — 2026-04-15
 
 **Added: URL auto-linkify in plain-text messages.**

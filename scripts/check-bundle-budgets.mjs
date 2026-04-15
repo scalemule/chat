@@ -54,6 +54,16 @@ const budgets = [
     limit: 5_000,
     label: 'Video ESM',
   },
+  {
+    // Embeds entry — opt-in rich-link embeds (YouTube + future providers).
+    // Code-split so react.js stays clean for hosts that don't render embeds.
+    // Initial size ~4KB (YouTube card + oEmbed cache + extractYouTubeIds).
+    // Budget headroom set so additional providers (Twitter, Loom) can land
+    // without an immediate budget bump.
+    file: 'embeds.js',
+    limit: 8_000,
+    label: 'Embeds ESM',
+  },
 ];
 
 let hasFailure = false;

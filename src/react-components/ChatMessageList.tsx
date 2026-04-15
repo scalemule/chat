@@ -137,6 +137,11 @@ interface ChatMessageListProps {
    * ChatMessageItem.
    */
   linkifyPlainText?: boolean;
+  /**
+   * Render rich-link embeds below the message body. Hosts opt in via
+   * `@scalemule/chat/embeds`. Forwarded to ChatMessageItem.
+   */
+  renderEmbeds?: (message: ChatMessage) => React.ReactNode;
 }
 
 export function ChatMessageList({
@@ -176,6 +181,7 @@ export function ChatMessageList({
   onMentionClick,
   onChannelMentionClick,
   linkifyPlainText,
+  renderEmbeds,
 }: ChatMessageListProps): React.JSX.Element {
   const resolveDateLabel = useCallback(
     (iso: string) =>
@@ -529,6 +535,7 @@ export function ChatMessageList({
                     onMentionClick={onMentionClick}
                     onChannelMentionClick={onChannelMentionClick}
                     linkifyPlainText={linkifyPlainText}
+                    renderEmbeds={renderEmbeds}
                     renderAttachment={renderAttachment}
                     renderAvatar={renderAvatar}
                     avatarSize={avatarSize}

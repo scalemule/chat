@@ -1,6 +1,6 @@
 {
   "name": "@scalemule/chat",
-  "version": "0.0.43",
+  "version": "0.0.44",
   "description": "ScaleMule standalone chat SDK — real-time messaging, presence, typing indicators",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -54,6 +54,11 @@
       "types": "./dist/video.d.ts",
       "import": "./dist/video.js",
       "require": "./dist/video.cjs"
+    },
+    "./embeds": {
+      "types": "./dist/embeds.d.ts",
+      "import": "./dist/embeds.js",
+      "require": "./dist/embeds.cjs"
     }
   },
   "files": [
