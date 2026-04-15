@@ -43,7 +43,11 @@ const budgets = [
     // multi-select picker, debounced search, focus trap). Remaining
     // Section 4 features (channel edit/invitations modals) land under
     // the same ceiling.
-    limit: 225_000,
+    // Bumped 225K -> 240K for 0.0.52 channel invitations
+    // (ChannelInvitationsModal + useChannelInvitations hook + 4 new
+    // ChatClient methods). Section 4 ceiling — no further bumps planned
+    // before a 0.1.0 audit.
+    limit: 240_000,
     label: 'React ESM',
   },
   {

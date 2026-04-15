@@ -674,6 +674,128 @@ export function useSearch(conversationId?: string) {
   return { results, total, query, isSearching, search, clearSearch };
 }
 
+// ============ useChannelInvitations Hook ============
+
+import type { ChannelInvitation } from './types';
+import { readJson, writeJson } from './shared/safeStorage';
+
+const INVITATIONS_LAST_SEEN_KEY = 'sm-channel-invites-last-seen-v1';
+
+/**
+ * Live channel-invitation inbox. Seeds from `listChannelInvitations()`
+ * on mount, then reacts to `channel:invitation:received` /
+ * `channel:invitation:resolved` events. Tracks a localStorage cursor
+ * (latest seen invitation id) so hosts can render an unread-invitations
+ * badge without re-fetching.
+ *
+ * `accept(id)` and `reject(id)` proxy to the matching `ChatClient`
+ * methods and optimistically remove the invitation from local state.
+ * Errors are surfaced via the returned promise; the row is restored if
+ * the call rejects.
+ */
+export function useChannelInvitations(): {
+  invitations: ChannelInvitation[];
+  unseenCount: number;
+  isLoading: boolean;
+  error: string | null;
+  accept: (id: string) => Promise<void>;
+  reject: (id: string) => Promise<void>;
+  markAllSeen: () => void;
+  refresh: () => Promise<void>;
+} {
+  const { client } = useChatContext();
+  const [invitations, setInvitations] = useState<ChannelInvitation[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [lastSeenId, setLastSeenId] = useState<string | null>(
+    () => readJson<string>(INVITATIONS_LAST_SEEN_KEY),
+  );
+
+  const refresh = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    const result = await client.listChannelInvitations();
+    if (result.error) {
+      setError(result.error.message);
+      setInvitations([]);
+    } else {
+      setInvitations(result.data ?? []);
+    }
+    setIsLoading(false);
+  }, [client]);
+
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+  useEffect(() => {
+    return client.on('channel:invitation:received', ({ invitation }) => {
+      setInvitations((prev) =>
+        prev.some((p) => p.id === invitation.id)
+          ? prev
+          : [invitation, ...prev],
+      );
+    });
+  }, [client]);
+
+  useEffect(() => {
+    return client.on('channel:invitation:resolved', ({ invitationId }) => {
+      setInvitations((prev) => prev.filter((p) => p.id !== invitationId));
+    });
+  }, [client]);
+
+  const accept = useCallback(
+    async (id: string) => {
+      const previous = invitations;
+      setInvitations((prev) => prev.filter((p) => p.id !== id));
+      const result = await client.acceptChannelInvitation(id);
+      if (result.error) {
+        setInvitations(previous);
+        throw new Error(result.error.message);
+      }
+    },
+    [client, invitations],
+  );
+
+  const reject = useCallback(
+    async (id: string) => {
+      const previous = invitations;
+      setInvitations((prev) => prev.filter((p) => p.id !== id));
+      const result = await client.rejectChannelInvitation(id);
+      if (result.error) {
+        setInvitations(previous);
+        throw new Error(result.error.message);
+      }
+    },
+    [client, invitations],
+  );
+
+  const markAllSeen = useCallback(() => {
+    const top = invitations[0]?.id ?? null;
+    setLastSeenId(top);
+    writeJson(INVITATIONS_LAST_SEEN_KEY, top);
+  }, [invitations]);
+
+  // Unseen = count of invitations newer than the last-seen cursor. We
+  // treat order in `invitations` as newest-first (server convention).
+  const unseenCount = (() => {
+    if (!lastSeenId) return invitations.length;
+    const idx = invitations.findIndex((i) => i.id === lastSeenId);
+    return idx === -1 ? invitations.length : idx;
+  })();
+
+  return {
+    invitations,
+    unseenCount,
+    isLoading,
+    error,
+    accept,
+    reject,
+    markAllSeen,
+    refresh,
+  };
+}
+
 // ============ useMentionCounts Hook ============
 
 /**
@@ -780,6 +902,7 @@ export {
   ChannelBrowser,
   ChannelEditModal,
   ChannelHeader,
+  ChannelInvitationsModal,
   ChannelList,
   ConversationList,
   NewConversationModal,

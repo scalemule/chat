@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.0.52 — 2026-04-15
+
+**Added: channel invitations — `ChatClient` methods, `useChannelInvitations` hook, `<ChannelInvitationsModal>`.**
+
+End-to-end invitation surface for named channels.
+
+**`ChatClient` methods** (4 new):
+
+- `listChannelInvitations()` — `GET /v1/chat/channels/invitations`.
+- `inviteToChannel(channelId, userIds)` — `POST /v1/chat/channels/{id}/invitations`.
+- `acceptChannelInvitation(invitationId)` — auto-joins the channel and emits `channel:changed`.
+- `rejectChannelInvitation(invitationId)` — tombstones server-side.
+
+Both `accept` and `reject` emit a new `channel:invitation:resolved` event so other observers (badges, UI consumers) update without re-fetching. Inbound invitations from the realtime stream emit `channel:invitation:received`.
+
+**`useChannelInvitations()` hook** returns `{ invitations, unseenCount, isLoading, error, accept, reject, markAllSeen, refresh }`. Seeds from the list call on mount, applies optimistic accept/reject (restores the row on error), and tracks an unseen cursor in `localStorage` (`sm-channel-invites-last-seen-v1`) so hosts can render an unread-invitations badge without re-fetching. Storage failures degrade silently — `safeStorage` from 0.0.47 handles SSR / private-browsing / quota.
+
+**`<ChannelInvitationsModal>`** lists pending invitations with Accept / Reject buttons. Calls `markAllSeen()` on open so the badge clears immediately. Optional `onAccepted(invitation)` callback for hosts to navigate to the joined channel. Focus trap + Escape-to-close mirrors the other modals.
+
+**New types:**
+
+- `ChannelInvitation` — id, channel_id, optional channel_name/description, invited_by, optional invited_by_display_name, created_at.
+- `ChatEventMap` adds `channel:invitation:received` and `channel:invitation:resolved`.
+
+**CSS:** `.sm-channel-invites-modal`, `.sm-channel-invite-row` for host overrides.
+
+**Bundle:** `react.js` budget bumped 225K → 240K (current 230.01K). Section 4 ceiling — no further bumps planned before a 0.1.0 audit.
+
 ## 0.0.51 — 2026-04-15
 
 **Added: channel admin UX — `<ChannelEditModal>`, channel-description info popover, system-message resolver.**
