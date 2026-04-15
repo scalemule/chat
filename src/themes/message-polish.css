@@ -16,3 +16,16 @@
   /* Intentionally empty by default — visual tightening happens via inline
    * style on the wrapper. The class is a stable hook for host CSS. */
 }
+
+/* Auto-detected URLs in plain-text messages.
+ *
+ * `ChatMessageItem` applies an inline color (own bubble: white-tinted; other:
+ * --sm-link-color) so the link stays readable against either bubble fill
+ * even when this CSS file isn't imported. The class below is a stable hook
+ * for hosts that want to add focus rings, dotted underlines, etc., without
+ * forking the renderer.
+ */
+.sm-link-auto {
+  /* No-op by default; renderer applies inline styling. */
+}
+

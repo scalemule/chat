@@ -5,6 +5,7 @@ import { EmojiPickerTrigger } from './EmojiPicker';
 import { ReactionBar } from './ReactionBar';
 import { sanitizeHtml, stripTags } from './sanitize';
 import { formatMessageTime } from './utils';
+import { linkify } from '../shared/linkify';
 
 interface PendingUpload {
   id: string;
@@ -87,6 +88,13 @@ interface ChatMessageItemProps {
    * See `onMentionClick` for the delegation contract.
    */
   onChannelMentionClick?: (channelId: string, message: ChatMessage) => void;
+  /**
+   * Auto-linkify URLs in plain-text messages. Default true. Detected URLs
+   * render as `<a class="sm-link-auto" target="_blank" rel="noopener
+   * noreferrer nofollow">`. HTML messages are unaffected — Quill auto-links
+   * at compose time and the sanitizer preserves the markup.
+   */
+  linkifyPlainText?: boolean;
   /** Avatar display size in pixels. Default 32. Set to 36 for pre-generated thumbnail cache hits. */
   avatarSize?: number;
   /** Transform a profile's avatar_url into an optimized thumbnail URL (e.g. photo service transform). */
@@ -517,6 +525,7 @@ export function ChatMessageItem({
   isGrouped = false,
   onMentionClick,
   onChannelMentionClick,
+  linkifyPlainText = true,
   avatarSize = 32,
   getAvatarUrl,
   renderAvatar,
@@ -1270,7 +1279,30 @@ export function ChatMessageItem({
                   wordBreak: 'break-word',
                 }}
               >
-                {message.content}
+                {linkifyPlainText
+                  ? linkify(message.content).map((seg, i) =>
+                      seg.type === 'link' ? (
+                        <a
+                          key={`l-${i}`}
+                          className="sm-link-auto"
+                          href={seg.url}
+                          target="_blank"
+                          rel="noopener noreferrer nofollow"
+                          style={{
+                            color: isOwn
+                              ? 'rgba(255,255,255,0.95)'
+                              : 'var(--sm-link-color, var(--sm-primary, #2563eb))',
+                            textDecoration: 'underline',
+                            wordBreak: 'break-word',
+                          }}
+                        >
+                          {seg.display}
+                        </a>
+                      ) : (
+                        <React.Fragment key={`t-${i}`}>{seg.value}</React.Fragment>
+                      ),
+                    )
+                  : message.content}
               </p>
             )
           ) : null}

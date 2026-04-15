@@ -132,6 +132,11 @@ interface ChatMessageListProps {
    * elements inside HTML messages. Forwarded to ChatMessageItem.
    */
   onChannelMentionClick?: (channelId: string, message: ChatMessage) => void;
+  /**
+   * Auto-linkify URLs in plain-text messages. Default true. Forwarded to
+   * ChatMessageItem.
+   */
+  linkifyPlainText?: boolean;
 }
 
 export function ChatMessageList({
@@ -170,6 +175,7 @@ export function ChatMessageList({
   groupingWindowMs = 300_000,
   onMentionClick,
   onChannelMentionClick,
+  linkifyPlainText,
 }: ChatMessageListProps): React.JSX.Element {
   const resolveDateLabel = useCallback(
     (iso: string) =>
@@ -522,6 +528,7 @@ export function ChatMessageList({
                     isGrouped={isGrouped}
                     onMentionClick={onMentionClick}
                     onChannelMentionClick={onChannelMentionClick}
+                    linkifyPlainText={linkifyPlainText}
                     renderAttachment={renderAttachment}
                     renderAvatar={renderAvatar}
                     avatarSize={avatarSize}

@@ -100,6 +100,26 @@ describe('ChatThread', () => {
     expect(container.textContent).toContain('STUB-LABEL');
   });
 
+  it('forwards linkifyPlainText=false through to the rendered message body', () => {
+    // Default message (chatState) is plain-text and contains no URL — verify
+    // by adding one and asserting the absence of the auto-link anchor.
+    const previous = chatState.messages;
+    chatState.messages = [
+      {
+        ...previous[0],
+        content: 'see https://example.com',
+      },
+    ];
+    try {
+      const { container } = render(
+        <ChatThread conversationId="conv-1" linkifyPlainText={false} />,
+      );
+      expect(container.querySelector('a.sm-link-auto')).toBeNull();
+    } finally {
+      chatState.messages = previous;
+    }
+  });
+
   it('forwards onMentionClick through to the rendered message body', () => {
     const onMentionClick = vi.fn();
     const previous = chatState.messages;

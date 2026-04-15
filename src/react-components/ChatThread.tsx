@@ -117,6 +117,11 @@ interface ChatThreadProps {
    * Forwarded.
    */
   onChannelMentionClick?: (channelId: string, message: import('../types').ChatMessage) => void;
+  /**
+   * Auto-linkify URLs in plain-text messages. Default true. Forwarded to
+   * the message list / item.
+   */
+  linkifyPlainText?: boolean;
 }
 
 function inferMessageType(content: string, attachments: Attachment[]): 'text' | 'image' | 'file' {
@@ -156,6 +161,7 @@ export function ChatThread({
   groupingWindowMs,
   onMentionClick,
   onChannelMentionClick,
+  linkifyPlainText,
 }: ChatThreadProps): React.JSX.Element {
   const [sendError, setSendError] = useState<string | null>(null);
   const sendErrorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -328,6 +334,7 @@ export function ChatThread({
         groupingWindowMs={groupingWindowMs}
         onMentionClick={onMentionClick}
         onChannelMentionClick={onChannelMentionClick}
+        linkifyPlainText={linkifyPlainText}
       />
 
       <TypingIndicator

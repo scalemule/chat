@@ -4,6 +4,8 @@ export { RepClient } from './rep';
 export { ChatController } from './shared/ChatController';
 export { uploadSnippet, MAX_SNIPPET_SIZE_BYTES, SNIPPET_PREVIEW_LENGTH } from './shared/snippet';
 export type { UploadSnippetResult, SnippetUploadFn } from './shared/snippet';
+export { linkify, hasLinks } from './shared/linkify';
+export type { LinkifySegment, LinkifyTextSegment, LinkifyLinkSegment } from './shared/linkify';
 export type {
   SupportConversation,
   SupportClientConfig,
