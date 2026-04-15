@@ -87,6 +87,13 @@ export interface RichTextInputProps
     disabled: boolean;
     onSend: () => void;
   }) => React.ReactNode;
+  /**
+   * Optional node rendered at the very start of the composer's footer row,
+   * before the attach button. Hosts use this for single-icon accessories
+   * that belong with the attach/emoji cluster (e.g., a plain/rich editor
+   * toggle) so the composer keeps one footer row instead of stacking another.
+   */
+  leftAccessory?: React.ReactNode;
 }
 
 /* ------------------------------------------------------------------------- */
@@ -132,6 +139,7 @@ export const RichTextInput = forwardRef<RichTextInputHandle, RichTextInputProps>
       enableEmoticonReplace = true,
       enableAutoLink = true,
       renderSendButton,
+      leftAccessory,
     } = props;
 
     const containerRef = useRef<HTMLDivElement>(null);
@@ -1175,6 +1183,7 @@ export const RichTextInput = forwardRef<RichTextInputHandle, RichTextInputProps>
         <div ref={containerRef} className="sm-rich-editor-container" />
 
         <div className="sm-rich-editor-footer">
+          {leftAccessory}
           {onUploadAttachment && (
             <>
               <input
