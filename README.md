@@ -90,6 +90,22 @@ The grouped wrapper carries the `sm-message-grouped` class — override in host 
 
 Custom `renderMessage` consumers receive `isGrouped` in context and should honor it to preserve list polish.
 
+### Active call indicator
+
+```tsx
+import { ActiveCallDot, ConversationList } from '@scalemule/chat/react'
+
+<ConversationList
+  renderActiveIndicator={(c) => (
+    <ActiveCallDot active={activeCallIds.has(c.id)} />
+  )}
+/>
+```
+
+Host wires the source of truth (conference presence, WebRTC signaling, etc.). `<ActiveCallDot>` is a pulsing green dot with pure-CSS animation — pass `active={false}` or omit the renderer entirely to disable.
+
+Tokens: `--sm-active-call-color`, `--sm-active-call-pulse-opacity` (set to `0` to disable the pulse while keeping the dot).
+
 ### Mention count badges
 
 ```tsx

@@ -770,6 +770,7 @@ export function useUnreadCount() {
 // ActiveCallBanner, CallTriggerButton, CallSystemMessage.
 export {
   ActiveCallBanner,
+  ActiveCallDot,
   CallTriggerButton,
   CallSystemMessage,
   ChatInput,

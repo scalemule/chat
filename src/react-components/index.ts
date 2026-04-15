@@ -1,4 +1,6 @@
 export { ActiveCallBanner } from './ActiveCallBanner';
+export { ActiveCallDot } from './ActiveCallDot';
+export type { ActiveCallDotProps } from './ActiveCallDot';
 export { CallTriggerButton } from './CallTriggerButton';
 export { CallSystemMessage } from './CallSystemMessage';
 export { ChannelBrowser } from './ChannelBrowser';
