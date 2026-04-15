@@ -21,6 +21,7 @@ function mockConversations(conversations: Conversation[]): void {
         isLoading: false,
         refresh: vi.fn(),
       }),
+      useMentionCounts: () => new Map<string, number>(),
     };
   });
 }

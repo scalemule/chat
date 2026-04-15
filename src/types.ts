@@ -46,6 +46,12 @@ export interface Conversation {
   participant_count?: number;
   last_message_at?: string;
   unread_count?: number;
+  /**
+   * Count of unread @-mentions of the current user in this conversation.
+   * Server-side hint; pair with `useMentionCounts()` for the live overlay
+   * (`ConversationList` sums the two).
+   */
+  mention_count?: number;
   is_muted?: boolean;
   last_message_preview?: string;
   last_message_sender_id?: string;

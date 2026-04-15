@@ -90,6 +90,23 @@ The grouped wrapper carries the `sm-message-grouped` class — override in host 
 
 Custom `renderMessage` consumers receive `isGrouped` in context and should honor it to preserve list polish.
 
+### Mention count badges
+
+```tsx
+import { useMentionCounts, ConversationList } from '@scalemule/chat/react'
+
+// Automatic: ConversationList calls the hook internally using currentUserId.
+<ConversationList currentUserId={currentUserId} />
+
+// Manual: host-supplied store wins over the internal hook.
+const counts = useMentionCounts(currentUserId)
+<ConversationList currentUserId={currentUserId} mentionCounts={counts} />
+```
+
+The badge reads `@N` and is styled via `.sm-mention-badge` using `--sm-mention-badge-bg` / `--sm-mention-badge-text`. The displayed count sums the server-side hint on `Conversation.mention_count` with the live hook overlay. `showMentionBadge={false}` suppresses the badge entirely.
+
+Increments derive client-side from the mention blot's `data-sm-user-id` attribute, so nothing server-side changes — the feature lights up automatically once the host renders mentions.
+
 ### Sectioned conversation list
 
 ```tsx

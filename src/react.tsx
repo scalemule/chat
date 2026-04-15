@@ -34,6 +34,16 @@ interface ChatContextValue {
 
 const ChatContext = createContext<ChatContextValue | null>(null);
 
+/**
+ * Internal-only context export for tests that need to inject a mock
+ * client without spinning up the real ChatProvider (which opens a
+ * websocket). Not part of the public API surface — the underscore
+ * prefix and this comment signal that.
+ *
+ * @internal
+ */
+export { ChatContext as __ChatContext };
+
 function useChatContext(): ChatContextValue {
   const ctx = useContext(ChatContext);
   if (!ctx) throw new Error('useChatContext must be used within a ChatProvider');
@@ -662,6 +672,58 @@ export function useSearch(conversationId?: string) {
   }, []);
 
   return { results, total, query, isSearching, search, clearSearch };
+}
+
+// ============ useMentionCounts Hook ============
+
+/**
+ * Live overlay of @-mention counts by conversation id.
+ *
+ * The chat service does not currently emit a distinct mention event, so
+ * the hook derives increments client-side by scanning incoming message
+ * HTML for `<span class="sm-mention" data-sm-user-id="{currentUserId}">`.
+ * `ConversationList` combines this overlay with the server-side hint on
+ * `conversation.mention_count` — the overlay resets when the current user
+ * reads the conversation (same simplification as `useUnreadCount`).
+ *
+ * Passing `undefined` for `currentUserId` disables the hook (returns an
+ * empty map and installs no listeners) — useful during SSR / auth loads.
+ */
+export function useMentionCounts(currentUserId?: string): Map<string, number> {
+  const { client } = useChatContext();
+  const [counts, setCounts] = useState<Map<string, number>>(() => new Map());
+
+  useEffect(() => {
+    if (!currentUserId) return;
+    // The mention blot emits exactly this attribute on the rendered span.
+    // Plain-text messages lack the attribute so this is a safe needle.
+    const needle = `data-sm-user-id="${currentUserId}"`;
+    return client.on('message', ({ message, conversationId }) => {
+      if (message.sender_id === currentUserId) return;
+      const html = message.content ?? '';
+      if (!html.includes(needle)) return;
+      setCounts((prev) => {
+        const next = new Map(prev);
+        next.set(conversationId, (next.get(conversationId) ?? 0) + 1);
+        return next;
+      });
+    });
+  }, [client, currentUserId]);
+
+  useEffect(() => {
+    if (!currentUserId) return;
+    return client.on('read', ({ userId, conversationId }) => {
+      if (userId !== currentUserId) return;
+      setCounts((prev) => {
+        if (!prev.has(conversationId)) return prev;
+        const next = new Map(prev);
+        next.delete(conversationId);
+        return next;
+      });
+    });
+  }, [client, currentUserId]);
+
+  return counts;
 }
 
 // ============ useUnreadCount Hook ============

@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.0.48 — 2026-04-15
+
+**Added: per-conversation mention count badges.**
+
+New hook `useMentionCounts(currentUserId)` returns a live `Map<conversationId, number>` overlay of @-mentions of the current user. The hook derives increments client-side by scanning incoming message HTML for `data-sm-user-id="{currentUserId}"` (the attribute emitted by the mention blot since 0.0.34); it decrements on `read` events for the current user (same simplification as `useUnreadCount`).
+
+`ConversationList` renders the `@N` badge alongside the existing unread badge. The displayed count is `(conversation.mention_count ?? 0) + (liveHook.get(id) ?? 0)` — the server-side hint and the live overlay always sum cleanly.
+
+New props on `ConversationList`:
+
+- `showMentionBadge?: boolean` — default `true`. The badge only renders when count > 0, so hosts with no mentions incur no visible chrome regardless. Pass `false` to suppress entirely.
+- `mentionCounts?: Map<string, number>` — override the live hook with a host-supplied store (e.g. a Redux selector).
+
+Type extension: new optional `mention_count?: number` on `Conversation` for the server-side seed.
+
+CSS: new `.sm-mention-badge` class, styled via tokens `--sm-mention-badge-bg` (default red-tinted `--sm-error`) and `--sm-mention-badge-text` (default `#fff`).
+
+**Internal:** new `@internal` export `__ChatContext` so hooks that depend on the chat context can be unit-tested without spinning a full `ChatProvider`. Not part of the public surface — underscore prefix signals test-only use.
+
+**Bundle:** `react.js` 182.81K within 195.31K budget.
+
 ## 0.0.47 — 2026-04-15
 
 **Added: sectioned conversation list (CHANNELS / GROUPS / DIRECT MESSAGES).**
