@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.0.40 — 2026-04-14
+
+**Added: weekday labels + formatter override on date separators.**
+
+`ChatMessageList` (and `ChatThread`) now show "Today" / "Yesterday" / weekday name (for messages 2-6 days back) / "Apr 4" / "Apr 4, 2025" — replacing the previous Today/Yesterday/short-date pattern. The default formatter is exposed at `react-components/dateLabel.ts` for hosts that want to compose with it.
+
+New props on `ChatMessageList` and `ChatThread`:
+
+- `formatDateLabel?: (iso: string) => string` — full override.
+- `dateLabelLocale?: string` — BCP-47 locale for the default formatter.
+- `dateLabelTimeZone?: string` — IANA zone for the default formatter. **SSR hosts should set this** (or pass `formatDateLabel`) — server and client computing the day boundary in different zones is the typical cause of Today/Yesterday hydration mismatches.
+
+`renderMessage` context gains two fields so custom renderers can preserve the list polish:
+
+- `showDateSeparator: boolean`
+- `dateLabel: string | null`
+
+Date-boundary math now uses `Intl.DateTimeFormat.formatToParts()` for both the message day and "today" — no `new Date(y, m, d)` local-midnight conversion, so a caller-provided `timeZone` is honored consistently on both sides of the comparison.
+
+No bundle impact (formatter replaces inline helper of similar size).
+
 ## 0.0.39 — 2026-04-14
 
 **Changed: `VideoAttachmentPlayer` now uses Gallop for every video attachment**, including raw mp4 / webm / mov files from chat uploads.
