@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 
-import { useConversations } from '../react';
+import { useConversations, useMentionCounts } from '../react';
 import type { Conversation } from '../types';
 import type { ChatTheme } from './theme';
 import { themeToStyle } from './theme';
@@ -80,6 +80,21 @@ interface ConversationListProps {
    * `['channel', 'group', 'direct']`.
    */
   sectionOrder?: ConversationType[];
+  /**
+   * Whether to render the per-row @-mention badge. Default `true` — the
+   * badge only renders when the computed count is > 0, so hosts without
+   * mentions incur no visible chrome regardless of this setting. Set
+   * `false` to suppress the badge entirely (e.g. for a simplified
+   * customer-facing sidebar).
+   */
+  showMentionBadge?: boolean;
+  /**
+   * Optional override for mention counts. When provided, this map is used
+   * verbatim; when absent, the component uses `useMentionCounts()` with
+   * `currentUserId` internally. Hosts can pass a custom store (e.g. a
+   * Redux selector) without giving up the rendering.
+   */
+  mentionCounts?: Map<string, number>;
 }
 
 function formatPreview(conversation: Conversation): string {
@@ -103,10 +118,14 @@ export function ConversationList({
   groupBy = 'flat',
   sectionLabels,
   sectionOrder,
+  showMentionBadge = true,
+  mentionCounts: mentionCountsProp,
 }: ConversationListProps): React.JSX.Element {
   const { conversations, isLoading } = useConversations({
     conversationType,
   });
+  const liveMentionCounts = useMentionCounts(currentUserId);
+  const mentionCounts = mentionCountsProp ?? liveMentionCounts;
   const [search, setSearch] = useState('');
 
   const resolveName = useMemo(
@@ -154,6 +173,9 @@ export function ConversationList({
 
   const renderRow = (conversation: Conversation): React.JSX.Element => {
     const selected = conversation.id === selectedConversationId;
+    const mentionCount =
+      (conversation.mention_count ?? 0) +
+      (mentionCounts.get(conversation.id) ?? 0);
     return (
       <button
         key={conversation.id}
@@ -179,6 +201,29 @@ export function ConversationList({
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             {conversation.is_muted ? (
               <span style={{ fontSize: 11, color: 'var(--sm-muted-text, #6b7280)' }}>Muted</span>
+            ) : null}
+            {showMentionBadge && mentionCount > 0 ? (
+              <span
+                className="sm-mention-badge"
+                aria-label={`${mentionCount} unread ${mentionCount === 1 ? 'mention' : 'mentions'}`}
+                style={{
+                  minWidth: 22,
+                  height: 22,
+                  borderRadius: 999,
+                  background:
+                    'var(--sm-mention-badge-bg, var(--sm-error, #ef4444))',
+                  color:
+                    'var(--sm-mention-badge-text, #fff)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  padding: '0 6px',
+                }}
+              >
+                @{mentionCount}
+              </span>
             ) : null}
             {conversation.unread_count ? (
               <span

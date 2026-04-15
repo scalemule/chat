@@ -37,6 +37,7 @@ vi.mock('../../react', async (importOriginal) => {
       isLoading: false,
       refresh: vi.fn(),
     }),
+    useMentionCounts: () => new Map<string, number>(),
   };
 });
 
