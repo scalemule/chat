@@ -1,5 +1,4 @@
 import React, {
-  createContext,
   useContext,
   useEffect,
   useRef,
@@ -8,6 +7,8 @@ import React, {
   type ReactNode,
 } from 'react';
 import { ChatClient } from './core/ChatClient';
+import { ChatContext } from './shared/ChatContext';
+import type { ChatContextValue } from './shared/ChatContext';
 import type {
   Attachment,
   ChannelListItem,
@@ -26,13 +27,10 @@ import type {
 } from './types';
 
 // ============ Context ============
-
-interface ChatContextValue {
-  client: ChatClient;
-  config: ChatConfig;
-}
-
-const ChatContext = createContext<ChatContextValue | null>(null);
+//
+// The Context object itself lives in `shared/ChatContext.ts` so
+// secondary entries (e.g. `@scalemule/chat/search`) can read the
+// client from context without importing all of this file.
 
 /**
  * Internal-only context export for tests that need to inject a mock
