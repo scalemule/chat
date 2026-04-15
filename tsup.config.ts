@@ -16,7 +16,7 @@ export default defineConfig([
     dts: false,
     sourcemap: false,
     clean: true,
-    external: ['react', 'react-dom', 'quill', 'quill-markdown-shortcuts-new'],
+    external: ['react', 'react-dom', 'quill', 'quill-markdown-shortcuts-new', '@scalemule/gallop', '@scalemule/gallop/react'],
     treeshake: true,
     splitting: true,
   },
@@ -31,6 +31,19 @@ export default defineConfig([
     sourcemap: false,
     clean: false,
     external: ['react', 'react-dom', 'quill', 'quill-markdown-shortcuts-new'],
+    treeshake: true,
+    splitting: false,
+  },
+  // Video player entry — @scalemule/gallop is an optional peer dep; this
+  // keeps it out of the core/react bundles for customers who don't need the
+  // polished player.
+  {
+    entry: { video: 'src/video.tsx' },
+    format: ['esm', 'cjs'],
+    dts: false,
+    sourcemap: false,
+    clean: false,
+    external: ['react', 'react-dom', '@scalemule/gallop', '@scalemule/gallop/react'],
     treeshake: true,
     splitting: false,
   },

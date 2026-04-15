@@ -43,6 +43,14 @@ const budgets = [
     limit: 90_000,
     label: 'Editor ESM',
   },
+  {
+    // Video player entry — Gallop itself is a peer dep (external) so isn't
+    // counted here. This is the thin adapter (~1KB). Budget padded for
+    // poster/presigned-url logic growth.
+    file: 'video.js',
+    limit: 5_000,
+    label: 'Video ESM',
+  },
 ];
 
 let hasFailure = false;

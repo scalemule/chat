@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.0.37 — 2026-04-14
+
+**Added: `@scalemule/chat/video` entry — Gallop-powered `VideoAttachmentPlayer`.**
+
+New code-split entry that wraps `@scalemule/gallop/react`'s `GallopPlayer` into a chat-attachment shape: accepts an `Attachment`, resolves presigned URLs on demand, and renders the polished player (adaptive bitrate, buffered preview, fullscreen, quality switcher) instead of the native `<video controls>` fallback in `ChatMessageItem`.
+
+Usage (typically via `renderAttachment`):
+
+```tsx
+import { VideoAttachmentPlayer } from '@scalemule/chat/video';
+
+<ChatMessageList
+  renderAttachment={(att) =>
+    att.mime_type?.startsWith('video/')
+      ? <VideoAttachmentPlayer attachment={att} fetcher={onFetchAttachmentUrl} />
+      : undefined
+  }
+/>
+```
+
+`@scalemule/gallop` is an **optional** peer dep — only consumers of this entry need it installed. `react.js` and `editor.js` contain zero references to Gallop (code-split verified in the bundle).
+
+**Added: 2 more emoticons** (`:-*` / `:*` → 😘). Emoticon map is now 37 entries, matching the original MergeYard audit.
+
 ## 0.0.36 — 2026-04-14
 
 **Added: `leftAccessory` prop on `RichTextInput`.** Optional node rendered at the very start of the composer's footer row, before the attach button. Hosts use this to pin a single-icon control (e.g., a plain/rich editor toggle, a voice-note button) into the existing footer cluster instead of stacking another row above the composer. Keeps the chrome compact.
