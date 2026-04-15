@@ -244,6 +244,39 @@ CSS hooks: `.sm-conv-section`, `.sm-conv-section-{type}`, `.sm-conv-section-head
 
 `resolveConversationDisplayName`, `buildDefaultGroupName`, and `otherParticipantNames` are exported from `@scalemule/chat` (SSR-safe, React-free) for use in previews / notifications / system-message templates.
 
+### Presence status indicators
+
+```tsx
+import {
+  StatusDot,
+  useConversationPresenceStatus,
+} from '@scalemule/chat/react'
+
+function AvatarWithStatus({
+  conversationId,
+  userId,
+  src,
+}: {
+  conversationId: string
+  userId: string
+  src?: string
+}) {
+  const status = useConversationPresenceStatus(conversationId, userId)
+  return (
+    <div style={{ position: 'relative', display: 'inline-block' }}>
+      <img src={src} alt="" width={32} height={32} style={{ borderRadius: '50%' }} />
+      <div style={{ position: 'absolute', right: -2, bottom: -2 }}>
+        <StatusDot status={status} />
+      </div>
+    </div>
+  )
+}
+```
+
+The dot is a pure visual — host supplies the resolved status. `useConversationPresenceStatus` is conversation-scoped; pass the conversation where both viewer and subject have joined presence. Outside a conversation, pass a resolved status directly (e.g. from your own store).
+
+Theme via `--sm-status-online-color`, `--sm-status-away-color`, `--sm-status-offline-color`, `--sm-status-dot-border`.
+
 ### Search → jump to message (end-to-end)
 
 The search UX composes cleanly with the scroll-and-highlight polish shipped in 0.0.45. When the user clicks a result, the host navigates to the conversation and hands the message id to `<ChatThread highlightMessageId>`, which scrolls the list to center the message and paints the amber fade animation.

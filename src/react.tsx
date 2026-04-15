@@ -412,7 +412,7 @@ export function usePresence(conversationId?: string) {
         setMembers(
           m.map((p) => ({
             userId: p.user_id,
-            status: (p as { status?: string }).status ?? 'online',
+            status: p.status ?? 'online',
             userData: p.user_data,
           })),
         );
@@ -458,6 +458,37 @@ export function usePresence(conversationId?: string) {
   }, [client, conversationId]);
 
   return { members };
+}
+
+/**
+ * Derives a presence status for a single user inside a specific
+ * conversation. Returns:
+ *
+ *   - `'offline'` when the user is not present in the conversation,
+ *     or when `conversationId`/`userId` is missing.
+ *   - `'away'` when the user is present and their presence entry
+ *     reports `status === 'away'` (set via `ChatClient.setStatus` in
+ *     0.0.57; also set by any host that publishes `'away'` directly).
+ *   - `'online'` when the user is present with any other status (or
+ *     none).
+ *
+ * **Conversation-scoped on purpose.** There is no platform-level
+ * presence source in the SDK today, so a user's status is only visible
+ * inside conversations where both viewer and subject have joined
+ * presence. Renderers outside a conversation (e.g. user search results)
+ * should either pick a shared conversation to scope against or show a
+ * neutral avatar.
+ */
+export function useConversationPresenceStatus(
+  conversationId: string | undefined,
+  userId: string | undefined,
+): 'online' | 'away' | 'offline' {
+  const { members } = usePresence(conversationId);
+  if (!conversationId || !userId) return 'offline';
+  const member = members.find((m) => m.userId === userId);
+  if (!member) return 'offline';
+  if (member.status === 'away') return 'away';
+  return 'online';
 }
 
 export function useTyping(conversationId?: string) {
@@ -907,6 +938,7 @@ export {
   EmojiPicker,
   EmojiPickerTrigger,
   ReactionBar,
+  StatusDot,
   RepStatusToggle,
   ReportDialog,
   SearchBar,

@@ -148,6 +148,14 @@ export interface ReactionEvent {
 
 export interface PresenceMember {
   user_id: string;
+  /**
+   * Host-reported status for this presence membership. Typically
+   * `"online"` (default — member is connected) or `"away"` (user
+   * explicitly marked themselves away via `ChatClient.setStatus`,
+   * shipping in 0.0.57). Kept as `string` to allow host-specific
+   * values without a type bump.
+   */
+  status?: 'online' | 'away' | string;
   user_data?: unknown;
   joined_at: string;
 }

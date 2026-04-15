@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.0.56 — 2026-04-15
+
+**Added: presence status dot + conversation-scoped resolver.**
+
+Lays the foundation for the presence UX track (self-status, away toggle, offline banner ship in 0.0.57/0.0.58).
+
+- **`<StatusDot status size? showOffline? ariaLabel?>`** — pure visual. Hosts pass the resolved status; the component renders a small green (online), amber (away), or gray hollow (offline) dot. No data fetch, no subscription. Typically overlaid on an avatar via a relatively-positioned wrapper. Tokens: `--sm-status-online-color`, `--sm-status-away-color`, `--sm-status-offline-color`, `--sm-status-dot-border`. CSS classes `.sm-status-dot`, `.sm-status-dot-{online,away,offline}` are stable hooks for host overrides.
+
+- **`useConversationPresenceStatus(conversationId, userId)`** — returns `'online' | 'away' | 'offline'` derived from `usePresence(conversationId)`. Conversation-scoped intentionally; there's no platform-level presence source in the SDK today. Missing `conversationId` or `userId` returns `'offline'` rather than throwing so hosts can pass props that fill in later.
+
+- **Type fix:** `PresenceMember.status?: 'online' | 'away' | string` is now official on the SDK type (previously cast ad-hoc in `usePresence`). No runtime change — host code that already read `status` via narrowing keeps working.
+
+**Not shipping here** (deferred to 0.0.57/0.0.58):
+
+- Self-status control (`setStatus`, `useMyStatus`, `<AvatarStatusMenu>`) — needs coordinated `presence_update` + reconnect re-application.
+- Offline banner + composer disable — requires `<ChatThread>`/composer wiring for plain + rich parity.
+- Client-side staleness thresholds — dropped from Section 6 entirely. Requires a server-backed `last_active_at` field and a tighter sweep cadence; today's 2-minute server sweep and join/update-only timestamps make a 35s client lens incorrect.
+
+**Architectural notes:**
+
+- Away is modeled as an explicit `presence_update` with `status: 'away'` — NOT as heartbeat suppression. The WebSocket ping keepalive stays owned by the transport layer across this entire track.
+- No new code-split entry — presence code is small and used universally. Lives in `@scalemule/chat/react`.
+
+**Bundle:** `react.js` 230.02K → 231.25K (within 234.38K budget).
+
 ## 0.0.55 — 2026-04-15
 
 **Docs: search → jump-to-message wiring.**
