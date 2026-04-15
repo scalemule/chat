@@ -122,6 +122,16 @@ interface ChatMessageListProps {
    * always break grouping. Default 300_000 (5 minutes). Pass `0` to disable.
    */
   groupingWindowMs?: number;
+  /**
+   * Click handler for `<span class="sm-mention" data-sm-user-id>` elements
+   * inside HTML messages. Forwarded to ChatMessageItem.
+   */
+  onMentionClick?: (userId: string, message: ChatMessage) => void;
+  /**
+   * Click handler for `<span class="sm-channel-mention" data-sm-channel-id>`
+   * elements inside HTML messages. Forwarded to ChatMessageItem.
+   */
+  onChannelMentionClick?: (channelId: string, message: ChatMessage) => void;
 }
 
 export function ChatMessageList({
@@ -158,6 +168,8 @@ export function ChatMessageList({
   dateLabelLocale,
   dateLabelTimeZone,
   groupingWindowMs = 300_000,
+  onMentionClick,
+  onChannelMentionClick,
 }: ChatMessageListProps): React.JSX.Element {
   const resolveDateLabel = useCallback(
     (iso: string) =>
@@ -508,6 +520,8 @@ export function ChatMessageList({
                     isOwnMessage={isOwn}
                     highlight={showUnreadDivider || isHighlighted}
                     isGrouped={isGrouped}
+                    onMentionClick={onMentionClick}
+                    onChannelMentionClick={onChannelMentionClick}
                     renderAttachment={renderAttachment}
                     renderAvatar={renderAvatar}
                     avatarSize={avatarSize}

@@ -73,6 +73,20 @@ interface ChatMessageItemProps {
    * (`ChatMessageList`) decides; the item just renders. Default false.
    */
   isGrouped?: boolean;
+  /**
+   * Click handler for `<span class="sm-mention" data-sm-user-id="...">`
+   * elements rendered inside HTML messages. The component delegates a single
+   * `onClick` on the message body and resolves the user id from the
+   * `data-sm-user-id` attribute. Hosts wire navigation (open profile, route
+   * to `/u/{id}`, etc). When omitted the chip is still styled and clickable
+   * but the click is a no-op.
+   */
+  onMentionClick?: (userId: string, message: ChatMessage) => void;
+  /**
+   * Click handler for `<span class="sm-channel-mention" data-sm-channel-id>`.
+   * See `onMentionClick` for the delegation contract.
+   */
+  onChannelMentionClick?: (channelId: string, message: ChatMessage) => void;
   /** Avatar display size in pixels. Default 32. Set to 36 for pre-generated thumbnail cache hits. */
   avatarSize?: number;
   /** Transform a profile's avatar_url into an optimized thumbnail URL (e.g. photo service transform). */
@@ -501,6 +515,8 @@ export function ChatMessageItem({
   isOwnMessage: isOwnMessageProp,
   highlight = false,
   isGrouped = false,
+  onMentionClick,
+  onChannelMentionClick,
   avatarSize = 32,
   getAvatarUrl,
   renderAvatar,
@@ -1216,6 +1232,34 @@ export function ChatMessageItem({
               <div
                 className="sm-rich-content"
                 style={{ margin: 0, wordBreak: 'break-word' }}
+                onClick={(e) => {
+                  if (!onMentionClick && !onChannelMentionClick) return;
+                  const target = e.target as HTMLElement | null;
+                  if (!target || typeof target.closest !== 'function') return;
+                  const userMention = target.closest<HTMLElement>('.sm-mention');
+                  if (userMention && onMentionClick) {
+                    const userId = userMention.getAttribute('data-sm-user-id');
+                    if (userId) {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onMentionClick(userId, message);
+                      return;
+                    }
+                  }
+                  const channelMention = target.closest<HTMLElement>(
+                    '.sm-channel-mention',
+                  );
+                  if (channelMention && onChannelMentionClick) {
+                    const channelId = channelMention.getAttribute(
+                      'data-sm-channel-id',
+                    );
+                    if (channelId) {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onChannelMentionClick(channelId, message);
+                    }
+                  }
+                }}
                 dangerouslySetInnerHTML={{ __html: sanitizeHtml(message.content) }}
               />
             ) : (

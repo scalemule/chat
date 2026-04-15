@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.0.42 — 2026-04-15
+
+**Added: clickable mention chips in rendered HTML messages.**
+
+`<span class="sm-mention" data-sm-user-id>` and `<span class="sm-channel-mention" data-sm-channel-id>` (already preserved by the sanitizer since 0.0.31) now render as styled chips with cursor + hover affordance, and `ChatMessageItem` delegates a single `onClick` on the message body that resolves the chip via `target.closest()` and fires a host-supplied callback.
+
+New props on `ChatMessageList` and `ChatThread`:
+
+- `onMentionClick?: (userId, message) => void`
+- `onChannelMentionClick?: (channelId, message) => void`
+
+Hosts wire navigation (open profile drawer, route to `/u/{id}`, etc) — the SDK is router-agnostic and never assumes a URL scheme.
+
+Click delegation only runs when at least one callback is provided. When neither is set, chips remain styled but clicks are a no-op (no `preventDefault`, no console noise).
+
+CSS additions in `themes/rich-content.css`:
+
+- `.sm-mention:hover` background uses new token `--sm-mention-hover-bg` (default rgba primary 0.16).
+- `.sm-channel-mention` gains chip styling parity with `.sm-mention` (was previously color-only). New tokens: `--sm-channel-mention-bg`, `--sm-channel-mention-hover-bg`.
+
+**Bundle:** `react.js` now 172.75K (within bumped 180K budget set in 0.0.41).
+
 ## 0.0.41 — 2026-04-15
 
 **Added: message grouping for consecutive messages from the same sender.**

@@ -90,6 +90,22 @@ The grouped wrapper carries the `sm-message-grouped` class — override in host 
 
 Custom `renderMessage` consumers receive `isGrouped` in context and should honor it to preserve list polish.
 
+### Mention click handling
+
+`<span class="sm-mention" data-sm-user-id>` and `<span class="sm-channel-mention" data-sm-channel-id>` chips inside HTML messages are clickable. Wire navigation via two callbacks:
+
+```tsx
+<ChatThread
+  conversationId={id}
+  onMentionClick={(userId) => router.push(`/u/${userId}`)}
+  onChannelMentionClick={(channelId) => router.push(`/c/${channelId}`)}
+/>
+```
+
+When neither callback is provided, chips render as styled but inert text — useful for read-only views (e.g. archived threads).
+
+Customize chip colors via `--sm-mention-bg`, `--sm-mention-hover-bg`, `--sm-mention-text`, `--sm-channel-mention-bg`, `--sm-channel-mention-hover-bg`, `--sm-channel-mention-text`.
+
 ---
 
 ## Quick start — named channels
