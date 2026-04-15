@@ -127,6 +127,12 @@ interface ChatThreadProps {
    * `@scalemule/chat/embeds`. Forwarded.
    */
   renderEmbeds?: (message: import('../types').ChatMessage) => React.ReactNode;
+  /**
+   * Scroll to and visually highlight a specific message — typically wired
+   * to a search-result click. The list adds a 2-second amber fade + left
+   * border via the `sm-message-highlighted` class. Forwarded.
+   */
+  highlightMessageId?: string;
 }
 
 function inferMessageType(content: string, attachments: Attachment[]): 'text' | 'image' | 'file' {
@@ -168,6 +174,7 @@ export function ChatThread({
   onChannelMentionClick,
   linkifyPlainText,
   renderEmbeds,
+  highlightMessageId,
 }: ChatThreadProps): React.JSX.Element {
   const [sendError, setSendError] = useState<string | null>(null);
   const sendErrorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -342,6 +349,7 @@ export function ChatThread({
         onChannelMentionClick={onChannelMentionClick}
         linkifyPlainText={linkifyPlainText}
         renderEmbeds={renderEmbeds}
+        highlightMessageId={highlightMessageId}
       />
 
       <TypingIndicator

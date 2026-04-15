@@ -67,7 +67,27 @@ interface ChatMessageItemProps {
   onReport?: (messageId: string) => void;
   onFetchAttachmentUrl?: (fileId: string) => Promise<string>;
   isOwnMessage?: boolean;
+  /**
+   * @deprecated Pass `isSearchHit` and/or `isUnreadStart` explicitly so the
+   * two visually-distinct concepts can render differently. When set, the
+   * value is treated as `isSearchHit || isUnreadStart` for backwards
+   * compatibility — but this only buys host apps a bridging window; the
+   * unified style is already split in the SDK. Will be removed in 0.1.0.
+   */
   highlight?: boolean;
+  /**
+   * The message is the target of a "scroll-to-message" jump (e.g. clicking
+   * a search result). Adds the `sm-message-highlighted` class which paints
+   * a 2-second amber fade + left border via CSS animation. Set by
+   * `ChatMessageList` when `highlightMessageId === message.id`.
+   */
+  isSearchHit?: boolean;
+  /**
+   * The message is the first unread message in the thread. Adds the
+   * `sm-message-unread-start` class — a subtle ring matching the unread
+   * divider color, distinct from the louder search-hit animation.
+   */
+  isUnreadStart?: boolean;
   /**
    * Suppress the avatar and sender header on this message because it groups
    * with the previous one (same sender, recent enough). The composing list
@@ -535,7 +555,9 @@ export function ChatMessageItem({
   onReport,
   onFetchAttachmentUrl,
   isOwnMessage: isOwnMessageProp,
-  highlight = false,
+  highlight: highlightProp,
+  isSearchHit: isSearchHitProp,
+  isUnreadStart: isUnreadStartProp,
   isGrouped = false,
   onMentionClick,
   onChannelMentionClick,
@@ -554,6 +576,19 @@ export function ChatMessageItem({
   // Profile resolution: explicit `profile` prop wins, else fall back to
   // `getProfile(senderId)`, else undefined (default "User" placeholder).
   const profile = profileProp ?? getProfile?.(message.sender_id);
+  // Resolve highlight semantics. Hosts that still pass the deprecated
+  // `highlight` boolean get the union of both effects (matches pre-0.0.45
+  // behavior) until they migrate to the explicit flags.
+  const isSearchHit = isSearchHitProp ?? highlightProp ?? false;
+  const isUnreadStart = isUnreadStartProp ?? false;
+  const wrapperClasses = [
+    isGrouped ? 'sm-message-grouped' : null,
+    isSearchHit ? 'sm-message-highlighted' : null,
+    isUnreadStart && !isSearchHit ? 'sm-message-unread-start' : null,
+  ]
+    .filter(Boolean)
+    .join(' ');
+  const wrapperClassName = wrapperClasses || undefined;
   const [showActions, setShowActions] = useState(false);
   const [editing, setEditing] = useState(false);
   // For rich-HTML messages the inline edit UI is plain-text only (Phase A scope),
@@ -721,7 +756,7 @@ export function ChatMessageItem({
     if (snippetAtt) {
       return (
         <div
-          className={isGrouped ? 'sm-message-grouped' : undefined}
+          className={wrapperClassName}
           style={{
             display: 'flex',
             justifyContent: isOwn ? 'flex-end' : 'flex-start',
@@ -839,7 +874,7 @@ export function ChatMessageItem({
 
   return (
     <div
-      className={isGrouped ? 'sm-message-grouped' : undefined}
+      className={wrapperClassName}
       style={{
         display: 'flex',
         justifyContent: isOwn ? 'flex-end' : 'flex-start',
@@ -1034,10 +1069,6 @@ export function ChatMessageItem({
             fontSize: 'var(--sm-font-size, 14px)',
             fontFamily:
               'var(--sm-font-family, system-ui, -apple-system, sans-serif)',
-            boxShadow: highlight
-              ? '0 0 0 2px rgba(37, 99, 235, 0.22)'
-              : 'none',
-            transition: 'box-shadow 0.2s ease',
           }}
         >
           {/* Sender name + @username -- other's messages, non-grouped only */}

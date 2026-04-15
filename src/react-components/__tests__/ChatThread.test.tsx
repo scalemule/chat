@@ -100,6 +100,19 @@ describe('ChatThread', () => {
     expect(container.textContent).toContain('STUB-LABEL');
   });
 
+  it('applies sm-message-highlighted to the search-hit message via highlightMessageId', () => {
+    const previous = chatState.messages;
+    chatState.messages = [previous[0]];
+    try {
+      const { container } = render(
+        <ChatThread conversationId="conv-1" highlightMessageId={previous[0].id} />,
+      );
+      expect(container.querySelectorAll('.sm-message-highlighted').length).toBe(1);
+    } finally {
+      chatState.messages = previous;
+    }
+  });
+
   it('forwards linkifyPlainText=false through to the rendered message body', () => {
     // Default message (chatState) is plain-text and contains no URL — verify
     // by adding one and asserting the absence of the auto-link anchor.

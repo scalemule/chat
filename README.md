@@ -90,6 +90,19 @@ The grouped wrapper carries the `sm-message-grouped` class — override in host 
 
 Custom `renderMessage` consumers receive `isGrouped` in context and should honor it to preserve list polish.
 
+### Scroll-to-message highlight
+
+Pass `highlightMessageId` (on `<ChatThread>` or `<ChatMessageList>`) to scroll to a specific message and paint the search-hit treatment — a 2-second amber fade + left border. Typically wired to a search-result click.
+
+The unread-divider emphasis (first unread message) renders independently as a subtle left-edge ring — no longer collapsed into the same chrome.
+
+| CSS class | Applied when |
+| --- | --- |
+| `.sm-message-highlighted` | `highlightMessageId === message.id` |
+| `.sm-message-unread-start` | first unread message in the thread (and not also a search hit) |
+
+Tokens for theming: `--sm-highlight-bg`, `--sm-highlight-border`, `--sm-unread-divider-color`.
+
 ### Rich-link embeds (YouTube)
 
 Opt-in via the `@scalemule/chat/embeds` entry — code-split so hosts that don't render embeds don't pay the bundle cost.
