@@ -90,6 +90,22 @@ The grouped wrapper carries the `sm-message-grouped` class — override in host 
 
 Custom `renderMessage` consumers receive `isGrouped` in context and should honor it to preserve list polish.
 
+### Sectioned conversation list
+
+```tsx
+<ConversationList
+  groupBy="type"
+  sectionOrder={['channel', 'group', 'direct']}
+  sectionLabels={{ channel: 'TOPICS', direct: 'PEOPLE' }}
+/>
+```
+
+`groupBy="type"` partitions rows by `conversation_type` and renders a collapsible header for each section. Per-section collapse state persists to `localStorage` (`sm-conv-list-section-collapsed-v1`) and degrades silently when storage is unavailable.
+
+`sectionOrder` doubles as an inclusion filter — types omitted from the list are hidden entirely. `sectionLabels` overrides the default English labels (CHANNELS, GROUPS, DIRECT MESSAGES, etc.).
+
+CSS hooks: `.sm-conv-section`, `.sm-conv-section-{type}`, `.sm-conv-section-header`.
+
 ### Conversation display names
 
 `ConversationList` resolves human-readable names for every row type:

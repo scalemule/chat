@@ -1,27 +1,7 @@
-/**
- * Best-effort `localStorage` accessor.
- *
- * Returns `null` when storage is unavailable for any reason — SSR (no
- * `window`), private-browsing modes that throw on access, sandboxed iframes,
- * extension storage policies, or quota errors. Callers MUST treat a `null`
- * return as a cache miss and proceed without persistence.
- *
- * The probe write is intentionally cheap and key-namespaced so it can't
- * collide with host-app storage.
- */
-const PROBE_KEY = '__sm_yt_storage_probe__';
-
-export function safeStorage(): Storage | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    const s = window.localStorage;
-    s.setItem(PROBE_KEY, '1');
-    s.removeItem(PROBE_KEY);
-    return s;
-  } catch {
-    return null;
-  }
-}
+// Re-export the shared safeStorage so existing callers (and tests) keep
+// importing from `./storage`. Implementation moved to `shared/` in 0.0.47.
+export { safeStorage } from '../shared/safeStorage';
+import { safeStorage } from '../shared/safeStorage';
 
 export interface CachedTitle {
   title: string;
