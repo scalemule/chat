@@ -1,5 +1,36 @@
 # Changelog
 
+## 0.0.53 — 2026-04-15
+
+**Added: `@scalemule/chat/search` entry — search history + highlighted excerpts.**
+
+New opt-in, code-split entry for search UX. Hosts that don't render search don't pay the bundle cost in `react.js` (unchanged at 230K).
+
+```tsx
+import {
+  HighlightedExcerpt,
+  SearchHistoryDropdown,
+  useSearchHistory,
+} from '@scalemule/chat/search';
+```
+
+**`useSearchHistory({ storageKey?, max? })`** — persists recent queries to `localStorage` (silent in-memory fallback for SSR / private browsing / quota). Dedupes (bumps existing to top), caps at 8 entries by default, trims whitespace, ignores empty strings. Multi-user hosts should pass a per-user `storageKey` (e.g. `'sm-search-history-v1:' + userId`).
+
+**`<SearchHistoryDropdown>`** — keyboard-navigable recent-queries dropdown. Host owns positioning (wrap in an absolute container anchored to your search input). Arrow-key nav wraps at both ends, Enter selects, Escape calls `onClose`. Optional `onClear` footer button. Works with uncontrolled or controlled `activeIndex`.
+
+**`<HighlightedExcerpt html>`** — safely renders a single excerpt from `ChatSearchResult.highlights[]`. Preserves `<em>` (current OpenSearch highlight tag) and `<mark>` (forward-compat); unwraps all other tags, drops `<script>` / `<style>` / `<iframe>` / `<object>` / `<embed>` / `<svg>` with their contents, strips all attributes. Pure helper `sanitizeSearchExcerpt` is also exported for custom row renderers.
+
+**CSS** (appended to the existing `themes/message-polish.css`):
+
+- `.sm-search-result-excerpt em`, `.sm-search-result-excerpt mark` — soft amber highlight. Override via `--sm-search-highlight-bg` / `--sm-search-highlight-text`.
+- `.sm-search-history-dropdown`, `.sm-search-history-item`, `.sm-search-history-item-active` — stable hooks for host layout.
+
+**Unchanged:** `<SearchBar>`, `<SearchResults>`, `useSearch`, `ChatSearchResult`. Single-conversation search continues to work exactly as before. The new entry adds a complementary surface — it does not replace the existing one.
+
+**Bundle:** new `search.js` at 9.57K / 19.53K raw budget. `react.js` **unchanged** — verified code-split.
+
+Cross-conversation search (`useGlobalSearch`) + results panel ship in 0.0.54.
+
 ## 0.0.52 — 2026-04-15
 
 **Added: channel invitations — `ChatClient` methods, `useChannelInvitations` hook, `<ChannelInvitationsModal>`.**

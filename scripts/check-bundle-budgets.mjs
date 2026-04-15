@@ -76,6 +76,15 @@ const budgets = [
     limit: 8_000,
     label: 'Embeds ESM',
   },
+  {
+    // Search entry — opt-in search UX. 0.0.53 ships history dropdown,
+    // excerpt renderer, and the pure sanitizer. 0.0.54 adds the global
+    // search hook + results panel. Budget reserves headroom for the
+    // 0.0.54 additions so we don't pump the limit at every release.
+    file: 'search.js',
+    limit: 20_000,
+    label: 'Search ESM',
+  },
 ];
 
 let hasFailure = false;

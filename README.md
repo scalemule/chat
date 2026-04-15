@@ -244,6 +244,68 @@ CSS hooks: `.sm-conv-section`, `.sm-conv-section-{type}`, `.sm-conv-section-head
 
 `resolveConversationDisplayName`, `buildDefaultGroupName`, and `otherParticipantNames` are exported from `@scalemule/chat` (SSR-safe, React-free) for use in previews / notifications / system-message templates.
 
+### Search UX (opt-in entry)
+
+Search UX ships in a separate code-split entry so hosts that don't render search pay no bundle cost:
+
+```tsx
+// Core chat — used everywhere
+import { ChatThread, ConversationList } from '@scalemule/chat/react'
+
+// Search UX — import only in views that need it
+import {
+  HighlightedExcerpt,
+  SearchHistoryDropdown,
+  useSearchHistory,
+} from '@scalemule/chat/search'
+```
+
+**Search history with a controlled input:**
+
+```tsx
+const { history, push, clear } = useSearchHistory({
+  storageKey: `sm-search-history-v1:${userId}`,  // scope per user
+})
+const [q, setQ] = useState('')
+const [open, setOpen] = useState(false)
+
+<div style={{ position: 'relative' }}>
+  <input
+    value={q}
+    onChange={(e) => setQ(e.target.value)}
+    onFocus={() => setOpen(true)}
+    onKeyDown={(e) => {
+      if (e.key === 'Enter') {
+        push(q)
+        setOpen(false)
+      }
+    }}
+  />
+  {open && (
+    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0 }}>
+      <SearchHistoryDropdown
+        history={history}
+        onSelect={(q) => { setQ(q); setOpen(false) }}
+        onClose={() => setOpen(false)}
+        onClear={clear}
+      />
+    </div>
+  )}
+</div>
+```
+
+**Rendering highlighted excerpts:**
+
+```tsx
+result.highlights.map((html, i) => (
+  <HighlightedExcerpt key={i} html={html} />
+))
+```
+
+Theme via `--sm-search-highlight-bg` / `--sm-search-highlight-text`.
+
+`<SearchBar>` and `useSearch` (from `@scalemule/chat/react`) remain the single-conversation inline search surface — unchanged.
+
 ### Scroll-to-message highlight
 
 Pass `highlightMessageId` (on `<ChatThread>` or `<ChatMessageList>`) to scroll to a specific message and paint the search-hit treatment — a 2-second amber fade + left border. Typically wired to a search-result click.
