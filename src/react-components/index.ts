@@ -4,6 +4,11 @@ export type { ActiveCallDotProps } from './ActiveCallDot';
 export { CallTriggerButton } from './CallTriggerButton';
 export { CallSystemMessage } from './CallSystemMessage';
 export { ChannelBrowser } from './ChannelBrowser';
+export { ChannelEditModal } from './ChannelEditModal';
+export type {
+  ChannelEditModalProps,
+  ChannelEditFormValues,
+} from './ChannelEditModal';
 export { ChannelHeader } from './ChannelHeader';
 export { ChannelList } from './ChannelList';
 export { ChatInput } from './ChatInput';
@@ -12,6 +17,15 @@ export type { UserProfile } from './ChatMessageItem';
 export { ChatMessageList } from './ChatMessageList';
 export { ChatThread } from './ChatThread';
 export { ConversationList } from './ConversationList';
+export {
+  defaultFormatSystemMessage,
+  parseSystemMessage,
+} from './systemMessages';
+export type {
+  ParsedSystemMessage,
+  SystemMessageProfile,
+  FormatSystemMessageOptions,
+} from './systemMessages';
 export { NewConversationModal } from './NewConversationModal';
 export type {
   NewConversationModalProps,
