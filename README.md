@@ -90,6 +90,23 @@ The grouped wrapper carries the `sm-message-grouped` class — override in host 
 
 Custom `renderMessage` consumers receive `isGrouped` in context and should honor it to preserve list polish.
 
+### Rich-link embeds (YouTube)
+
+Opt-in via the `@scalemule/chat/embeds` entry — code-split so hosts that don't render embeds don't pay the bundle cost.
+
+```tsx
+import { YouTubeEmbeds } from '@scalemule/chat/embeds'
+
+<ChatThread
+  conversationId={id}
+  renderEmbeds={(msg) => <YouTubeEmbeds html={msg.content} />}
+/>
+```
+
+Detection covers standard watch URLs, `youtu.be` short links, `/embed/`, and `/shorts/`. Titles are fetched best-effort via YouTube's oEmbed endpoint and cached to `localStorage` for 7 days. Storage access is guarded — SSR, private browsing, and quota-blocked browsers fall back to title-less embeds without crashing.
+
+`extractYouTubeIds` is exported standalone for previews / notifications / search-index enrichment (SSR-safe).
+
 ### URL auto-linkify
 
 Plain-text messages auto-detect http/https/`www.` URLs and render them as `<a class="sm-link-auto" target="_blank" rel="noopener noreferrer nofollow">`. Trailing prose punctuation is trimmed; balanced parens are kept.

@@ -47,6 +47,19 @@ export default defineConfig([
     treeshake: true,
     splitting: false,
   },
+  // Embeds entry — opt-in rich-link embeds (YouTube etc.). Code-split so
+  // the iframe + oEmbed code never lands in the core react bundle for
+  // hosts that don't render embeds.
+  {
+    entry: { embeds: 'src/embeds.tsx' },
+    format: ['esm', 'cjs'],
+    dts: false,
+    sourcemap: false,
+    clean: false,
+    external: ['react', 'react-dom'],
+    treeshake: true,
+    splitting: false,
+  },
   // UMD bundle (script tag: window.ScaleMuleChat)
   {
     entry: { 'chat.umd': 'src/umd.ts' },

@@ -122,6 +122,11 @@ interface ChatThreadProps {
    * the message list / item.
    */
   linkifyPlainText?: boolean;
+  /**
+   * Render rich-link embeds below the message body. Hosts opt in via
+   * `@scalemule/chat/embeds`. Forwarded.
+   */
+  renderEmbeds?: (message: import('../types').ChatMessage) => React.ReactNode;
 }
 
 function inferMessageType(content: string, attachments: Attachment[]): 'text' | 'image' | 'file' {
@@ -162,6 +167,7 @@ export function ChatThread({
   onMentionClick,
   onChannelMentionClick,
   linkifyPlainText,
+  renderEmbeds,
 }: ChatThreadProps): React.JSX.Element {
   const [sendError, setSendError] = useState<string | null>(null);
   const sendErrorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -335,6 +341,7 @@ export function ChatThread({
         onMentionClick={onMentionClick}
         onChannelMentionClick={onChannelMentionClick}
         linkifyPlainText={linkifyPlainText}
+        renderEmbeds={renderEmbeds}
       />
 
       <TypingIndicator
