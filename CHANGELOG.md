@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.0.51 — 2026-04-15
+
+**Added: channel admin UX — `<ChannelEditModal>`, channel-description info popover, system-message resolver.**
+
+Three coordinated additions cover the channel-admin surface:
+
+1. **`<ChannelEditModal>`** (new component, exported from `@scalemule/chat/react`). Form for `name`, `description`, `visibility` (`public` | `private`). Optional `onArchive` callback surfaces an "Archive channel" footer button. Validation + error surfacing + focus trap mirror `NewConversationModal`. Permission gating is host's responsibility — open the modal only for users who can edit.
+
+2. **Channel description info icon** on `ChannelHeader`. When `description` is set, an `(i)` icon renders next to the channel name; hover/focus reveals a 280px popover with the full text. Useful when the in-line description is truncated. New props: `onEdit?: () => void` (renders an "Edit" button when set, typically wired to open `<ChannelEditModal>`).
+
+3. **System-message resolver** at `react-components/systemMessages.ts`. Replaces the inline call-only parser with a topic+event parser that handles:
+
+   - `system.channel.joined|user_id=…`
+   - `system.channel.left|user_id=…`
+   - `system.channel.invited|user_id=…|by=…`
+   - `system.channel.created|by=…`
+   - `system.channel.renamed|by=…|from=…|to=…`
+   - `system.channel.archived|by=…`
+   - `system.call.started|type=…`
+   - `system.call.ended|duration=…`
+
+   Unknown keys fall back to the raw content string so rows never render blank. Hosts with other locales / event types pass `formatSystemMessage(content, profiles)` on `ChatMessageItem` to override entirely.
+
+   New `ChatMessageItem` props: `formatSystemMessage`, `systemMessageProfiles?: Map<userId, { display_name }>`. The system row carries a `.sm-system-message` CSS class.
+
+`parseSystemMessage` and `defaultFormatSystemMessage` are also exported (React-free) for hosts that need to format system events outside the chat UI (e.g. activity logs, audit views).
+
+**Bundle:** `react.js` 216.87K within 219.73K budget (set in 0.0.50). The three additions land together in a single budget envelope.
+
 ## 0.0.50 — 2026-04-15
 
 **Added: `<NewConversationModal>` — accessible multi-select user picker.**

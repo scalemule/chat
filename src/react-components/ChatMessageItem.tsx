@@ -6,6 +6,10 @@ import { ReactionBar } from './ReactionBar';
 import { sanitizeHtml, stripTags } from './sanitize';
 import { formatMessageTime } from './utils';
 import { linkify } from '../shared/linkify';
+import {
+  defaultFormatSystemMessage,
+  type SystemMessageProfile,
+} from './systemMessages';
 
 interface PendingUpload {
   id: string;
@@ -115,6 +119,22 @@ interface ChatMessageItemProps {
    * at compose time and the sanitizer preserves the markup.
    */
   linkifyPlainText?: boolean;
+  /**
+   * Resolve the human-readable text for `message_type === 'system'` rows.
+   * Default handles channel events (joined/left/invited/created/renamed/
+   * archived) and call events (started/ended). Hosts override for
+   * locales or new event types. Receives the raw content string and a
+   * profiles map for resolving `user_id` params.
+   */
+  formatSystemMessage?: (
+    content: string,
+    profiles: Map<string, SystemMessageProfile> | undefined,
+  ) => string;
+  /**
+   * Profile lookup for system-message actor names. Optional but
+   * recommended when channel events are emitted with `user_id` params.
+   */
+  systemMessageProfiles?: Map<string, SystemMessageProfile>;
   /**
    * Render rich-link embeds (e.g. YouTube cards) below the message body.
    * Hosts opt in by importing from `@scalemule/chat/embeds`:
@@ -562,6 +582,8 @@ export function ChatMessageItem({
   onMentionClick,
   onChannelMentionClick,
   linkifyPlainText = true,
+  formatSystemMessage,
+  systemMessageProfiles,
   renderEmbeds,
   avatarSize = 32,
   getAvatarUrl,
@@ -834,31 +856,15 @@ export function ChatMessageItem({
 
   // System messages
   if (message.message_type === 'system') {
-    let displayText = message.content;
-
-    // Parse conference call translation keys
-    if (message.content.startsWith('system.call.')) {
-      const parts = message.content.split('|');
-      const key = parts[0];
-      const params: Record<string, string> = {};
-      for (let i = 1; i < parts.length; i++) {
-        const [k, v] = parts[i].split('=');
-        if (k && v) params[k] = v;
-      }
-
-      if (key === 'system.call.started') {
-        const type = params.type === 'audio' ? 'Audio' : 'Video';
-        displayText = `${type} call started`;
-      } else if (key === 'system.call.ended') {
-        const secs = parseInt(params.duration || '0', 10);
-        const mins = Math.floor(secs / 60);
-        const rem = secs % 60;
-        displayText = `Call ended (${String(mins).padStart(2, '0')}:${String(rem).padStart(2, '0')})`;
-      }
-    }
+    const displayText = formatSystemMessage
+      ? formatSystemMessage(message.content, systemMessageProfiles)
+      : defaultFormatSystemMessage(message.content, {
+          profiles: systemMessageProfiles,
+        });
 
     return (
       <div
+        className="sm-system-message"
         style={{
           textAlign: 'center',
           fontSize: 12,

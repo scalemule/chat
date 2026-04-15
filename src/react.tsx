@@ -778,6 +778,7 @@ export {
   ChatMessageList,
   ChatThread,
   ChannelBrowser,
+  ChannelEditModal,
   ChannelHeader,
   ChannelList,
   ConversationList,

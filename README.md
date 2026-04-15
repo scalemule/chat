@@ -90,6 +90,44 @@ The grouped wrapper carries the `sm-message-grouped` class — override in host 
 
 Custom `renderMessage` consumers receive `isGrouped` in context and should honor it to preserve list polish.
 
+### Channel admin
+
+```tsx
+import { ChannelEditModal, ChannelHeader } from '@scalemule/chat/react'
+
+<ChannelHeader
+  channelId={c.id}
+  name={c.name}
+  description={c.description}
+  onEdit={canEdit ? () => setEditOpen(true) : undefined}
+  onLeave={() => leave(c.id)}
+/>
+
+<ChannelEditModal
+  open={editOpen}
+  onClose={() => setEditOpen(false)}
+  initial={{ name: c.name, description: c.description, visibility: c.visibility }}
+  onSave={async (v) => updateChannel(c.id, v)}
+  onArchive={() => archive(c.id)}
+/>
+```
+
+`ChannelHeader` renders an `(i)` icon when `description` is set; hover/focus shows the full description in a popover. `<ChannelEditModal>` is the matching settings form. Permission gating is host-side — open the modal only for users who can edit.
+
+### Channel system messages
+
+```tsx
+import { defaultFormatSystemMessage, ChatMessageItem } from '@scalemule/chat/react'
+
+<ChatMessageItem
+  message={m}
+  systemMessageProfiles={profiles}
+  formatSystemMessage={defaultFormatSystemMessage} // optional; this is the default
+/>
+```
+
+The default formatter handles `system.channel.{joined,left,invited,created,renamed,archived}` and `system.call.{started,ended}`. Pass a custom `formatSystemMessage(content, profiles)` to override. `parseSystemMessage` is also exported for use outside the chat UI (activity logs, audit views).
+
 ### New-conversation modal
 
 ```tsx
