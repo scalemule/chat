@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.0.47 — 2026-04-15
+
+**Added: sectioned conversation list (CHANNELS / GROUPS / DIRECT MESSAGES).**
+
+`ConversationList` accepts a new `groupBy` prop with two modes:
+
+- `"flat"` (default, unchanged from 0.0.46) — single scrollable list.
+- `"type"` — partition rows by `conversation_type` and render a collapsible header for each group. Per-section collapse state persists to `localStorage` under `sm-conv-list-section-collapsed-v1`. Storage failures degrade silently (SSR / private browsing / quota) — collapse still works for the session.
+
+```tsx
+<ConversationList
+  groupBy="type"
+  sectionOrder={['channel', 'direct']}     // optional; default ['channel', 'group', 'direct']
+  sectionLabels={{ channel: 'TOPICS' }}    // optional; i18n / re-labeling hook
+/>
+```
+
+`sectionOrder` doubles as an inclusion filter — types omitted from the list are hidden entirely. Section headers carry `.sm-conv-section-header` and `.sm-conv-section-{type}` for host CSS overrides.
+
+**Refactor:** `safeStorage` (introduced in 0.0.44 for the YouTube oEmbed cache) promoted to `src/shared/safeStorage.ts` with a small `readJson` / `writeJson` helper layer so other features can reuse it without depending on the `embeds` entry. Existing `embeds/storage.ts` re-exports the shared module — no public surface change.
+
+**Bundle:** `react.js` 180.49K within 195.31K budget.
+
 ## 0.0.46 — 2026-04-15
 
 **Added: self-DM "(you)" label + default group display name in `ConversationList`.**

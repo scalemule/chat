@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 
 import { useConversations } from '../react';
 import type { Conversation } from '../types';
@@ -8,6 +8,25 @@ import {
   resolveConversationDisplayName,
   type ParticipantProfile,
 } from './conversationDisplay';
+import { readJson, writeJson } from '../shared/safeStorage';
+
+type ConversationType = Conversation['conversation_type'];
+
+const COLLAPSE_STORAGE_KEY = 'sm-conv-list-section-collapsed-v1';
+const DEFAULT_SECTION_ORDER: ConversationType[] = [
+  'channel',
+  'group',
+  'direct',
+];
+const DEFAULT_SECTION_LABELS: Partial<Record<ConversationType, string>> = {
+  channel: 'CHANNELS',
+  group: 'GROUPS',
+  direct: 'DIRECT MESSAGES',
+  broadcast: 'BROADCASTS',
+  ephemeral: 'EPHEMERAL',
+  large_room: 'ROOMS',
+  support: 'SUPPORT',
+};
 
 interface ConversationListProps {
   conversationType?: Conversation['conversation_type'];
@@ -39,6 +58,28 @@ interface ConversationListProps {
     participantNames: string[],
     currentUserId: string | undefined,
   ) => string;
+  /**
+   * Sidebar layout mode.
+   *   - `"flat"` (default) — single scrollable list, no headers.
+   *   - `"type"` — partition rows by `conversation_type` and render a
+   *     collapsible header for each group ("CHANNELS", "DIRECT MESSAGES",
+   *     etc.). Per-section collapsed state is persisted to `localStorage`
+   *     under `sm-conv-list-section-collapsed-v1` (silently no-ops in SSR
+   *     or blocked-storage contexts).
+   */
+  groupBy?: 'flat' | 'type';
+  /**
+   * Override the default section header labels when `groupBy="type"`.
+   * Pass the keys you want to relabel; missing keys keep the defaults
+   * (CHANNELS, GROUPS, DIRECT MESSAGES, etc.). Useful for i18n.
+   */
+  sectionLabels?: Partial<Record<ConversationType, string>>;
+  /**
+   * Order — and inclusion filter — of section types when `groupBy="type"`.
+   * Sections not listed here are hidden entirely. Default order:
+   * `['channel', 'group', 'direct']`.
+   */
+  sectionOrder?: ConversationType[];
 }
 
 function formatPreview(conversation: Conversation): string {
@@ -59,6 +100,9 @@ export function ConversationList({
   profiles,
   selfLabel,
   formatGroupName,
+  groupBy = 'flat',
+  sectionLabels,
+  sectionOrder,
 }: ConversationListProps): React.JSX.Element {
   const { conversations, isLoading } = useConversations({
     conversationType,
@@ -95,6 +139,82 @@ export function ConversationList({
       return haystack.includes(query);
     });
   }, [conversations, search, resolveName]);
+
+  // Per-section collapsed state for groupBy='type'. Persisted to
+  // localStorage when available; silent no-op otherwise.
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>(
+    () => readJson<Record<string, boolean>>(COLLAPSE_STORAGE_KEY) ?? {},
+  );
+  useEffect(() => {
+    writeJson(COLLAPSE_STORAGE_KEY, collapsed);
+  }, [collapsed]);
+  const toggleCollapsed = (type: ConversationType) => {
+    setCollapsed((prev) => ({ ...prev, [type]: !prev[type] }));
+  };
+
+  const renderRow = (conversation: Conversation): React.JSX.Element => {
+    const selected = conversation.id === selectedConversationId;
+    return (
+      <button
+        key={conversation.id}
+        type="button"
+        onClick={() => onSelect?.(conversation)}
+        style={{
+          width: '100%',
+          border: 'none',
+          borderBottom: '1px solid var(--sm-border-color, #e5e7eb)',
+          padding: 16,
+          textAlign: 'left',
+          background: selected ? 'rgba(37, 99, 235, 0.08)' : 'transparent',
+          cursor: 'pointer',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 6,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <div style={{ fontSize: 14, fontWeight: 600 }}>
+            {resolveName(conversation)}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {conversation.is_muted ? (
+              <span style={{ fontSize: 11, color: 'var(--sm-muted-text, #6b7280)' }}>Muted</span>
+            ) : null}
+            {conversation.unread_count ? (
+              <span
+                style={{
+                  minWidth: 22,
+                  height: 22,
+                  borderRadius: 999,
+                  background: 'var(--sm-primary, #2563eb)',
+                  color: '#fff',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: 12,
+                  fontWeight: 700,
+                  padding: '0 6px',
+                }}
+              >
+                {conversation.unread_count}
+              </span>
+            ) : null}
+          </div>
+        </div>
+        <div
+          style={{
+            fontSize: 13,
+            color: 'var(--sm-muted-text, #6b7280)',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {formatPreview(conversation)}
+        </div>
+      </button>
+    );
+  };
 
   return (
     <div
@@ -158,74 +278,102 @@ export function ConversationList({
           >
             No conversations found
           </div>
-        ) : (
-          filtered.map((conversation) => {
-            const selected = conversation.id === selectedConversationId;
-
-            return (
-              <button
-                key={conversation.id}
-                type="button"
-                onClick={() => onSelect?.(conversation)}
-                style={{
-                  width: '100%',
-                  border: 'none',
-                  borderBottom: '1px solid var(--sm-border-color, #e5e7eb)',
-                  padding: 16,
-                  textAlign: 'left',
-                  background: selected ? 'rgba(37, 99, 235, 0.08)' : 'transparent',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 6,
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                  <div style={{ fontSize: 14, fontWeight: 600 }}>
-                    {resolveName(conversation)}
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    {conversation.is_muted ? (
-                      <span style={{ fontSize: 11, color: 'var(--sm-muted-text, #6b7280)' }}>Muted</span>
-                    ) : null}
-                    {conversation.unread_count ? (
-                      <span
-                        style={{
-                          minWidth: 22,
-                          height: 22,
-                          borderRadius: 999,
-                          background: 'var(--sm-primary, #2563eb)',
-                          color: '#fff',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: 12,
-                          fontWeight: 700,
-                          padding: '0 6px',
-                        }}
-                      >
-                        {conversation.unread_count}
-                      </span>
-                    ) : null}
-                  </div>
-                </div>
-
-                <div
-                  style={{
-                    fontSize: 13,
-                    color: 'var(--sm-muted-text, #6b7280)',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {formatPreview(conversation)}
-                </div>
-              </button>
-            );
+        ) : groupBy === 'type' ? (
+          renderSectioned({
+            conversations: filtered,
+            sectionOrder: sectionOrder ?? DEFAULT_SECTION_ORDER,
+            sectionLabels,
+            collapsed,
+            toggleCollapsed,
+            renderRow,
           })
+        ) : (
+          filtered.map(renderRow)
         )}
       </div>
     </div>
   );
+}
+
+interface SectionedRenderArgs {
+  conversations: Conversation[];
+  sectionOrder: ConversationType[];
+  sectionLabels: Partial<Record<ConversationType, string>> | undefined;
+  collapsed: Record<string, boolean>;
+  toggleCollapsed: (type: ConversationType) => void;
+  renderRow: (conversation: Conversation) => React.JSX.Element;
+}
+
+function renderSectioned({
+  conversations,
+  sectionOrder,
+  sectionLabels,
+  collapsed,
+  toggleCollapsed,
+  renderRow,
+}: SectionedRenderArgs): React.ReactNode {
+  const buckets = new Map<ConversationType, Conversation[]>();
+  for (const c of conversations) {
+    const list = buckets.get(c.conversation_type) ?? [];
+    list.push(c);
+    buckets.set(c.conversation_type, list);
+  }
+
+  return sectionOrder.map((type) => {
+    const items = buckets.get(type);
+    if (!items || items.length === 0) return null;
+    const label =
+      sectionLabels?.[type] ?? DEFAULT_SECTION_LABELS[type] ?? type.toUpperCase();
+    const isCollapsed = !!collapsed[type];
+    return (
+      <div key={type} className={`sm-conv-section sm-conv-section-${type}`}>
+        <button
+          type="button"
+          onClick={() => toggleCollapsed(type)}
+          aria-expanded={!isCollapsed}
+          className="sm-conv-section-header"
+          style={{
+            width: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '8px 16px',
+            border: 'none',
+            background: 'transparent',
+            color:
+              'var(--sm-section-header-text, var(--sm-muted-text, #6b7280))',
+            fontSize: 11,
+            fontWeight: 700,
+            letterSpacing: '0.06em',
+            textAlign: 'left',
+            cursor: 'pointer',
+            textTransform: 'uppercase',
+          }}
+        >
+          <span
+            aria-hidden="true"
+            style={{
+              display: 'inline-block',
+              width: 8,
+              transition: 'transform 0.15s ease',
+              transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
+            }}
+          >
+            ▾
+          </span>
+          {label}
+          <span
+            style={{
+              marginLeft: 'auto',
+              fontWeight: 500,
+              opacity: 0.7,
+            }}
+          >
+            {items.length}
+          </span>
+        </button>
+        {!isCollapsed && items.map(renderRow)}
+      </div>
+    );
+  });
 }
