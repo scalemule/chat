@@ -32,7 +32,10 @@ const budgets = [
     // Bumped 170K -> 175K for Phase A of the rich-editor port: adds the
     // HTML allowlist sanitizer (sanitize.ts ~3KB) used by ChatMessageItem to
     // render content_format="html" messages via dangerouslySetInnerHTML.
-    limit: 175_000,
+    // Bumped 175K -> 180K for 0.0.41 message grouping (isGrouped wiring in
+    // ChatMessageList + ChatMessageItem chrome-suppression branches; ~300
+    // bytes net), with headroom for the upcoming 0.0.42-0.0.45 polish work.
+    limit: 180_000,
     label: 'React ESM',
   },
   {

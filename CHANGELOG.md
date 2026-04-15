@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.0.41 — 2026-04-15
+
+**Added: message grouping for consecutive messages from the same sender.**
+
+`ChatMessageList` now suppresses the avatar and sender header on messages that follow another from the same sender within a configurable window (default 5 minutes). System messages never group. Date-separator and unread-divider boundaries always break grouping.
+
+New props on `ChatMessageList` and `ChatThread`:
+
+- `groupingWindowMs?: number` — default `300_000`. Pass `0` to disable grouping entirely.
+
+`ChatMessageItem` accepts a new `isGrouped?: boolean` prop. When true: the avatar slot is replaced with an aligned spacer (so bubbles stay under the previous message's avatar), the in-bubble sender name + `@username` row is suppressed, and outer vertical padding tightens from 3px to 1px. The wrapper carries an `sm-message-grouped` CSS class hook for host overrides.
+
+`renderMessage` context gains:
+
+- `isGrouped: boolean`
+
+Custom renderers should honor it to keep parity with the default item.
+
+New CSS file `themes/message-polish.css` (concatenated into `tailwind.css` and `shadcn.css`) holds the `sm-message-grouped` class. It's intentionally empty by default — the visual tightening is inline so hosts get the polish without requiring the CSS bundle, and the class is exported as a stable hook for layered customization.
+
+**Bundle:** `react.js` budget bumped 175K → 180K (current size 171.17K) — adds the grouping branches in list + item plus headroom for the 0.0.42-0.0.45 polish work.
+
 ## 0.0.40 — 2026-04-14
 
 **Added: weekday labels + formatter override on date separators.**

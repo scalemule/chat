@@ -101,6 +101,12 @@ interface ChatThreadProps {
    * to avoid Today/Yesterday hydration mismatches.
    */
   dateLabelTimeZone?: string;
+  /**
+   * Group consecutive messages from the same sender within this many ms.
+   * See `ChatMessageList.groupingWindowMs`. Default 300_000 (5 min); `0`
+   * disables grouping.
+   */
+  groupingWindowMs?: number;
 }
 
 function inferMessageType(content: string, attachments: Attachment[]): 'text' | 'image' | 'file' {
@@ -137,6 +143,7 @@ export function ChatThread({
   formatDateLabel,
   dateLabelLocale,
   dateLabelTimeZone,
+  groupingWindowMs,
 }: ChatThreadProps): React.JSX.Element {
   const [sendError, setSendError] = useState<string | null>(null);
   const sendErrorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -306,6 +313,7 @@ export function ChatThread({
         formatDateLabel={formatDateLabel}
         dateLabelLocale={dateLabelLocale}
         dateLabelTimeZone={dateLabelTimeZone}
+        groupingWindowMs={groupingWindowMs}
       />
 
       <TypingIndicator

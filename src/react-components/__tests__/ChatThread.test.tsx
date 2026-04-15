@@ -99,4 +99,31 @@ describe('ChatThread', () => {
     );
     expect(container.textContent).toContain('STUB-LABEL');
   });
+
+  it('forwards groupingWindowMs through to the message list', () => {
+    // Push a second message from the same sender, 1 minute apart.
+    const previous = chatState.messages;
+    chatState.messages = [
+      previous[0],
+      {
+        ...previous[0],
+        id: 'msg-2',
+        content: 'second from same sender',
+        created_at: '2026-04-10T10:01:00.000Z',
+        updated_at: '2026-04-10T10:01:00.000Z',
+      },
+    ];
+    try {
+      // groupingWindowMs=0 disables grouping → both messages should render
+      // their full chrome (e.g. the sender name appears twice when the
+      // profile is provided). We assert the simpler observable: the
+      // second message has no sm-message-grouped class.
+      const { container } = render(
+        <ChatThread conversationId="conv-1" groupingWindowMs={0} />,
+      );
+      expect(container.querySelectorAll('.sm-message-grouped').length).toBe(0);
+    } finally {
+      chatState.messages = previous;
+    }
+  });
 });
