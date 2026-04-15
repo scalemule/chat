@@ -244,6 +244,28 @@ CSS hooks: `.sm-conv-section`, `.sm-conv-section-{type}`, `.sm-conv-section-head
 
 `resolveConversationDisplayName`, `buildDefaultGroupName`, and `otherParticipantNames` are exported from `@scalemule/chat` (SSR-safe, React-free) for use in previews / notifications / system-message templates.
 
+### Offline detection
+
+```tsx
+import { OfflineBanner, useConnectionStatus, ChatThread } from '@scalemule/chat/react'
+
+function ChatPanel({ conversationId }: { conversationId: string }) {
+  const { isOnline } = useConnectionStatus()
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
+      <OfflineBanner />
+      <ChatThread
+        conversationId={conversationId}
+        disableWhenOffline
+      />
+      {!isOnline && <p>Composing is paused while reconnecting…</p>}
+    </div>
+  )
+}
+```
+
+`<OfflineBanner>` hides when the WebSocket is connected and renders an amber banner otherwise. `disableWhenOffline` on `<ChatThread>` disables both the plain and rich composers while disconnected — combines with any existing `disabled` state, never overrides it.
+
 ### Self-status (Active / Away)
 
 ```tsx

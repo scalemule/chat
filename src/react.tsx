@@ -80,6 +80,24 @@ export function useChatConfig(): ChatConfig {
 
 // ============ Hooks ============
 
+/**
+ * Ergonomic wrapper over `useConnection` for hosts that just want
+ * boolean flags. Returns the same `status` plus `isOnline` and
+ * `isReconnecting` derived flags.
+ */
+export function useConnectionStatus(): {
+  status: ConnectionStatus;
+  isOnline: boolean;
+  isReconnecting: boolean;
+} {
+  const { status } = useConnection();
+  return {
+    status,
+    isOnline: status === 'connected',
+    isReconnecting: status === 'reconnecting',
+  };
+}
+
 export function useConnection(): { status: ConnectionStatus; connect: () => void; disconnect: () => void } {
   const { client } = useChatContext();
   const [status, setStatus] = useState<ConnectionStatus>(client.status);
@@ -969,6 +987,7 @@ export {
   ChannelList,
   ConversationList,
   NewConversationModal,
+  OfflineBanner,
   EmojiPicker,
   EmojiPickerTrigger,
   ReactionBar,

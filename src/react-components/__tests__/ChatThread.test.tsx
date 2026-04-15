@@ -72,6 +72,11 @@ vi.mock('../../react', async (importOriginal) => {
     usePresence: () => ({
       members: [] as Array<{ userId: string; status: string }>,
     }),
+    useConnectionStatus: () => ({
+      status: 'connected' as const,
+      isOnline: true,
+      isReconnecting: false,
+    }),
   };
 });
 

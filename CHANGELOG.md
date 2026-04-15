@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.0.58 — 2026-04-15
+
+**Added: offline banner + composer disable on disconnect.**
+
+Closes the Section 6 presence track.
+
+- **`useConnectionStatus()`** — thin wrapper over `useConnection` returning `{ status, isOnline, isReconnecting }` for ergonomic boolean access.
+- **`<OfflineBanner children? onDismiss?>`** — renders a banner when the WebSocket is not connected; hides when connected. `children` overrides the default English message; `onDismiss` adds a dismiss button. Tokens `--sm-offline-banner-bg` (default amber tint) and `--sm-offline-banner-text` style the banner.
+- **`ChatThread.disableWhenOffline?: boolean`** — default `false` for back-compat. When `true`, the composer (plain or rich) is `disabled` while offline. Combines with the composer's existing `disabled` state — never overrides it.
+
+**Composer parity fix** — the plain-text `<ChatInput>` was previously not receiving `disabled` from `<ChatThread>` even if internal state required it. Both the lazy rich `<RichTextInput>` and the plain `<ChatInput>` now receive `composerDisabled` from the same source.
+
+**Bundle:** `react.js` 235.18K → 236.91K within 245K budget. Other bundles unchanged.
+
 ## 0.0.57 — 2026-04-15
 
 **Added: self-status (Active / Away) with automatic re-apply on reconnect.**

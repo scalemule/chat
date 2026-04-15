@@ -125,3 +125,12 @@
 .sm-avatar-status-option       { /* hook for option rows */ }
 .sm-avatar-status-option-active { /* hook for the currently-selected option */ }
 
+/* Offline banner — rendered by <OfflineBanner> when the WebSocket is
+ * not connected. Inline styling already covers the default look; this
+ * class is a stable hook for host overrides (e.g. a different position
+ * for the banner inside a custom layout shell). Tokens:
+ *   --sm-offline-banner-bg   (default amber tint)
+ *   --sm-offline-banner-text (default darker amber)
+ */
+.sm-offline-banner { /* hook */ }
+
