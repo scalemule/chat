@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.0.46 — 2026-04-15
+
+**Added: self-DM "(you)" label + default group display name in `ConversationList`.**
+
+`ConversationList` now renders human-readable names for every row type without requiring the host to pre-compute them:
+
+- **Self-DMs** — 1:1 direct conversations where every participant is the current user render as `"<your name> (you)"`. Uses the current user's profile display name when available, falls back to `"You (you)"`.
+- **Named channels / groups** — `conversation.name` verbatim (unchanged).
+- **Unnamed groups** — `"Alice, Bob, and 2 others"` built from participant profiles with the current user filtered out. Singular form is `"and 1 other"`.
+- **1:1 DMs** — resolves via the participant list first, then `counterparty_user_id` → profile, then `conversation.name`, then a short id prefix (stable fallback so rows never say `undefined`).
+
+New props on `ConversationList`:
+
+- `currentUserId?: string` — required for self-DM detection and for filtering the current user out of group names.
+- `profiles?: Map<string, { display_name: string }>` — profile lookup by user id.
+- `selfLabel?: string` — default `"(you)"`. i18n hook.
+- `formatGroupName?: (participantNames, currentUserId) => string` — override the default "Alice, Bob, and N others" formatter. Receives the ordered other-participant names (current user already filtered out).
+
+The resolver is exported from `react-components/conversationDisplay.ts` as `resolveConversationDisplayName`, `buildDefaultGroupName`, and `otherParticipantNames` — React-free, SSR-safe. Useful from host previews, notification formatters, and system-message templates.
+
+Search now matches the resolved display name, not just the raw `conversation.name` — so typing a group member's name finds the unnamed group containing them.
+
+**Bundle:** `react.js` budget bumped 180K → 200K (current 177.05K) with headroom for the upcoming Section 4 track (0.0.47-0.0.52: sectioned sidebar, mention counts, call indicator, new-conversation modal, channel edit/invitations).
+
 ## 0.0.45 — 2026-04-15
 
 **Polished: scroll-to-message highlight; split from unread emphasis.**

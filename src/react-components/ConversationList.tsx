@@ -4,6 +4,10 @@ import { useConversations } from '../react';
 import type { Conversation } from '../types';
 import type { ChatTheme } from './theme';
 import { themeToStyle } from './theme';
+import {
+  resolveConversationDisplayName,
+  type ParticipantProfile,
+} from './conversationDisplay';
 
 interface ConversationListProps {
   conversationType?: Conversation['conversation_type'];
@@ -11,6 +15,30 @@ interface ConversationListProps {
   onSelect?: (conversation: Conversation) => void;
   theme?: ChatTheme;
   title?: string;
+  /**
+   * Current user id. Used to identify self-DMs and to filter the current
+   * user out of default group display names.
+   */
+  currentUserId?: string;
+  /**
+   * Profile lookup by user id. When provided, `display_name` is used in
+   * place of raw user ids for group display names and the self-DM label.
+   */
+  profiles?: Map<string, ParticipantProfile>;
+  /**
+   * Label appended after the current user's name for self-DMs. Default
+   * `"(you)"`. Internationalize as needed.
+   */
+  selfLabel?: string;
+  /**
+   * Override the default group-name formatter ("Alice, Bob, and N others").
+   * Receives the ordered other-participant display names (current user
+   * already filtered out) and the current user id.
+   */
+  formatGroupName?: (
+    participantNames: string[],
+    currentUserId: string | undefined,
+  ) => string;
 }
 
 function formatPreview(conversation: Conversation): string {
@@ -27,11 +55,27 @@ export function ConversationList({
   onSelect,
   theme,
   title = 'Conversations',
+  currentUserId,
+  profiles,
+  selfLabel,
+  formatGroupName,
 }: ConversationListProps): React.JSX.Element {
   const { conversations, isLoading } = useConversations({
     conversationType,
   });
   const [search, setSearch] = useState('');
+
+  const resolveName = useMemo(
+    () =>
+      (conversation: Conversation): string =>
+        resolveConversationDisplayName(conversation, {
+          currentUserId,
+          profiles,
+          selfLabel,
+          formatGroupName,
+        }),
+    [currentUserId, profiles, selfLabel, formatGroupName],
+  );
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -39,6 +83,7 @@ export function ConversationList({
 
     return conversations.filter((conversation) => {
       const haystack = [
+        resolveName(conversation),
         conversation.name,
         conversation.last_message_preview,
         conversation.counterparty_user_id,
@@ -49,7 +94,7 @@ export function ConversationList({
 
       return haystack.includes(query);
     });
-  }, [conversations, search]);
+  }, [conversations, search, resolveName]);
 
   return (
     <div
@@ -137,7 +182,7 @@ export function ConversationList({
               >
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                   <div style={{ fontSize: 14, fontWeight: 600 }}>
-                    {conversation.name ?? conversation.counterparty_user_id ?? 'Conversation'}
+                    {resolveName(conversation)}
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     {conversation.is_muted ? (

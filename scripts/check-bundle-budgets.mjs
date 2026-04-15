@@ -35,7 +35,11 @@ const budgets = [
     // Bumped 175K -> 180K for 0.0.41 message grouping (isGrouped wiring in
     // ChatMessageList + ChatMessageItem chrome-suppression branches; ~300
     // bytes net), with headroom for the upcoming 0.0.42-0.0.45 polish work.
-    limit: 180_000,
+    // Bumped 180K -> 200K for Section 4 (conversation/channel sidebar polish
+    // — 0.0.46 display resolver + 0.0.47-0.0.52 coming in this track adds
+    // NewConversationModal, ChannelEditModal, grouping, mention/call
+    // indicators, invitations).
+    limit: 200_000,
     label: 'React ESM',
   },
   {
