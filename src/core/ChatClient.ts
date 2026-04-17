@@ -1,6 +1,28 @@
 import { EventEmitter } from './EventEmitter';
 import { MessageCache } from './MessageCache';
 import { OfflineQueue } from './OfflineQueue';
+
+/**
+ * Small random id generator for client-only optimistic message ids.
+ * Prefers `crypto.randomUUID` when available, falls back to a two-
+ * segment random string everywhere else (Node <19, older browsers).
+ * Never collides with server ids — callers always prefix with
+ * `pending-` so the cache reconciliation can find these rows.
+ */
+function generateTempId(): string {
+  try {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+      return crypto.randomUUID();
+    }
+  } catch {
+    // fall through
+  }
+  return (
+    Math.random().toString(36).slice(2, 10) +
+    '-' +
+    Date.now().toString(36)
+  );
+}
 import { HttpTransport } from '../transport/HttpTransport';
 import { WebSocketTransport } from '../transport/WebSocketTransport';
 import { DEFAULT_API_BASE_URL } from '../constants';
@@ -198,6 +220,16 @@ export class ChatClient extends EventEmitter<ChatEventMap> {
   // ============ Messages ============
 
   async sendMessage(conversationId: string, options: SendMessageOptions): Promise<ApiResponse<ChatMessage>> {
+    const optimistic = options.optimistic ?? false;
+    let stagedId: string | undefined;
+
+    if (optimistic) {
+      stagedId = options.tempId ?? `pending-${generateTempId()}`;
+      const stagedMessage = this.buildOptimisticMessage(conversationId, stagedId, options);
+      this.cache.upsertMessage(conversationId, stagedMessage);
+      this.emit('message', { message: stagedMessage, conversationId });
+    }
+
     const result = await this.http.post<ChatMessage>(
       `/v1/chat/conversations/${conversationId}/messages`,
       {
@@ -213,17 +245,151 @@ export class ChatClient extends EventEmitter<ChatEventMap> {
     if (result.data) {
       const reconciled = this.cache.reconcileOptimisticMessage(conversationId, result.data);
       this.cache.upsertMessage(conversationId, reconciled);
+      if (optimistic) {
+        this.emit('message', { message: reconciled, conversationId });
+      }
     } else if (result.error?.status === 0) {
-      // Network error — queue for offline delivery
+      // Network error — queue for offline delivery. The optimistic row
+      // stays in place (is_pending) so the UI shows it will retry.
       this.offlineQueue.enqueue(
         conversationId,
         options.content,
         options.message_type ?? 'text',
         options.attachments,
       );
+    } else if (optimistic && stagedId) {
+      // Non-network failure (4xx / 5xx / parse error) — mark the
+      // staged message as failed so the UI can surface a retry
+      // affordance.
+      const failed = this.markOptimisticFailed(conversationId, stagedId);
+      if (failed) {
+        this.emit('message:updated', {
+          message: failed,
+          conversationId,
+          update: {
+            message_id: failed.id,
+            content: failed.content,
+            is_edited: failed.is_edited,
+            // Cast keeps the event shape backwards-compatible while
+            // hosts that subscribe can read `message.is_failed`.
+          } as MessageEditedEvent,
+        });
+      }
     }
 
     return result;
+  }
+
+  private buildOptimisticMessage(
+    conversationId: string,
+    id: string,
+    options: SendMessageOptions,
+  ): ChatMessage {
+    const existing = this.cache
+      .getMessages(conversationId)
+      .find((m) => m.id === id);
+    const now = new Date().toISOString();
+    return {
+      id,
+      content: options.content,
+      content_format: options.content_format,
+      message_type: options.message_type ?? 'text',
+      sender_id: this.currentUserId ?? 'me',
+      attachments: options.attachments,
+      reactions: existing?.reactions ?? [],
+      is_edited: false,
+      created_at: existing?.created_at ?? now,
+      thread_id: options.thread_id,
+      is_thread_broadcast: options.is_thread_broadcast,
+      is_pending: true,
+      is_failed: false,
+    } as ChatMessage;
+  }
+
+  private markOptimisticFailed(
+    conversationId: string,
+    tempId: string,
+  ): ChatMessage | null {
+    const messages = this.cache.getMessages(conversationId);
+    const target = messages.find((m) => m.id === tempId);
+    if (!target) return null;
+    const failed: ChatMessage = {
+      ...target,
+      is_pending: false,
+      is_failed: true,
+    };
+    this.cache.upsertMessage(conversationId, failed);
+    return failed;
+  }
+
+  /**
+   * Retry a previously-failed optimistic send. Looks up the temp
+   * message by id in the conversation cache, clears its `is_failed`
+   * marker, and re-runs `sendMessage` with the same content and
+   * attachments. Emits a `'message:updated'` event immediately so the
+   * UI can revert to the pending visual state before the network
+   * round-trip resolves.
+   *
+   * No-op when the id doesn't match a failed pending row.
+   */
+  async retryMessage(
+    conversationId: string,
+    tempId: string,
+  ): Promise<ApiResponse<ChatMessage> | undefined> {
+    const messages = this.cache.getMessages(conversationId);
+    const failed = messages.find(
+      (m) => m.id === tempId && m.is_failed === true,
+    );
+    if (!failed) return undefined;
+    const pending: ChatMessage = {
+      ...failed,
+      is_pending: true,
+      is_failed: false,
+    };
+    this.cache.upsertMessage(conversationId, pending);
+    this.emit('message:updated', {
+      message: pending,
+      conversationId,
+      update: {
+        message_id: pending.id,
+        content: pending.content,
+        is_edited: pending.is_edited,
+      } as MessageEditedEvent,
+    });
+    // System messages can't be re-sent via the public send path; the
+    // retry API is only meaningful for user-authored messages, so fall
+    // back to 'text' when the failed row wasn't a standard send type.
+    const sendType: SendMessageOptions['message_type'] =
+      failed.message_type === 'text' ||
+      failed.message_type === 'image' ||
+      failed.message_type === 'file' ||
+      failed.message_type === 'snippet'
+        ? failed.message_type
+        : 'text';
+    return this.sendMessage(conversationId, {
+      content: failed.content,
+      content_format: failed.content_format,
+      message_type: sendType,
+      attachments: failed.attachments,
+      thread_id: failed.thread_id,
+      is_thread_broadcast: failed.is_thread_broadcast,
+      optimistic: true,
+      tempId,
+    });
+  }
+
+  /**
+   * Remove a failed or pending optimistic message from the cache.
+   * Used when the host wants to dismiss a failed send without
+   * retrying. Emits `'message:deleted'` so subscribers reconcile.
+   */
+  dismissMessage(conversationId: string, messageId: string): boolean {
+    const messages = this.cache.getMessages(conversationId);
+    const target = messages.find((m) => m.id === messageId);
+    if (!target) return false;
+    this.cache.removeMessage(conversationId, messageId);
+    this.emit('message:deleted', { messageId, conversationId });
+    return true;
   }
 
   async getMessages(conversationId: string, options?: GetMessagesOptions): Promise<ApiResponse<MessagesResponse>> {

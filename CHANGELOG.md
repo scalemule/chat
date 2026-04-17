@@ -1,5 +1,35 @@
 # Changelog
 
+## 0.0.66 — 2026-04-17
+
+**Added: opt-in optimistic message updates with failure + retry.**
+
+Closes the remaining Section 12 gap (#114). Messages appear instantly when the host opts in, are replaced with the server-confirmed row on success, and surface a Retry / Dismiss affordance on failure.
+
+- **`sendMessage(conv, { content, optimistic: true })`** — new `optimistic` flag on `SendMessageOptions`. When true, `ChatClient` generates a `pending-<random>` id, builds a synthetic message with `is_pending: true`, stages it in the cache via the existing `upsertMessage` path, and emits a `'message'` event — all before the network round-trip. On success, the reconciliation path already in place (0.0.x) replaces the temp row with the server row and emits another `'message'` event. On non-network failure (4xx / 5xx / parse error), the temp row is marked `is_failed: true` with `is_pending: false` and a `'message:updated'` event fires. Network errors (status `0`) keep the row in the pending state so the existing offline queue can retry.
+- **`ChatClient.retryMessage(conv, messageId)`** — looks up a failed temp row, flips it back to `is_pending: true`, emits `'message:updated'`, and re-runs `sendMessage` with the same content + attachments + the original `tempId`. Idempotent in-cache (no duplicate row).
+- **`ChatClient.dismissMessage(conv, messageId)`** — removes a pending or failed temp row from the cache and emits `'message:deleted'`. Useful for a "Dismiss" affordance next to Retry.
+- **New `ChatMessage` fields** — `is_pending?: boolean` and `is_failed?: boolean`. Both are **client-only markers** — the server never sets them. Back-compat: undefined on every server-returned row.
+- **`tempId` option on `SendMessageOptions`** — combined with `optimistic`, reuses an existing temp id instead of generating a new one. Used internally by `retryMessage`; hosts rarely set this directly.
+
+**`useChat` hook additions:**
+- `retryMessage(messageId)` — wraps `client.retryMessage`.
+- `dismissMessage(messageId)` — wraps `client.dismissMessage`.
+
+**`ChatMessageItem` rendering:**
+- Wrapper gets `.sm-message-pending` class when `is_pending`, `.sm-message-failed` class when `is_failed`.
+- Bubble opacity drops to 65% while pending (120ms transition).
+- Below the bubble: a status caption row with two variants — `.sm-message-status-pending` renders "Sending…" in muted color; `.sm-message-status-failed` renders "⚠ Failed to send" in `--sm-danger-text` with optional "Retry" and "Dismiss" buttons (shown only when the matching callback is wired).
+- New props: `onRetryMessage(message)`, `onDismissMessage(message)`, plus i18n strings `pendingLabel`, `failedLabel`, `retryLabel`, `dismissLabel`. All forwarded through `ChatMessageList` and `ChatThread` — `ChatThread` wires the callbacks to the hook methods automatically, so hosts using `<ChatThread>` get pending/failed UX for free.
+
+**Hosts already managing their own optimistic state** (via `stageOptimisticMessage` + custom reconciliation) keep working unchanged — the default `optimistic` value is `false`. Opting in is a one-line change per call site.
+
+**Class hooks:** `.sm-message-pending`, `.sm-message-failed`, `.sm-message-status`, `.sm-message-status-pending`, `.sm-message-status-failed`. Tokens reused: `--sm-muted-text`, `--sm-danger-text`, `--sm-primary`. No new tokens.
+
+**Bundle:** `react.js` 244.73K → 248.07K (within 250K budget). `chat.embed.global.js` 25.57K → 27.52K (budget 28K → 30K — embed bundles the full ChatClient surface so the new optimistic methods land there too). All other bundles unchanged. Tests 609 → 617.
+
+**Invariants:** No new events — reuses the existing `'message'` / `'message:updated'` / `'message:deleted'` channels, so hosts that already listen on those automatically pick up optimistic transitions. `ChatMessage.is_pending` / `is_failed` are strictly additive and optional — existing consumers see `undefined` and behave unchanged.
+
 ## 0.0.65 — 2026-04-17
 
 **Added: `@scalemule/chat/theme` — opt-in theme switcher + flash-prevention helper.**

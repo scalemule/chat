@@ -15,8 +15,12 @@ const budgets = [
   {
     // Same bump as the widget: ChatClient now seeds self-status from
     // storage on construction.
+    // Bumped 28K -> 30K for 0.0.66 optimistic sendMessage (ChatClient
+    // gains staging + reconciliation + failure + retry + dismiss
+    // methods ~2K minified; widget doesn't import them but the embed
+    // IIFE includes the full ChatClient surface).
     file: 'chat.embed.global.js',
-    limit: 28_000,
+    limit: 30_000,
     label: 'Embed IIFE',
   },
   {

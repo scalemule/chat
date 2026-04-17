@@ -88,6 +88,20 @@ export interface ChatMessage {
   latest_reply_at?: string;
   reply_user_ids?: string[];
   is_thread_broadcast?: boolean;
+  /**
+   * Client-only marker — `true` while the message is optimistically
+   * staged but not yet acknowledged by the server. The server never
+   * sets this field. When the server confirms the send, the optimistic
+   * row is replaced with the real one (which lacks `is_pending`).
+   */
+  is_pending?: boolean;
+  /**
+   * Client-only marker — `true` when the HTTP POST that backs an
+   * optimistic send returned an error. `is_pending` is cleared at the
+   * same time. Hosts typically render a retry affordance and call
+   * `useChat().retryMessage(id)` (or re-run `sendMessage` directly).
+   */
+  is_failed?: boolean;
 }
 
 export interface ReactionSummary {
@@ -264,6 +278,23 @@ export interface SendMessageOptions {
   attachments?: Attachment[];
   thread_id?: string;
   is_thread_broadcast?: boolean;
+  /**
+   * When `true`, the client stages an optimistic copy of the message
+   * in the local cache with `is_pending: true` and emits a
+   * `'message'` event before the network round-trip. The temp row is
+   * replaced with the server-returned message on success. On failure,
+   * the temp row is marked `is_failed: true` so the UI can offer a
+   * retry. Default `false` — callers that already manage optimistic
+   * state via `stageOptimisticMessage` can keep the existing flow.
+   */
+  optimistic?: boolean;
+  /**
+   * When combined with `optimistic`, reuses an existing pending /
+   * failed temp-message id instead of generating a new one. Used by
+   * `ChatClient.retryMessage` to retry a previously-failed send
+   * without duplicating the row in the list.
+   */
+  tempId?: string;
 }
 
 export interface ListConversationsOptions {
