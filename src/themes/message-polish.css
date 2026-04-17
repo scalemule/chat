@@ -155,3 +155,45 @@
 .sm-avatar-initials  { /* hook for the initials variant */ }
 .sm-avatar-button    { /* hook for the clickable wrapper when onClick is passed */ }
 
+/* Themed scrollbar utility. Opt-in: apply `.sm-scrollbar-themed` to a
+ * scroll container (message list, channel list, thread panel) to get
+ * a compact 8px scrollbar that matches the current theme tokens.
+ * Tokens:
+ *   --sm-scrollbar-size    (default 8px)
+ *   --sm-scrollbar-track   (default transparent)
+ *   --sm-scrollbar-thumb   (default --sm-border-color)
+ *   --sm-scrollbar-thumb-hover (default --sm-muted-text)
+ */
+.sm-scrollbar-themed {
+  scrollbar-width: thin;
+  scrollbar-color: var(--sm-scrollbar-thumb, var(--sm-border-color, #e5e7eb))
+    var(--sm-scrollbar-track, transparent);
+}
+.sm-scrollbar-themed::-webkit-scrollbar {
+  width: var(--sm-scrollbar-size, 8px);
+  height: var(--sm-scrollbar-size, 8px);
+}
+.sm-scrollbar-themed::-webkit-scrollbar-track {
+  background: var(--sm-scrollbar-track, transparent);
+}
+.sm-scrollbar-themed::-webkit-scrollbar-thumb {
+  background: var(--sm-scrollbar-thumb, var(--sm-border-color, #e5e7eb));
+  border-radius: 999px;
+}
+.sm-scrollbar-themed::-webkit-scrollbar-thumb:hover {
+  background: var(
+    --sm-scrollbar-thumb-hover,
+    var(--sm-muted-text, #9ca3af)
+  );
+}
+
+/* Theme switcher — rendered by <ThemeSwitcher>. Inline styles cover
+ * the default look; these classes are hooks for host overrides (e.g.
+ * replacing the segmented look with a single button). Tokens reused:
+ *   --sm-surface, --sm-surface-muted, --sm-border-color, --sm-text-color,
+ *   --sm-muted-text.
+ */
+.sm-theme-switcher                  { /* hook — the wrapper group */ }
+.sm-theme-switcher-button           { /* hook — every mode button */ }
+.sm-theme-switcher-button-active    { /* hook — the currently-selected mode */ }
+
