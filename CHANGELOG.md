@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.0.68 — 2026-04-17
+
+**Added: opt-in client-side presence staleness threshold.**
+
+The last truly-deferred item in the original feature audit (#62). Previously deferred because the realtime service didn't expose a real per-user heartbeat timestamp — any client-side threshold shorter than the 2-minute server sweep would have falsely-offlined active users. The companion realtime-service change now bumps `presence_data.last_seen_at` on every WebSocket ping and surfaces it as `last_active_at` on `PresenceMember`, so clients can apply a tighter lens without risking false negatives.
+
+- **`PresenceMember.last_active_at?: string`** — ISO-8601 timestamp of the last server-observed activity for this membership. Strictly additive and optional; older realtime-service versions omit it and the SDK treats the staleness threshold as a no-op in that case.
+- **`useConversationPresenceStatus(conversationId, userId, { staleThresholdMs?, staleCheckIntervalMs?, now? })`** — new third-argument options bag.
+  - `staleThresholdMs` (default `0` = disabled, matches pre-0.0.68 behavior). Pass a positive value (e.g. `35_000` for the original spec) to opt in. When the delta between "now" and `last_active_at` exceeds this, the hook resolves to `'offline'` regardless of the member's reported `status` (a silent user who went away and then stopped pinging is now treated as offline).
+  - `staleCheckIntervalMs` (default `5_000`) — the hook installs a `setInterval` to re-evaluate staleness between presence events. Set `staleThresholdMs=0` to skip the timer entirely.
+  - `now` — override `Date.now()` for deterministic tests.
+- **`usePresence()`** — the returned `members` shape gains a `lastActiveAt?: string` field populated from `presence:state` events. New members from `presence:join` get stamped with `new Date().toISOString()`; `presence:update` refreshes the local value so the staleness lens resets even without a full state re-fetch.
+
+**Back-compat:**
+- The third argument is optional and defaults preserve the old two-argument signature + behavior.
+- When the realtime service doesn't send `last_active_at`, the threshold is ignored and the `status`/`online` resolution path still works.
+- No new events, no new transport-level changes — purely a consumer-side enhancement.
+
+**Pairs with:** `scalemule-realtime` PR #12 (2026-04-17) which extends `update_ping` to bump `presence_data.last_seen_at` on both text `ping` and binary WebSocket `Ping` frames, and adds `last_active_at` to `PresenceMember` on the wire. Deploy that service before relying on the tighter threshold — the SDK stays safe against an old server because the optional field just stays `undefined`.
+
+**Tests:** 634 → 639 (+5 new cases covering disabled-threshold back-compat, online-within-threshold, offline-past-threshold, stale-overrides-away, and graceful no-op when the server omits the field). All bundle budgets pass unchanged.
+
 ## 0.0.67 — 2026-04-17
 
 **Added: `@scalemule/chat/layout` — opt-in chat shell primitives.**

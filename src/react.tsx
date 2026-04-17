@@ -428,7 +428,14 @@ export function useChat(conversationId?: string) {
 export function usePresence(conversationId?: string) {
   const { client } = useChatContext();
   const [members, setMembers] = useState<
-    { userId: string; status: string; userData?: unknown }[]
+    {
+      userId: string;
+      status: string;
+      userData?: unknown;
+      /** ISO-8601 timestamp of the last server-observed activity.
+       *  Undefined when the realtime service predates the field. */
+      lastActiveAt?: string;
+    }[]
   >([]);
 
   useEffect(() => {
@@ -451,6 +458,7 @@ export function usePresence(conversationId?: string) {
             userId: p.user_id,
             status: p.status ?? 'online',
             userData: p.user_data,
+            lastActiveAt: p.last_active_at,
           })),
         );
       }
@@ -458,9 +466,13 @@ export function usePresence(conversationId?: string) {
 
     const unsubJoin = client.on('presence:join', ({ conversationId: convId, userId, userData }) => {
       if (convId === conversationId) {
+        // Newly-joined members are active by definition — stamp the
+        // local `lastActiveAt` with now so the client-side staleness
+        // threshold doesn't race the first presence_update.
+        const now = new Date().toISOString();
         setMembers((prev) => {
           if (prev.some((m) => m.userId === userId)) return prev;
-          return [...prev, { userId, status: 'online', userData }];
+          return [...prev, { userId, status: 'online', userData, lastActiveAt: now }];
         });
       }
     });
@@ -475,9 +487,20 @@ export function usePresence(conversationId?: string) {
       'presence:update',
       ({ conversationId: convId, userId, status, userData }) => {
         if (convId === conversationId) {
+          // A presence update is itself a liveness signal — bump
+          // lastActiveAt locally so the staleness threshold resets
+          // even if the server doesn't re-broadcast presence_state.
+          const now = new Date().toISOString();
           setMembers((prev) =>
             prev.map((m) =>
-              m.userId === userId ? { ...m, status, userData: userData ?? m.userData } : m,
+              m.userId === userId
+                ? {
+                    ...m,
+                    status,
+                    userData: userData ?? m.userData,
+                    lastActiveAt: now,
+                  }
+                : m,
             ),
           );
         }
@@ -549,14 +572,68 @@ export function useMyStatus(): {
   return { status, setStatus };
 }
 
+export interface UseConversationPresenceStatusOptions {
+  /**
+   * Maximum milliseconds since the server last saw activity for the
+   * user before the resolved status flips to `'offline'`, independent
+   * of whether the member is still in the presence roster.
+   *
+   * Default `0` — staleness pruning **disabled** (back-compat: pre-
+   * 0.0.68 behavior). Pass a positive value (e.g. `35_000` for the
+   * original 35-second spec) to opt into tighter-than-server pruning.
+   *
+   * Requires the realtime service to ship `last_active_at` on
+   * `PresenceMember` (scalemule-realtime 2026-04+). When the field is
+   * missing the threshold silently no-ops — the `status`/`online`
+   * signal still works.
+   */
+  staleThresholdMs?: number;
+  /**
+   * Re-evaluation cadence in ms. Hooks a setInterval that forces a
+   * re-check of `last_active_at` even when no presence events fire.
+   * Default `5_000`. Ignored when `staleThresholdMs` is `0`.
+   */
+  staleCheckIntervalMs?: number;
+  /**
+   * Override "now" for deterministic tests. Rarely useful in
+   * production code.
+   */
+  now?: () => number;
+}
+
 export function useConversationPresenceStatus(
   conversationId: string | undefined,
   userId: string | undefined,
+  options?: UseConversationPresenceStatusOptions,
 ): 'online' | 'away' | 'offline' {
   const { members } = usePresence(conversationId);
+  const staleThresholdMs = options?.staleThresholdMs ?? 0;
+  const staleCheckIntervalMs = options?.staleCheckIntervalMs ?? 5_000;
+
+  // Tick periodically so the staleness check re-evaluates even when
+  // no presence events fire. No-op when thresholding is disabled.
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    if (staleThresholdMs <= 0) return;
+    const iv = setInterval(
+      () => setTick((t) => (t + 1) % 1_000_000),
+      Math.max(1_000, staleCheckIntervalMs),
+    );
+    return () => clearInterval(iv);
+  }, [staleThresholdMs, staleCheckIntervalMs]);
+
   if (!conversationId || !userId) return 'offline';
   const member = members.find((m) => m.userId === userId);
   if (!member) return 'offline';
+
+  if (staleThresholdMs > 0 && member.lastActiveAt) {
+    const now = options?.now ? options.now() : Date.now();
+    const seen = Date.parse(member.lastActiveAt);
+    if (!Number.isNaN(seen) && now - seen > staleThresholdMs) {
+      return 'offline';
+    }
+  }
+
   if (member.status === 'away') return 'away';
   return 'online';
 }
