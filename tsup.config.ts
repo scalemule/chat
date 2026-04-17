@@ -90,6 +90,20 @@ export default defineConfig([
     treeshake: true,
     splitting: false,
   },
+  // Notifications entry — opt-in mention/call notification UX (sound
+  // chime, browser Notification API wrapper, AudioContext unlock,
+  // useMentionAlerts hook). Code-split so hosts that handle alerts
+  // externally (or not at all) don't pay the bundle cost in react.js.
+  {
+    entry: { notifications: 'src/notifications.tsx' },
+    format: ['esm', 'cjs'],
+    dts: false,
+    sourcemap: false,
+    clean: false,
+    external: ['react', 'react-dom'],
+    treeshake: true,
+    splitting: false,
+  },
   // UMD bundle (script tag: window.ScaleMuleChat)
   {
     entry: { 'chat.umd': 'src/umd.ts' },
