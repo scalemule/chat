@@ -112,6 +112,17 @@ const budgets = [
     limit: 40_000,
     label: 'Profile ESM',
   },
+  {
+    // Notifications entry — opt-in mention/call notification UX.
+    // 0.0.64 ships initAudio / playMentionChime / playRingTone /
+    // showNotification / requestNotificationPermission +
+    // useMentionAlerts + useNotificationPermission hooks. All pure
+    // helpers + two thin hooks — small. Budget set with headroom for
+    // future notification categories (call alerts, DM alerts).
+    file: 'notifications.js',
+    limit: 12_000,
+    label: 'Notifications ESM',
+  },
 ];
 
 let hasFailure = false;

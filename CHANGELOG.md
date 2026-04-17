@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.0.64 — 2026-04-17
+
+**Added: `@scalemule/chat/notifications` — opt-in mention/call alerts.**
+
+New code-split entry with audio tones, browser-notification wrapper, and a hook that wires both to incoming chat messages. Closes Section 10 items #92 (two-tone mention chime), #93 (browser notifications with conversation context), and #97 (audio context unlock on first user gesture).
+
+- **`initAudio(): AudioContext | null`** — creates or returns the shared `AudioContext` and attempts to resume it. Must be called from a user gesture (click, keydown) to unlock playback on browsers that block autoplay until interaction. Idempotent and SSR-safe — returns `null` on the server.
+- **`playMentionChime({ volume?, context? })`** — two-tone chime, A5 (880Hz) → C#6 (1108.73Hz). Silent no-op until `initAudio` has been called.
+- **`playRingTone({ volume? })`** — single 587.33Hz tone (0.8s) for incoming-call signals. Matches the conference SDK's ring pattern for hosts that don't use `@scalemule/conference` directly.
+- **`playTones(steps, opts?)`** — escape hatch for custom chime sequences.
+- **`isAudioSupported()`, `getAudioContext()`** — status helpers.
+
+- **`requestNotificationPermission(): Promise<'default'|'granted'|'denied'|'unsupported'>`** — wraps `Notification.requestPermission` with SSR + unsupported-browser fallbacks. Short-circuits when permission is already decided.
+- **`showNotification({ title, body?, icon?, tag?, silent?, onClick?, data? })`** — returns the `Notification` instance or `null`. Never throws — safe to call unguarded. Focuses `window` before invoking `onClick` (clicking a notification doesn't change the active tab on most platforms).
+- **`getNotificationPermission()`, `isNotificationSupported()`** — status helpers.
+
+- **`useNotificationPermission()`** — returns `{ state, isGranted, canPrompt, request() }`. SSR-safe.
+- **`useMentionAlerts({ currentUserId, activeConversationId?, sound?, browser?, buildNotification?, onMentioned? })`** — subscribes to the `ChatProvider`'s `message` event and fires sound + browser notification when the signed-in user is mentioned. Reuses the same detection logic as `useMentionCounts` (0.0.48) — the attribute emitted by the Quill mention blot. Messages in the `activeConversationId` skip sound + notification (the user already sees them); `onMentioned` still fires for app-level state updates.
+
+- **`messageContainsMention(html, userId): boolean`** — pure helper extracted from `useMentionCounts` and reused by both `useMentionCounts` and `useMentionAlerts`. Exported from the notifications entry for hosts that want to do their own mention-aware filtering.
+
+**Bundle:** `notifications.js` 5.78K (budget 12K). `react.js` 244.60K → 244.73K (within the existing 250K budget) — the tiny bump is from `useMentionCounts` adopting the shared `messageContainsMention` helper.
+
+**Invariants honored:** SSR-safe module load (verified by entry SSR smoke test); `showNotification` / `playMentionChime` / `playRingTone` are no-ops on the server; no dependency on `@scalemule/nextjs` or any host auth SDK.
+
 ## 0.0.63 — 2026-04-17
 
 **Added: `<EditProfileModal>` in the `/profile` entry.** Closes the Section 9 profile track (#88).

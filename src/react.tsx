@@ -9,6 +9,7 @@ import React, {
 import { ChatClient } from './core/ChatClient';
 import { ChatContext } from './shared/ChatContext';
 import type { ChatContextValue } from './shared/ChatContext';
+import { messageContainsMention } from './shared/mentionDetection';
 import type {
   Attachment,
   ChannelListItem,
@@ -897,13 +898,9 @@ export function useMentionCounts(currentUserId?: string): Map<string, number> {
 
   useEffect(() => {
     if (!currentUserId) return;
-    // The mention blot emits exactly this attribute on the rendered span.
-    // Plain-text messages lack the attribute so this is a safe needle.
-    const needle = `data-sm-user-id="${currentUserId}"`;
     return client.on('message', ({ message, conversationId }) => {
       if (message.sender_id === currentUserId) return;
-      const html = message.content ?? '';
-      if (!html.includes(needle)) return;
+      if (!messageContainsMention(message.content, currentUserId)) return;
       setCounts((prev) => {
         const next = new Map(prev);
         next.set(conversationId, (next.get(conversationId) ?? 0) + 1);
