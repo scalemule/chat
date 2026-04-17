@@ -973,6 +973,7 @@ export function useUnreadCount() {
 export {
   ActiveCallBanner,
   ActiveCallDot,
+  Avatar,
   AvatarStatusMenu,
   CallTriggerButton,
   CallTriggerGroup,
@@ -1000,7 +1001,7 @@ export {
   SupportInbox,
   TypingIndicator,
 } from './react-components';
-export type { UserProfile } from './react-components';
+export type { AvatarProps, UserProfile } from './react-components';
 
 // Note: Admin-only components (WidgetConfigEditor, VisitorContextPanel) are
 // intentionally NOT exported from the main @scalemule/chat/react entry —

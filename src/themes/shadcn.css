@@ -59,4 +59,18 @@
   /* Reaction active state — subtle primary tint via color-mix */
   --sm-reaction-active-bg: hsl(var(--primary, 221 83% 53%) / 0.08);
   --sm-reaction-active-border: hsl(var(--primary, 221 83% 53%) / 0.4);
+
+  /* Avatar palette — <Avatar> picks one of 8 slots by stable hash of
+   * `colorKey` (or display name) so each user keeps a consistent color.
+   * Fallback hues chosen for AA contrast against white text; override
+   * to match your shadcn theme. */
+  --sm-avatar-bg-1: hsl(217 91% 60%);
+  --sm-avatar-bg-2: hsl(271 81% 56%);
+  --sm-avatar-bg-3: hsl(189 94% 36%);
+  --sm-avatar-bg-4: hsl(330 81% 50%);
+  --sm-avatar-bg-5: hsl(24 94% 50%);
+  --sm-avatar-bg-6: hsl(160 84% 32%);
+  --sm-avatar-bg-7: hsl(45 93% 38%);
+  --sm-avatar-bg-8: hsl(243 75% 58%);
+  --sm-avatar-text: hsl(var(--primary-foreground, 0 0% 100%));
 }

@@ -142,3 +142,16 @@
  */
 .sm-typing-indicator { /* hook */ }
 
+/* Avatar — rendered by <Avatar>. The component inlines all visual
+ * styles (size, radius, background, font) so hosts that skip the
+ * theme CSS still see a functional avatar. These classes are stable
+ * hooks for host overrides (e.g. custom border on the image variant
+ * or a letter-spacing tweak on initials). Tokens:
+ *   --sm-avatar-bg-1 ... --sm-avatar-bg-8   (8 palette slots)
+ *   --sm-avatar-text                         (initials color, default white)
+ */
+.sm-avatar           { /* hook — applied to every avatar, image or initials */ }
+.sm-avatar-img       { /* hook for the image variant */ }
+.sm-avatar-initials  { /* hook for the initials variant */ }
+.sm-avatar-button    { /* hook for the clickable wrapper when onClick is passed */ }
+

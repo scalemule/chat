@@ -6,6 +6,12 @@ export { uploadSnippet, MAX_SNIPPET_SIZE_BYTES, SNIPPET_PREVIEW_LENGTH } from '.
 export type { UploadSnippetResult, SnippetUploadFn } from './shared/snippet';
 export { linkify, hasLinks } from './shared/linkify';
 export type { LinkifySegment, LinkifyTextSegment, LinkifyLinkSegment } from './shared/linkify';
+export {
+  getInitials,
+  avatarColorFromKey,
+  avatarTextColor,
+  DEFAULT_AVATAR_PALETTE,
+} from './shared/avatarInitials';
 export type {
   SupportConversation,
   SupportClientConfig,
