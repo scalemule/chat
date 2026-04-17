@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.0.62 — 2026-04-17
+
+**Added: `@scalemule/chat/profile` — opt-in user-profile UX.**
+
+New code-split entry with profile components + language/timezone helpers. Covers Section 9 features #84 (profile panel sidebar), #85 (avatar upload UX seam), #89 (local-time display), #90 (language labels), and #91 (read-only view of another user's profile).
+
+- **`<UserProfileCard user ownProfile? isOnline? onUploadAvatar? onEditProfile? …>`** — pure presentational card with avatar, name, online/away row, local time, language, and contact information. `ownProfile={true}` enables the edit button + avatar upload hover overlay; omit for a read-only view. The SDK performs no network I/O — the host resolves profile fields and writes back through `onUploadAvatar` / `onEditProfile` callbacks. i18n via the `labels` prop; language labels overridable via `languageLabelMap`.
+- **`<ProfilePanel user onClose onBack? …>`** — sidebar shell wrapping `<UserProfileCard>`. Header with title + optional back arrow (for mobile stacked layouts) + close button. All card props forward through.
+- **`getLanguageLabel(locale, { map?, useIntlFallback?, displayLocale? }): string | null`** — pure helper. Checks a host-supplied map first, then `DEFAULT_LANGUAGE_LABELS`, then `Intl.DisplayNames` of the language prefix, with a prefix-scan fallback.
+- **`DEFAULT_LANGUAGE_LABELS`** — minimal default map (10 locales). Host apps extend or replace.
+- **`getAllTimeZones(zones?): TimeZoneOption[]`** — enumerate IANA zones via `Intl.supportedValuesOf` with graceful fallback to `['UTC']`. Each option carries `{ value, label: "(GMT±HH:MM) Zone Name", offsetMinutes }`, sorted west-to-east.
+- **`formatLocalTime(timeZone, { locale?, now?, hour12? }): string | null`** — pure, SSR-safe "now" formatter. Returns `null` on invalid zones instead of throwing. Used by `<UserProfileCard>` for the local-time row.
+- **`getTimeZoneOffsetMinutes`, `formatGmtOffset`** — supporting helpers, also exported.
+
+**Style hooks:** `.sm-profile-card`, `.sm-profile-card-avatar`, `.sm-profile-card-upload`, `.sm-profile-card-name`, `.sm-profile-card-status`, `.sm-profile-card-meta`, `.sm-profile-card-contact`, `.sm-profile-panel`, `.sm-profile-panel-header`, `.sm-profile-panel-content`, `.sm-profile-panel-back`, `.sm-profile-panel-close`. All visual styling stays inline so hosts that skip the theme CSS still see a functional panel — the classes exist as override seams.
+
+**Tokens reused (no new tokens):** `--sm-surface`, `--sm-border-color`, `--sm-text-color`, `--sm-muted-text`, `--sm-primary`, `--sm-status-online-color`, `--sm-avatar-bg-1..8`, `--sm-avatar-text`.
+
+**Read-only view of another user (#91):** omit `ownProfile` (default `false`) — the edit button and upload overlay disappear automatically. `<Avatar>` uses the stable `user.id` as its color key so the same person renders with the same palette slot everywhere in the app.
+
+**Invariants honored:**
+- No `fetch()` inside the SDK. Host wires all profile I/O through callbacks.
+- No `@scalemule/nextjs` / `useAuth()` dependency — hosts pass user data directly.
+- SSR-safe: all helpers tolerate missing `Intl.supportedValuesOf` / `Intl.DisplayNames`; no top-level `window` or `document` access.
+
+**Bundle:** `profile.js` lands at 21.93K (budget 25K — leaves ~3K headroom for the 0.0.63 `<EditProfileModal>`). `react.js` unchanged at 244.60K (code-split verified).
+
 ## 0.0.61 — 2026-04-17
 
 **Added: reusable `<Avatar>` + deterministic palette helpers.**

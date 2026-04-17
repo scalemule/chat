@@ -100,6 +100,16 @@ const budgets = [
     limit: 34_000,
     label: 'Search ESM',
   },
+  {
+    // Profile entry — opt-in profile UX. 0.0.62 ships <Avatar>
+    // (re-exported for convenience), <UserProfileCard>,
+    // <ProfilePanel>, and the locale/time-zone helpers. 0.0.63 will
+    // add <EditProfileModal>. Budget set with headroom so the modal
+    // + future profile additions fit without a bump.
+    file: 'profile.js',
+    limit: 25_000,
+    label: 'Profile ESM',
+  },
 ];
 
 let hasFailure = false;
