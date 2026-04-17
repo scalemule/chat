@@ -104,6 +104,20 @@ export default defineConfig([
     treeshake: true,
     splitting: false,
   },
+  // Theme entry — opt-in light/dark/system switcher + flash-
+  // prevention helper + useThemeMode hook. Code-split so hosts that
+  // manage theme externally (or ship light-only) don't pay the
+  // bundle cost in react.js.
+  {
+    entry: { theme: 'src/theme.tsx' },
+    format: ['esm', 'cjs'],
+    dts: false,
+    sourcemap: false,
+    clean: false,
+    external: ['react', 'react-dom'],
+    treeshake: true,
+    splitting: false,
+  },
   // UMD bundle (script tag: window.ScaleMuleChat)
   {
     entry: { 'chat.umd': 'src/umd.ts' },

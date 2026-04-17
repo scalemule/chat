@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.0.65 — 2026-04-17
+
+**Added: `@scalemule/chat/theme` — opt-in theme switcher + flash-prevention helper.**
+
+Plus themed-scrollbar utility class and sidebar palette tokens. Closes Section 11 items #98 (light/dark/system switcher), #99 (flash prevention), #101 (themed scrollbars), and #104 (sidebar palette — tokens shipped, hosts apply).
+
+- **`<ThemeSwitcher labels? iconOnly? render? />`** — three-button segmented control (Light / Dark / System) that persists the choice, applies `class="dark"` (default) or `data-theme="dark"` to `<html>`, and subscribes to `prefers-color-scheme` when `'system'` is selected. Pass `render` to replace the control entirely while still sharing state with `useThemeMode`.
+- **`useThemeMode(opts?)`** — returns `{ mode, resolved, setMode, cycleMode }`. Applies on mount + when `mode` changes; cleans up the media-query listener on unmount. SSR-safe.
+- **`getFlashPreventionScript(opts?): string`** — returns an IIFE string hosts inject in `<head>` via `<script dangerouslySetInnerHTML>` (Next.js App Router) or `Script` with `beforeInteractive`. Reads the stored mode, resolves `'system'`, and toggles the class/attribute on `<html>` synchronously before paint — no flash on first render.
+- **Pure helpers** (also exported from `/theme`): `applyTheme`, `readThemeMode`, `writeThemeMode`, `resolveThemeMode`, `DEFAULT_THEME_STORAGE_KEY`.
+- **Two application strategies** — `'class'` (default, matches Tailwind `dark:` / shadcn) and `'data'` (matches CSS-variable switchers that key off `[data-theme="dark"]`). Custom class name and attribute name are both configurable.
+
+- **Themed scrollbar utility** — new `.sm-scrollbar-themed` class in `themes/message-polish.css`. Apply to any scroll container for a compact 8px scrollbar that follows the current theme. Tokens: `--sm-scrollbar-size`, `--sm-scrollbar-track`, `--sm-scrollbar-thumb`, `--sm-scrollbar-thumb-hover`.
+
+- **Sidebar palette tokens** — 8 new `--sm-sidebar-*` tokens in both the Tailwind and shadcn presets for hosts that render a full-height dark conversation rail: `--sm-sidebar-bg`, `--sm-sidebar-surface`, `--sm-sidebar-text`, `--sm-sidebar-muted-text`, `--sm-sidebar-border`, `--sm-sidebar-hover-bg`, `--sm-sidebar-active-bg`, `--sm-sidebar-active-text`. Default fallbacks produce a navy/slate palette; override for brand alignment.
+
+**Class hooks:** `.sm-theme-switcher`, `.sm-theme-switcher-button`, `.sm-theme-switcher-button-active`, `.sm-scrollbar-themed`.
+
+**Bundle:** `theme.js` 7.34K (budget 15K). `react.js` unchanged at 244.73K (code-split verified). All 12 bundle budgets pass.
+
+**Invariants:** SSR-safe — hook + helpers all tolerate missing `window`/`document`; `getFlashPreventionScript` is a pure string factory. No `@scalemule/nextjs` dep.
+
 ## 0.0.64 — 2026-04-17
 
 **Added: `@scalemule/chat/notifications` — opt-in mention/call alerts.**

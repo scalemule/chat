@@ -123,6 +123,16 @@ const budgets = [
     limit: 12_000,
     label: 'Notifications ESM',
   },
+  {
+    // Theme entry — opt-in light/dark/system switcher, flash-
+    // prevention script helper, useThemeMode hook. Small pure
+    // helpers + one presentation component. Budget set with headroom
+    // for future theme-related additions (color-scheme presets, RTL
+    // toggle).
+    file: 'theme.js',
+    limit: 15_000,
+    label: 'Theme ESM',
+  },
 ];
 
 let hasFailure = false;

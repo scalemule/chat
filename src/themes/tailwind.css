@@ -99,4 +99,17 @@
   --sm-avatar-bg-7: var(--color-yellow-600, #ca8a04);
   --sm-avatar-bg-8: var(--color-indigo-600, #4f46e5);
   --sm-avatar-text: var(--color-white, #ffffff);
+
+  /* Sidebar palette — applied by hosts that render a full-height
+   * conversation/channel rail on the left. The fallback chain picks
+   * up Tailwind v4 slate tokens so the sidebar contrasts with the
+   * main surface without the host having to define new variables. */
+  --sm-sidebar-bg: var(--color-slate-900, #0f172a);
+  --sm-sidebar-surface: var(--color-slate-800, #1e293b);
+  --sm-sidebar-text: var(--color-slate-50, #f8fafc);
+  --sm-sidebar-muted-text: var(--color-slate-400, #94a3b8);
+  --sm-sidebar-border: var(--color-slate-700, #334155);
+  --sm-sidebar-hover-bg: var(--color-slate-800, #1e293b);
+  --sm-sidebar-active-bg: var(--color-slate-700, #334155);
+  --sm-sidebar-active-text: var(--color-white, #ffffff);
 }

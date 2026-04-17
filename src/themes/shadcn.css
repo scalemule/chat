@@ -73,4 +73,16 @@
   --sm-avatar-bg-7: hsl(45 93% 38%);
   --sm-avatar-bg-8: hsl(243 75% 58%);
   --sm-avatar-text: hsl(var(--primary-foreground, 0 0% 100%));
+
+  /* Sidebar palette — for hosts rendering a full-height conversation
+   * rail. The fallback hues produce a classic navy/slate look that
+   * works on top of any shadcn theme; override for brand alignment. */
+  --sm-sidebar-bg: hsl(222 47% 11%);
+  --sm-sidebar-surface: hsl(217 33% 17%);
+  --sm-sidebar-text: hsl(210 40% 98%);
+  --sm-sidebar-muted-text: hsl(215 20% 65%);
+  --sm-sidebar-border: hsl(217 33% 23%);
+  --sm-sidebar-hover-bg: hsl(217 33% 17%);
+  --sm-sidebar-active-bg: hsl(215 28% 27%);
+  --sm-sidebar-active-text: hsl(0 0% 100%);
 }
