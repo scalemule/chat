@@ -197,3 +197,17 @@
 .sm-theme-switcher-button           { /* hook — every mode button */ }
 .sm-theme-switcher-button-active    { /* hook — the currently-selected mode */ }
 
+/* Optimistic send states — rendered by <ChatMessageItem> when a
+ * locally-staged message has `is_pending` (in-flight) or `is_failed`
+ * (HTTP error). Bubble opacity drops to 65% while pending. A status
+ * row below the bubble shows "Sending…" or "Failed to send" with
+ * Retry / Dismiss buttons. All visual styling stays inline so hosts
+ * that skip the theme CSS still see the states; these classes are
+ * override seams. Tokens used: --sm-muted-text, --sm-danger-text,
+ * --sm-primary. */
+.sm-message-pending          { /* hook on the message wrapper */ }
+.sm-message-failed           { /* hook on the message wrapper */ }
+.sm-message-status           { /* hook on the status caption row */ }
+.sm-message-status-pending   { /* hook for the "Sending…" variant */ }
+.sm-message-status-failed    { /* hook for the "Failed to send" variant */ }
+

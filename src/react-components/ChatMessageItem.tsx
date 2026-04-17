@@ -194,6 +194,23 @@ interface ChatMessageItemProps {
   maxAttachments?: number;
   /** File input accept filter. Default "image/*,video/*". */
   accept?: string;
+  /**
+   * Retry a failed optimistic send. The component renders a "Retry"
+   * affordance next to the bubble when `message.is_failed === true`.
+   * Hosts typically wire this to `useChat().retryMessage(id)`.
+   */
+  onRetryMessage?: (message: ChatMessage) => void;
+  /**
+   * Dismiss a failed optimistic send (remove the row without
+   * retrying). Rendered next to the Retry link when provided.
+   * Hosts typically wire to `useChat().dismissMessage(id)`.
+   */
+  onDismissMessage?: (message: ChatMessage) => void;
+  /** i18n labels for pending/failed status text. */
+  pendingLabel?: string;
+  failedLabel?: string;
+  retryLabel?: string;
+  dismissLabel?: string;
 }
 
 /** Renders a single attachment -- fetches presigned URL on demand if missing */
@@ -595,6 +612,12 @@ export function ChatMessageItem({
   onValidateFile,
   maxAttachments = 5,
   accept = 'image/*,video/*',
+  onRetryMessage,
+  onDismissMessage,
+  pendingLabel = 'Sending…',
+  failedLabel = 'Failed to send',
+  retryLabel = 'Retry',
+  dismissLabel = 'Dismiss',
 }: ChatMessageItemProps): React.JSX.Element {
   // Profile resolution: explicit `profile` prop wins, else fall back to
   // `getProfile(senderId)`, else undefined (default "User" placeholder).
@@ -604,10 +627,14 @@ export function ChatMessageItem({
   // behavior) until they migrate to the explicit flags.
   const isSearchHit = isSearchHitProp ?? highlightProp ?? false;
   const isUnreadStart = isUnreadStartProp ?? false;
+  const isPending = message.is_pending === true;
+  const isFailed = message.is_failed === true;
   const wrapperClasses = [
     isGrouped ? 'sm-message-grouped' : null,
     isSearchHit ? 'sm-message-highlighted' : null,
     isUnreadStart && !isSearchHit ? 'sm-message-unread-start' : null,
+    isPending ? 'sm-message-pending' : null,
+    isFailed ? 'sm-message-failed' : null,
   ]
     .filter(Boolean)
     .join(' ');
@@ -1032,6 +1059,8 @@ export function ChatMessageItem({
               ? { borderBottomRightRadius: 6 }
               : { borderBottomLeftRadius: 6 }),
             padding: '8px 14px',
+            opacity: isPending ? 0.65 : 1,
+            transition: 'opacity 120ms ease-in-out',
             background: isOwn
               ? 'var(--sm-own-bubble-bg, var(--sm-own-bubble, var(--sm-primary, #2563eb)))'
               : 'var(--sm-other-bubble-bg, var(--sm-other-bubble, #f3f4f6))',
@@ -1403,6 +1432,75 @@ export function ChatMessageItem({
           currentUserId={currentUserId}
           onToggleReaction={handleToggleReaction}
         />
+
+        {/* Optimistic send status — dimmed "Sending…" while in-flight,
+            red "Failed to send / Retry / Dismiss" on failure. Shown
+            only on own messages (others never have is_pending /
+            is_failed set). */}
+        {isOwn && (isPending || isFailed) && (
+          <div
+            className={
+              isFailed
+                ? 'sm-message-status sm-message-status-failed'
+                : 'sm-message-status sm-message-status-pending'
+            }
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              marginTop: 2,
+              fontSize: 11,
+              color: isFailed
+                ? 'var(--sm-danger-text, #dc2626)'
+                : 'var(--sm-muted-text, #6b7280)',
+            }}
+          >
+            {isFailed ? (
+              <>
+                <span aria-hidden="true">⚠</span>
+                <span>{failedLabel}</span>
+                {onRetryMessage && (
+                  <button
+                    type="button"
+                    onClick={() => onRetryMessage(message)}
+                    style={{
+                      border: 'none',
+                      background: 'transparent',
+                      padding: 0,
+                      color: 'var(--sm-primary, #2563eb)',
+                      fontSize: 11,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      textDecoration: 'underline',
+                    }}
+                  >
+                    {retryLabel}
+                  </button>
+                )}
+                {onDismissMessage && (
+                  <button
+                    type="button"
+                    onClick={() => onDismissMessage(message)}
+                    style={{
+                      border: 'none',
+                      background: 'transparent',
+                      padding: 0,
+                      color: 'var(--sm-muted-text, #6b7280)',
+                      fontSize: 11,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      textDecoration: 'underline',
+                    }}
+                  >
+                    {dismissLabel}
+                  </button>
+                )}
+              </>
+            ) : (
+              <span>{pendingLabel}</span>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

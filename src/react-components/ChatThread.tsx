@@ -234,6 +234,8 @@ export function ChatThread({
     removeReaction,
     reportMessage,
     uploadAttachment,
+    retryMessage,
+    dismissMessage,
   } = useChat(conversationId);
   const { typingUsers, sendTyping } = useTyping(conversationId);
   const { members } = usePresence(conversationId);
@@ -360,6 +362,8 @@ export function ChatThread({
         }
         onDelete={(messageId) => void deleteMessage(messageId)}
         onReport={(messageId) => void reportMessage(messageId, 'other')}
+        onRetryMessage={(message) => void retryMessage(message.id)}
+        onDismissMessage={(message) => dismissMessage(message.id)}
         onFetchAttachmentUrl={onFetchAttachmentUrl}
         onUploadAttachment={uploadAttachment}
         onDeleteAttachment={onDeleteAttachment}

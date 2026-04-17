@@ -385,6 +385,22 @@ export function useChat(conversationId?: string) {
     await getReadStatus();
   }, [client, conversationId, getReadStatus]);
 
+  const retryMessage = useCallback(
+    async (messageId: string) => {
+      if (!conversationId) return undefined;
+      return client.retryMessage(conversationId, messageId);
+    },
+    [client, conversationId],
+  );
+
+  const dismissMessage = useCallback(
+    (messageId: string) => {
+      if (!conversationId) return false;
+      return client.dismissMessage(conversationId, messageId);
+    },
+    [client, conversationId],
+  );
+
   return {
     messages,
     readStatuses,
@@ -395,6 +411,8 @@ export function useChat(conversationId?: string) {
     loadMore,
     editMessage,
     deleteMessage,
+    retryMessage,
+    dismissMessage,
     addReaction,
     removeReaction,
     uploadAttachment,

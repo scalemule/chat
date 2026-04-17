@@ -28,6 +28,17 @@ interface ChatMessageListProps {
   ) => void | Promise<void>;
   onDelete?: (messageId: string) => void | Promise<void>;
   onReport?: (messageId: string) => void;
+  /**
+   * Retry a failed optimistic send. The SDK renders a "Retry"
+   * affordance next to the bubble when `message.is_failed === true`.
+   * Typically wired to `useChat().retryMessage(id)`.
+   */
+  onRetryMessage?: (message: ChatMessage) => void;
+  /**
+   * Dismiss a failed optimistic send (remove the row without retry).
+   * Wired to `useChat().dismissMessage(id)`.
+   */
+  onDismissMessage?: (message: ChatMessage) => void;
   onFetchAttachmentUrl?: (fileId: string) => Promise<string>;
   firstUnreadMessageId?: string;
   /** @deprecated use firstUnreadMessageId instead */
@@ -166,6 +177,8 @@ export function ChatMessageList({
   onEdit,
   onDelete,
   onReport,
+  onRetryMessage,
+  onDismissMessage,
   onFetchAttachmentUrl,
   firstUnreadMessageId,
   unreadSince,
@@ -534,6 +547,8 @@ export function ChatMessageList({
                     onEdit={onEdit}
                     onDelete={onDelete}
                     onReport={onReport}
+                    onRetryMessage={onRetryMessage}
+                    onDismissMessage={onDismissMessage}
                     onFetchAttachmentUrl={onFetchAttachmentUrl}
                     onUploadAttachment={onUploadAttachment}
                     onDeleteAttachment={onDeleteAttachment}
