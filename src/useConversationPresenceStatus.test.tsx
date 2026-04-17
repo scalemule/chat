@@ -42,11 +42,18 @@ let latest: 'online' | 'away' | 'offline' | null = null;
 function Probe({
   conversationId,
   userId,
+  staleThresholdMs,
+  now,
 }: {
   conversationId: string | undefined;
   userId: string | undefined;
+  staleThresholdMs?: number;
+  now?: () => number;
 }): null {
-  const status = useConversationPresenceStatus(conversationId, userId);
+  const status = useConversationPresenceStatus(conversationId, userId, {
+    staleThresholdMs,
+    now,
+  });
   React.useEffect(() => {
     latest = status;
   });
@@ -56,6 +63,7 @@ function Probe({
 function renderHook(
   conversationId: string | undefined,
   userId: string | undefined,
+  extra?: { staleThresholdMs?: number; now?: () => number },
 ) {
   latest = null;
   return render(
@@ -69,7 +77,12 @@ function renderHook(
           config: { baseUrl: 'x', apiKey: 'k' } as any,
         },
       },
-      React.createElement(Probe, { conversationId, userId }),
+      React.createElement(Probe, {
+        conversationId,
+        userId,
+        staleThresholdMs: extra?.staleThresholdMs,
+        now: extra?.now,
+      }),
     ),
   );
 }
@@ -143,5 +156,83 @@ describe('useConversationPresenceStatus', () => {
     expect(latest).toBe('away');
     emitPresenceState('c1', []);
     expect(latest).toBe('offline');
+  });
+
+  it('staleThresholdMs=0 disables pruning even with stale last_active_at', () => {
+    renderHook('c1', 'u1', { now: () => Date.parse('2026-04-17T12:05:00.000Z') });
+    emitPresenceState('c1', [
+      {
+        user_id: 'u1',
+        status: 'online',
+        joined_at: '2026-04-17T12:00:00.000Z',
+        // 5 minutes stale
+        last_active_at: '2026-04-17T12:00:00.000Z',
+      },
+    ]);
+    expect(latest).toBe('online');
+  });
+
+  it('flips to offline when last_active_at exceeds staleThresholdMs', () => {
+    renderHook('c1', 'u1', {
+      staleThresholdMs: 35_000,
+      now: () => Date.parse('2026-04-17T12:01:00.000Z'),
+    });
+    emitPresenceState('c1', [
+      {
+        user_id: 'u1',
+        status: 'online',
+        joined_at: '2026-04-17T12:00:00.000Z',
+        // 60s stale — exceeds 35s threshold
+        last_active_at: '2026-04-17T12:00:00.000Z',
+      },
+    ]);
+    expect(latest).toBe('offline');
+  });
+
+  it('keeps online when last_active_at is within staleThresholdMs', () => {
+    renderHook('c1', 'u1', {
+      staleThresholdMs: 35_000,
+      now: () => Date.parse('2026-04-17T12:00:20.000Z'),
+    });
+    emitPresenceState('c1', [
+      {
+        user_id: 'u1',
+        status: 'online',
+        joined_at: '2026-04-17T12:00:00.000Z',
+        // 20s stale — under 35s threshold
+        last_active_at: '2026-04-17T12:00:00.000Z',
+      },
+    ]);
+    expect(latest).toBe('online');
+  });
+
+  it('stale threshold overrides away — silent + away for too long → offline', () => {
+    renderHook('c1', 'u1', {
+      staleThresholdMs: 35_000,
+      now: () => Date.parse('2026-04-17T12:01:00.000Z'),
+    });
+    emitPresenceState('c1', [
+      {
+        user_id: 'u1',
+        status: 'away',
+        joined_at: '2026-04-17T12:00:00.000Z',
+        last_active_at: '2026-04-17T12:00:00.000Z',
+      },
+    ]);
+    expect(latest).toBe('offline');
+  });
+
+  it('no-ops safely when the server does not ship last_active_at (old service)', () => {
+    renderHook('c1', 'u1', {
+      staleThresholdMs: 35_000,
+      now: () => Date.parse('2026-04-17T12:05:00.000Z'),
+    });
+    emitPresenceState('c1', [
+      // No last_active_at — older realtime service
+      { user_id: 'u1', status: 'online', joined_at: '2026-04-17T12:00:00.000Z' },
+    ]);
+    // Falls back to status-based resolution; user stays online
+    // because the SDK can't prove they're stale.
+    expect(latest).toBe('online');
   });
 });

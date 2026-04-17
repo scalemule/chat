@@ -172,6 +172,21 @@ export interface PresenceMember {
   status?: 'online' | 'away' | string;
   user_data?: unknown;
   joined_at: string;
+  /**
+   * Timestamp of the most recent activity (WebSocket ping or
+   * explicit `presence_update`) observed by the server for this
+   * presence membership. Bumped on every ping so clients can apply
+   * a tighter staleness threshold than the 2-minute server sweep.
+   *
+   * Optional — older realtime service versions don't ship this
+   * field. When absent, the `staleThresholdMs` option on
+   * `useConversationPresenceStatus` is a no-op (falls back to the
+   * `status`/`online` signal from `usePresence`).
+   *
+   * Added alongside `ms/scalemule-realtime` expose-last-active
+   * (2026-04 — closes the client-side staleness-pruning gap).
+   */
+  last_active_at?: string;
 }
 
 // ============ Channel Types ============
