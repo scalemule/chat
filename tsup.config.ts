@@ -118,6 +118,19 @@ export default defineConfig([
     treeshake: true,
     splitting: false,
   },
+  // Layout entry — opt-in chat shell primitives (ResizableSidebar,
+  // ThreePaneLayout). Code-split because hosts that build their own
+  // chat shell shouldn't pay for it in the core react.js bundle.
+  {
+    entry: { layout: 'src/layout.tsx' },
+    format: ['esm', 'cjs'],
+    dts: false,
+    sourcemap: false,
+    clean: false,
+    external: ['react', 'react-dom'],
+    treeshake: true,
+    splitting: false,
+  },
   // UMD bundle (script tag: window.ScaleMuleChat)
   {
     entry: { 'chat.umd': 'src/umd.ts' },

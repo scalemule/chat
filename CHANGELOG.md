@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.0.67 — 2026-04-17
+
+**Added: `@scalemule/chat/layout` — opt-in chat shell primitives.**
+
+Adds a resizable sidebar primitive and a ready-made three-pane shell. Previously deferred because layout chrome isn't chat-domain — now shipped in a dedicated code-split entry so hosts that want a one-line chat shell get one and hosts that build their own pay nothing for it in `react.js`.
+
+- **`<ResizableSidebar>`** — generic pane wrapper with a drag-to-resize handle on the configured edge. Supports mouse + touch, persists the resolved width to `localStorage` when `storageKey` is set, clamps to `[minWidth, maxWidth]`, and includes keyboard nudges (ArrowLeft/ArrowRight ± 16px, Shift+arrow ± 64px, Home/End jump to clamp) for a11y. Props: `side` (`'left' | 'right'`), `initialWidth`, `minWidth`, `maxWidth`, `storageKey`, `onWidthChange`, `disabled`, `ariaLabel`. `aria-valuenow` / `aria-valuemin` / `aria-valuemax` on the handle advertise the current state to screen readers.
+- **`<ThreePaneLayout>`** — thin flex-row composition of `<ResizableSidebar>` around a center thread pane, with an optional right profile rail. Slots: `sidebar`, `thread`, `profile?`. Each side pane is resizable by default with its own `storageKey`, min/max, and an `{sidebar,profile}Resizable` flag for fixed-width shells. Designed as a drop-in shell for the common case — hosts that need mobile drawers, responsive collapse, or animated slide-ins compose `<ResizableSidebar>` directly instead of wrapping this component.
+
+**Pointer events:** The drag logic uses `mousedown` + `touchstart` with window-level `mousemove` / `mouseup` / `touchmove` / `touchend` listeners (attached on drag-start, removed on drag-end). This covers every major browser (Pointer Events get synthesized from these on platforms that need them) and stays compatible with jsdom for unit-testing.
+
+**SSR-safe.** First render uses `initialWidth`; the storage rehydration happens in `useEffect` so server-rendered markup matches what the client mounts. Module load doesn't touch `window` / `document`.
+
+**Class hooks:** `.sm-resizable-sidebar`, `.sm-resizable-sidebar-handle`, `.sm-resizable-sidebar-handle-dragging`, `.sm-three-pane`, `.sm-three-pane-sidebar`, `.sm-three-pane-thread`, `.sm-three-pane-profile`. Tokens reused: `--sm-surface`, `--sm-text-color`, `--sm-border-color`, `--sm-primary` (handle hover + active color). No new tokens.
+
+**Bundle:** `layout.js` 8.16K / 12K (new entry). `react.js` unchanged at 248.07K (code-split verified). All 13 bundle budgets pass.
+
 ## 0.0.66 — 2026-04-17
 
 **Added: opt-in optimistic message updates with failure + retry.**

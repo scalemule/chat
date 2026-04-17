@@ -137,6 +137,15 @@ const budgets = [
     limit: 15_000,
     label: 'Theme ESM',
   },
+  {
+    // Layout entry — opt-in chat shell primitives (ResizableSidebar
+    // drag-to-resize with persistence + ThreePaneLayout composition).
+    // Small — drag logic + CSS grid composition. Budget padded for
+    // future layout variants (mobile drawer, vertical resize).
+    file: 'layout.js',
+    limit: 12_000,
+    label: 'Layout ESM',
+  },
 ];
 
 let hasFailure = false;
