@@ -74,6 +74,22 @@ export default defineConfig([
     treeshake: true,
     splitting: false,
   },
+  // Profile entry — opt-in profile UX (UserProfileCard, ProfilePanel,
+  // language/timezone helpers). Code-split so hosts that don't render
+  // a profile panel don't pay the bundle cost in react.js. Avatar is
+  // re-exported here for convenience even though it also lives in
+  // react.js, so hosts that only pull `/profile` get everything they
+  // need without a second import.
+  {
+    entry: { profile: 'src/profile.tsx' },
+    format: ['esm', 'cjs'],
+    dts: false,
+    sourcemap: false,
+    clean: false,
+    external: ['react', 'react-dom'],
+    treeshake: true,
+    splitting: false,
+  },
   // UMD bundle (script tag: window.ScaleMuleChat)
   {
     entry: { 'chat.umd': 'src/umd.ts' },
