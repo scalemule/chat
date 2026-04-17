@@ -30,6 +30,15 @@ export type {
   ProfilePanelLabels,
 } from './react-components/ProfilePanel';
 
+export { EditProfileModal } from './react-components/EditProfileModal';
+export type {
+  EditProfileModalProps,
+  EditProfileFormValues,
+  EditProfileInitialValues,
+  EditProfileLabels,
+  EditProfileLanguageOption,
+} from './react-components/EditProfileModal';
+
 export {
   getInitials,
   avatarColorFromKey,

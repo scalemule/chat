@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.0.63 — 2026-04-17
+
+**Added: `<EditProfileModal>` in the `/profile` entry.** Closes the Section 9 profile track (#88).
+
+- **`<EditProfileModal initialValues onSave onClose loading? languages? timeZones? labels?>`** — modal form for editing name, locale, and time zone. Email renders read-only (email changes belong to the auth flow, not a profile edit form).
+- **Host-controlled I/O** — the SDK performs no fetches. `initialValues` is supplied by the host (pre-fetched) and `onSave` persists changes. If `onSave` throws, `Error.message` renders in a `role="alert"` and the modal stays open.
+- **`loading` prop** — when `true`, inputs hide and a spinner replaces the form body. Useful when the host is still fetching initial values on first open.
+- **`languages` prop** — opt-in list of `{ value, label }` options. No language list is baked into the SDK — hosts pass whatever locales their platform supports. When omitted, the Language select is hidden entirely.
+- **`timeZones` prop** — defaults to `getAllTimeZones()` (IANA zones via `Intl.supportedValuesOf` with graceful fallback to `['UTC']`), sorted west-to-east with `(GMT±HH:MM) Zone Name` labels.
+- **Accessibility parity with `<NewConversationModal>` (0.0.50) and `<ChannelEditModal>` (0.0.51):**
+  - `role="dialog"`, `aria-modal="true"`, `aria-labelledby` pointing at the title.
+  - Focus traps Tab / Shift+Tab across visible focusable descendants.
+  - Escape key + backdrop click dismiss.
+  - Click inside the modal does NOT close (`stopPropagation`).
+  - First field (Name) auto-focuses on open; focus returns to the previously-focused element on close.
+- **CSS hooks:** `.sm-edit-profile-modal`, `.sm-edit-profile-backdrop`, `.sm-edit-profile-body`, `.sm-edit-profile-footer`, `.sm-edit-profile-field`, `.sm-edit-profile-error`. All visual styling stays inline — the classes exist as override seams.
+- **Tokens reused:** `--sm-surface`, `--sm-surface-muted`, `--sm-border-color`, `--sm-text-color`, `--sm-muted-text`, `--sm-primary`, `--sm-own-text`, `--sm-danger-text`.
+
+**Invariants honored (unchanged):** no `fetch()` in the SDK, no `useAuth` dependency, SSR-safe import of `/profile` — the new SSR smoke-test covers `EditProfileModal` alongside the rest of the entry.
+
+**Bundle:** `profile.js` 21.93K → 36.57K (budget 25K → 40K). The modal is ~14K: form state, focus trap, accessible dialog wiring, and inline styling for the read-only email + language + timezone selects. All 10 bundle budgets pass.
+
 ## 0.0.62 — 2026-04-17
 
 **Added: `@scalemule/chat/profile` — opt-in user-profile UX.**

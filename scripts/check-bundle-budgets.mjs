@@ -102,12 +102,14 @@ const budgets = [
   },
   {
     // Profile entry — opt-in profile UX. 0.0.62 ships <Avatar>
-    // (re-exported for convenience), <UserProfileCard>,
-    // <ProfilePanel>, and the locale/time-zone helpers. 0.0.63 will
-    // add <EditProfileModal>. Budget set with headroom so the modal
-    // + future profile additions fit without a bump.
+    // (re-exported), <UserProfileCard>, <ProfilePanel>, and the
+    // locale/time-zone helpers (~22K). Bumped 25K -> 40K for 0.0.63
+    // <EditProfileModal> (~14K: form state, focus trap, accessible
+    // dialog wiring, inline styling for read-only email + language +
+    // timezone selects). Next feature in this entry should fit under
+    // the current ceiling without a further bump.
     file: 'profile.js',
-    limit: 25_000,
+    limit: 40_000,
     label: 'Profile ESM',
   },
 ];
