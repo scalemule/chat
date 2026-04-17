@@ -1,6 +1,8 @@
 export { ActiveCallBanner } from './ActiveCallBanner';
 export { ActiveCallDot } from './ActiveCallDot';
 export type { ActiveCallDotProps } from './ActiveCallDot';
+export { Avatar } from './Avatar';
+export type { AvatarProps } from './Avatar';
 export { AvatarStatusMenu } from './AvatarStatusMenu';
 export type { AvatarStatusMenuProps } from './AvatarStatusMenu';
 export { CallTriggerButton } from './CallTriggerButton';

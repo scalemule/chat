@@ -57,7 +57,12 @@ const budgets = [
     // useMyStatus + the safeStorage path into the core bundle.
     // Bumped 245K -> 250K for 0.0.60 CallTriggerGroup (SVG icons) +
     // enhanced ActiveCallBanner (elapsed time hook + pulsing dot).
-    limit: 250_000,
+    // Bumped 250K -> 256K for 0.0.61 — new shared <Avatar> component
+    // + avatarInitials helpers. The refactor removes ~20 lines of
+    // duplicated inline avatar styles from ChatMessageItem, but the
+    // new component (two render paths + onError swap + deterministic
+    // palette hash) still nets ~1.2 KB growth in react.js.
+    limit: 256_000,
     label: 'React ESM',
   },
   {

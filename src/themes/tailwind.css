@@ -84,4 +84,19 @@
     var(--sm-primary) 40%,
     transparent
   );
+
+  /* Avatar palette — used by <Avatar> when no image is available. The
+   * 8 slots are picked deterministically from a stable hash of
+   * `colorKey` (or the display name) so a given user always renders
+   * with the same color. Override individual slots or swap the whole
+   * palette to match your brand. Text stays white for AA contrast. */
+  --sm-avatar-bg-1: var(--color-blue-600, #2563eb);
+  --sm-avatar-bg-2: var(--color-purple-600, #9333ea);
+  --sm-avatar-bg-3: var(--color-cyan-600, #0891b2);
+  --sm-avatar-bg-4: var(--color-pink-600, #db2777);
+  --sm-avatar-bg-5: var(--color-orange-600, #ea580c);
+  --sm-avatar-bg-6: var(--color-emerald-600, #059669);
+  --sm-avatar-bg-7: var(--color-yellow-600, #ca8a04);
+  --sm-avatar-bg-8: var(--color-indigo-600, #4f46e5);
+  --sm-avatar-text: var(--color-white, #ffffff);
 }

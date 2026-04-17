@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 
 import type { ChatMessage, Attachment, ApiResponse } from '../types';
+import { Avatar } from './Avatar';
 import { EmojiPickerTrigger } from './EmojiPicker';
 import { ReactionBar } from './ReactionBar';
 import { sanitizeHtml, stripTags } from './sanitize';
@@ -708,7 +709,6 @@ export function ChatMessageItem({
   const displayName = profile?.display_name ?? 'User';
   const username = profile?.username;
   const avatarUrl = (profile && getAvatarUrl?.(profile)) ?? profile?.avatar_url;
-  const initials = displayName.charAt(0).toUpperCase();
   const canReact = Boolean(onAddReaction || onRemoveReaction);
 
   function handleToggleReaction(emoji: string) {
@@ -800,29 +800,14 @@ export function ChatMessageItem({
                 aria-hidden="true"
               />
             ) : (
-              <div
-                style={{
-                  flexShrink: 0,
-                  width: avatarSize,
-                  height: avatarSize,
-                  borderRadius: 999,
-                  background: 'var(--sm-surface-muted, #f3f4f6)',
-                  overflow: 'hidden',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: 12,
-                  fontWeight: 500,
-                  color: 'var(--sm-muted-text, #6b7280)',
-                  marginRight: 10,
-                  marginTop: 2,
-                }}
-              >
-                {avatarUrl ? (
-                  <img src={avatarUrl} alt={displayName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                ) : (
-                  initials
-                )}
+              <div style={{ marginRight: 10, marginTop: 2, flexShrink: 0 }}>
+                <Avatar
+                  name={displayName}
+                  colorKey={message.sender_id}
+                  src={avatarUrl}
+                  size={avatarSize}
+                  initialsMaxChars={1}
+                />
               </div>
             ))}
           <div style={{ maxWidth: '75%', minWidth: 0 }}>
@@ -905,33 +890,14 @@ export function ChatMessageItem({
         ) : renderAvatar ? (
           renderAvatar(profile, message)
         ) : (
-          <div
-            style={{
-              flexShrink: 0,
-              width: avatarSize,
-              height: avatarSize,
-              borderRadius: 999,
-              background: 'var(--sm-surface-muted, #f3f4f6)',
-              overflow: 'hidden',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: 12,
-              fontWeight: 500,
-              color: 'var(--sm-muted-text, #6b7280)',
-              marginRight: 10,
-              marginTop: 2,
-            }}
-          >
-            {avatarUrl ? (
-              <img
-                src={avatarUrl}
-                alt={displayName}
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-              />
-            ) : (
-              initials
-            )}
+          <div style={{ marginRight: 10, marginTop: 2, flexShrink: 0 }}>
+            <Avatar
+              name={displayName}
+              colorKey={message.sender_id}
+              src={avatarUrl}
+              size={avatarSize}
+              initialsMaxChars={1}
+            />
           </div>
         ))}
 

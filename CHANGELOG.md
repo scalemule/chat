@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.0.61 — 2026-04-17
+
+**Added: reusable `<Avatar>` + deterministic palette helpers.**
+
+Foundation for the Section 9 profile track (#86, #87). Consolidates the inline avatar logic that lived inside `<ChatMessageItem>` into a reusable component that any profile/channel/conversation surface can drop in.
+
+- **`<Avatar name? colorKey? src? size? rounded? />`** — renders an image with a graceful fallback to initials on a colored background. On `img.onError` it swaps to initials automatically, so broken avatar URLs never leave a blank square. `colorKey` is a stable identifier (ideally a user id) that picks one of 8 palette slots; when omitted the name is used. `size` is a pixel diameter (default 40) and `rounded` accepts `'full' | 'md' | 'lg' | <number>`. Passing `onClick` wraps the avatar in a semantic `<button>`.
+- **`getInitials(name, maxChars?: 1 | 2): string`** — pure helper. Two-letter default (`"Alice Jones"` → `"AJ"`); pass `1` for compact chat-row avatars. Exported from the root `@scalemule/chat` entry so hosts can derive matching initials outside the SDK.
+- **`avatarColorFromKey(key, paletteSize?): string`** — pure helper. Returns a stable CSS value referencing `--sm-avatar-bg-{1..8}` with a packaged hex fallback, so distinct users get distinct colors even when the host skips the SDK theme CSS. Deterministic across runtimes.
+- **`avatarTextColor()`**, **`DEFAULT_AVATAR_PALETTE`** — also exported from the root entry for hosts that want to build their own avatar component against the SDK's palette.
+
+**New theme tokens** (tailwind + shadcn): `--sm-avatar-bg-1` through `--sm-avatar-bg-8` (8 palette slots) and `--sm-avatar-text` (initials color, default white). Tailwind preset wires each slot through the corresponding Tailwind v4 color token with a packaged hex fallback; the shadcn preset uses HSL defaults.
+
+**New class hooks:** `.sm-avatar`, `.sm-avatar-img`, `.sm-avatar-initials`, `.sm-avatar-button` (documented in `themes/message-polish.css`). All visual styles stay inline so hosts that skip the CSS bundle still see a functional avatar — the classes exist purely as override seams.
+
+**Internal refactor:** `<ChatMessageItem>` now delegates to `<Avatar>` for the default sender avatar, dropping ~20 lines of inline styles. `renderAvatar` (the existing host escape hatch) is unchanged.
+
+**Bundle:** `react.js` 243.48K → 244.60K (budget 250K → 256K). The refactor offsets most of the new component's size, but two render paths + the deterministic palette hash still net ~1.2 KB.
+
 ## 0.0.60 — 2026-04-17
 
 **Added: call trigger buttons + enhanced active-call banner.**
