@@ -17,6 +17,7 @@ describe('@scalemule/chat/profile SSR import', () => {
     expect(mod.Avatar).toBeDefined();
     expect(mod.UserProfileCard).toBeDefined();
     expect(mod.ProfilePanel).toBeDefined();
+    expect(mod.EditProfileModal).toBeDefined();
     expect(mod.getInitials).toBeDefined();
     expect(mod.avatarColorFromKey).toBeDefined();
     expect(mod.getLanguageLabel).toBeDefined();
