@@ -55,7 +55,9 @@ const budgets = [
     // Bumped 240K -> 245K for 0.0.57 self-status — ChatClient.setStatus
     // + getStatus + storage-seeded selfStatus brings AvatarStatusMenu +
     // useMyStatus + the safeStorage path into the core bundle.
-    limit: 245_000,
+    // Bumped 245K -> 250K for 0.0.60 CallTriggerGroup (SVG icons) +
+    // enhanced ActiveCallBanner (elapsed time hook + pulsing dot).
+    limit: 250_000,
     label: 'React ESM',
   },
   {

@@ -4,6 +4,8 @@ export type { ActiveCallDotProps } from './ActiveCallDot';
 export { AvatarStatusMenu } from './AvatarStatusMenu';
 export type { AvatarStatusMenuProps } from './AvatarStatusMenu';
 export { CallTriggerButton } from './CallTriggerButton';
+export { CallTriggerGroup } from './CallTriggerGroup';
+export type { CallTriggerGroupProps } from './CallTriggerGroup';
 export { CallSystemMessage } from './CallSystemMessage';
 export { ChannelBrowser } from './ChannelBrowser';
 export { ChannelEditModal } from './ChannelEditModal';
