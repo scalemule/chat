@@ -975,6 +975,7 @@ export {
   ActiveCallDot,
   AvatarStatusMenu,
   CallTriggerButton,
+  CallTriggerGroup,
   CallSystemMessage,
   ChatInput,
   ChatMessageItem,

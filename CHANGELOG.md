@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.0.60 — 2026-04-17
+
+**Added: call trigger buttons + enhanced active-call banner.**
+
+Chat-side seams for the conferencing track (Section 8).
+
+- **`<CallTriggerGroup conversationId onCallRequested>`** — renders paired audio + video call buttons with SVG icons. Does not call `getUserMedia` — fires `onCallRequested(conversationId, 'audio'|'video')` so the host routes to `@scalemule/conference`'s `PreCallLobby` or `createCall`. Props: `hideAudio`, `hideVideo`, `disabled`, i18n labels. CSS hooks `.sm-call-trigger-group`, `.sm-call-trigger-audio`, `.sm-call-trigger-video`.
+- **`<ActiveCallBanner>` enhancements** — now shows elapsed time ("45s ago" / "3m ago") relative to `call.createdAt`, a pulsing green dot, and uses `--sm-*` tokens for theming. New `.sm-active-call-banner` CSS class. Structural `ActiveCallInfo` type gains optional `createdAt`.
+
+**Sidebar indicator wiring (#83):** `renderActiveIndicator` on `ConversationList` (shipped in 0.0.49) + `<ActiveCallDot>` (0.0.49) compose with `useIncomingCalls` / `useCallNotifications` from `@scalemule/conference/react`. README documents the wiring pattern.
+
+**Bundle:** `react.js` budget bumped 245K → 250K (current 243.48K).
+
 ## 0.0.59 — 2026-04-15
 
 **Added: locale-aware typing indicator + below-composer placement.**
