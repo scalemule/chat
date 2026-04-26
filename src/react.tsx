@@ -21,6 +21,7 @@ import type {
   CreateChannelOptions,
   ApiResponse,
   ListChannelsOptions,
+  MessagePin,
   ReadStatus,
   SendMessageOptions,
   GetMessagesOptions,
@@ -223,6 +224,16 @@ export function useChat(conversationId?: string) {
   useEffect(() => {
     if (!conversationId) return;
 
+    return client.on('pin', ({ conversationId: convId }) => {
+      if (convId === conversationId) {
+        setMessages([...client.getCachedMessages(conversationId)]);
+      }
+    });
+  }, [client, conversationId]);
+
+  useEffect(() => {
+    if (!conversationId) return;
+
     return client.on('read', ({ conversationId: convId, userId, lastReadAt }) => {
       if (convId !== conversationId) return;
 
@@ -302,6 +313,28 @@ export function useChat(conversationId?: string) {
   const removeReaction = useCallback(
     async (messageId: string, emoji: string) => {
       const result = await client.removeReaction(messageId, emoji);
+      if (result.error) {
+        setError(result.error.message);
+      }
+      return result;
+    },
+    [client],
+  );
+
+  const pinMessage = useCallback(
+    async (messageId: string) => {
+      const result = await client.pinMessage(messageId);
+      if (result.error) {
+        setError(result.error.message);
+      }
+      return result;
+    },
+    [client],
+  );
+
+  const unpinMessage = useCallback(
+    async (messageId: string) => {
+      const result = await client.unpinMessage(messageId);
       if (result.error) {
         setError(result.error.message);
       }
@@ -415,6 +448,8 @@ export function useChat(conversationId?: string) {
     dismissMessage,
     addReaction,
     removeReaction,
+    pinMessage,
+    unpinMessage,
     uploadAttachment,
     refreshAttachmentUrl,
     reportMessage,
@@ -423,6 +458,86 @@ export function useChat(conversationId?: string) {
     getReadStatus,
     markRead,
   };
+}
+
+/**
+ * Hook for the pinned-messages panel of a single conversation.
+ *
+ * Loads the snapshot from the chat service, then keeps in sync via the
+ * `pin` event emitted by `ChatClient` when the realtime channel forwards
+ * `message_pinned` / `message_unpinned`. Optimistic updates are wired
+ * through `pinMessage` / `unpinMessage` so the UI doesn't wait for the
+ * realtime echo.
+ */
+export function usePinnedMessages(conversationId?: string | null) {
+  const { client } = useChatContext();
+  const [pins, setPins] = useState<MessagePin[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (!conversationId) {
+      setPins([]);
+      return;
+    }
+    let cancelled = false;
+    setIsLoading(true);
+    (async () => {
+      const result = await client.getPinnedMessages(conversationId);
+      if (cancelled) return;
+      if (result.data?.pins) {
+        setPins(result.data.pins);
+      } else {
+        setPins([]);
+      }
+      setIsLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [client, conversationId]);
+
+  useEffect(() => {
+    if (!conversationId) return;
+    return client.on('pin', ({ conversationId: convId, pin, action }) => {
+      if (convId !== conversationId) return;
+      setPins((prev) => {
+        if (action === 'pinned') {
+          if (prev.some((p) => p.message_id === pin.message_id)) return prev;
+          return [pin, ...prev];
+        }
+        return prev.filter((p) => p.message_id !== pin.message_id);
+      });
+    });
+  }, [client, conversationId]);
+
+  const pinMessage = useCallback(
+    async (messageId: string) => {
+      if (!conversationId) return;
+      const result = await client.pinMessage(messageId);
+      if (result.data) {
+        setPins((prev) => {
+          if (prev.some((p) => p.message_id === result.data!.message_id)) return prev;
+          return [result.data!, ...prev];
+        });
+      }
+      return result;
+    },
+    [client, conversationId],
+  );
+
+  const unpinMessage = useCallback(
+    async (messageId: string) => {
+      if (!conversationId) return;
+      const result = await client.unpinMessage(messageId);
+      if (!result.error) {
+        setPins((prev) => prev.filter((p) => p.message_id !== messageId));
+      }
+      return result;
+    },
+    [client, conversationId],
+  );
+
+  return { pins, isLoading, pinMessage, unpinMessage };
 }
 
 export function usePresence(conversationId?: string) {

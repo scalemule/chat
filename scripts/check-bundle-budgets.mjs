@@ -8,8 +8,11 @@ const budgets = [
     // Bumped 75K -> 78K for 0.0.57 self-status (ChatClient.setStatus +
     // seeded localStorage-backed self-status pulls the shared safeStorage
     // helper into every bundle that includes ChatClient).
+    // Bumped 78K -> 79K for 0.0.69 message pins (pinMessage / unpinMessage
+    // / getPinnedMessages on ChatClient + new message_pinned/unpinned arms
+    // in handleConversationEvent that update the message cache).
     file: 'support-widget.global.js',
-    limit: 78_000,
+    limit: 79_000,
     label: 'Widget IIFE',
   },
   {
@@ -24,8 +27,10 @@ const budgets = [
     label: 'Embed IIFE',
   },
   {
+    // Bumped 50K -> 51K for 0.0.69 message pins (same surface bump as the
+    // other ChatClient bundles).
     file: 'chat.umd.global.js',
-    limit: 50_000,
+    limit: 51_000,
     label: 'UMD bundle',
   },
   {
@@ -66,7 +71,12 @@ const budgets = [
     // duplicated inline avatar styles from ChatMessageItem, but the
     // new component (two render paths + onError swap + deterministic
     // palette hash) still nets ~1.2 KB growth in react.js.
-    limit: 256_000,
+    // Bumped 256K -> 258K for 0.0.69 message pins — pinMessage /
+    // unpinMessage / getPinnedMessages on ChatClient + the
+    // usePinnedMessages hook (+ pin event arm in handleConversationEvent
+    // that updates the message cache so existing useChat consumers see
+    // is_pinned without an extra subscribe).
+    limit: 258_000,
     label: 'React ESM',
   },
   {

@@ -38,6 +38,7 @@ import type {
   ChatMessage,
   ChatReaction,
   ChatSearchResponse,
+  MessagePin,
   ChannelWithSettings,
   ConnectionStatus,
   Conversation,
@@ -545,6 +546,24 @@ export class ChatClient extends EventEmitter<ChatEventMap> {
 
   async removeReaction(messageId: string, emoji: string): Promise<ApiResponse<void>> {
     return this.http.del<void>(`/v1/chat/messages/${messageId}/reactions/${encodeURIComponent(emoji)}`);
+  }
+
+  // ============ Pins ============
+
+  async pinMessage(messageId: string): Promise<ApiResponse<MessagePin>> {
+    return this.http.post<MessagePin>(`/v1/chat/messages/${messageId}/pin`, {});
+  }
+
+  async unpinMessage(messageId: string): Promise<ApiResponse<void>> {
+    return this.http.del<void>(`/v1/chat/messages/${messageId}/pin`);
+  }
+
+  async getPinnedMessages(
+    conversationId: string,
+  ): Promise<ApiResponse<{ pins: MessagePin[] }>> {
+    return this.http.get<{ pins: MessagePin[] }>(
+      `/v1/chat/conversations/${conversationId}/pins`,
+    );
   }
 
   async reportMessage(
@@ -1097,6 +1116,35 @@ export class ChatClient extends EventEmitter<ChatEventMap> {
           conversationId,
           action: reactionEvent.action,
         });
+        break;
+      }
+      case 'message_pinned':
+      case 'message_unpinned': {
+        const pinPayload = payload as {
+          message_id?: string;
+          conversation_id?: string;
+          pinned_by_user_id?: string;
+          timestamp?: string;
+        };
+        if (!pinPayload.message_id) break;
+        const action: 'pinned' | 'unpinned' = event === 'message_pinned' ? 'pinned' : 'unpinned';
+        const pinnedAt = pinPayload.timestamp ?? new Date().toISOString();
+        // Reflect on the cached message so the next render shows the pin badge.
+        const cached = this.cache.getMessage(conversationId, pinPayload.message_id);
+        if (cached) {
+          this.cache.updateMessage(conversationId, {
+            ...cached,
+            is_pinned: action === 'pinned',
+            pinned_at: action === 'pinned' ? pinnedAt : undefined,
+          });
+        }
+        const pin: MessagePin = {
+          message_id: pinPayload.message_id,
+          conversation_id: pinPayload.conversation_id ?? conversationId,
+          pinned_by_user_id: pinPayload.pinned_by_user_id ?? '',
+          pinned_at: pinnedAt,
+        };
+        this.emit('pin', { pin, conversationId, action });
         break;
       }
       case 'message_deleted': {
