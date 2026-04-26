@@ -102,6 +102,15 @@ export interface ChatMessage {
    * `useChat().retryMessage(id)` (or re-run `sendMessage` directly).
    */
   is_failed?: boolean;
+  /**
+   * `true` when this message is currently pinned in its conversation.
+   * Populated by the chat service from the `message_pins` table on every
+   * message-list endpoint. Mutated by `pinMessage`/`unpinMessage` and by
+   * `message_pinned`/`message_unpinned` realtime events.
+   */
+  is_pinned?: boolean;
+  /** Timestamp at which this message was pinned, when `is_pinned` is true. */
+  pinned_at?: string;
 }
 
 export interface ReactionSummary {
@@ -157,6 +166,21 @@ export interface ReactionEvent {
   user_id: string;
   emoji: string;
   action: 'added' | 'removed';
+  timestamp?: string;
+}
+
+export interface MessagePin {
+  message_id: string;
+  conversation_id: string;
+  pinned_by_user_id: string;
+  pinned_at: string;
+}
+
+export interface PinEvent {
+  message_id: string;
+  conversation_id: string;
+  pinned_by_user_id: string;
+  action: 'pinned' | 'unpinned';
   timestamp?: string;
 }
 
@@ -239,6 +263,7 @@ export interface ChatEventMap {
   'presence:state': { conversationId: string; members: PresenceMember[] };
   'read': { userId: string; conversationId: string; lastReadAt: string };
   'reaction': { reaction: ChatReaction; conversationId: string; action: 'added' | 'removed' };
+  'pin': { pin: MessagePin; conversationId: string; action: 'pinned' | 'unpinned' };
   'thread:update': { conversationId: string; messageId: string; latestReplyAt: string; replyUserId: string };
   'room_upgraded': { conversationId: string; newType: 'large_room' };
   'delivery': { messageId: string; status: 'sent' | 'delivered' | 'read' };
