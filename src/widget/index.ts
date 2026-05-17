@@ -632,7 +632,8 @@ class SupportWidget {
         const showDateDivider = !previousMessage || !isSameDay(previousMessage.created_at, message.created_at);
         const isVisitor = message.sender_id === visitorId;
         const isSystem = message.sender_type === 'system' || message.message_type === 'system';
-        const attachments = (message.attachments ?? [])
+        const isDeleted = message.is_deleted === true;
+        const attachments = (isDeleted ? [] : (message.attachments ?? []))
           .map((attachment) => renderAttachmentHtml(message.id, attachment))
           .join('');
 
@@ -647,7 +648,7 @@ class SupportWidget {
           unreadDividerRendered = true;
         }
 
-        const reactions = (message.reactions ?? [])
+        const reactions = (isDeleted ? [] : (message.reactions ?? []))
           .map((reaction) => {
             const reacted = Boolean(visitorId && reaction.user_ids.includes(visitorId));
             return `
@@ -666,7 +667,7 @@ class SupportWidget {
           .join('');
 
         const picker =
-          this.openReactionMessageId === message.id
+          !isDeleted && this.openReactionMessageId === message.id
             ? `
                 <div class="sm-reaction-picker">
                   ${REACTION_EMOJIS.map(
@@ -704,8 +705,13 @@ class SupportWidget {
           : '';
 
         const actionButton =
-          !isSystem && !isVisitor
+          !isDeleted && !isSystem && !isVisitor
             ? `<button type="button" class="sm-msg-action" data-action="toggle-picker" data-message-id="${escapeHtml(message.id)}" aria-label="Add reaction">${REACTION_ICON}</button>`
+            : '';
+        const contentHtml = isDeleted
+          ? '<div class="sm-msg-content"><em>Message deleted</em></div>'
+          : message.content
+            ? `<div class="sm-msg-content">${escapeHtml(message.content)}</div>`
             : '';
 
         return `
@@ -714,7 +720,7 @@ class SupportWidget {
           <div class="sm-msg ${isSystem ? 'sm-msg-system' : isVisitor ? 'sm-msg-visitor' : 'sm-msg-rep'}">
             <div class="sm-msg-row">
               <div class="sm-msg-bubble">
-                ${message.content ? `<div class="sm-msg-content">${escapeHtml(message.content)}</div>` : ''}
+                ${contentHtml}
                 ${attachments}
               </div>
               ${actionButton}
@@ -722,7 +728,7 @@ class SupportWidget {
             ${
               !isSystem
                 ? `<div class="sm-msg-time">${escapeHtml(formatTime(message.created_at))}${
-                    message.is_edited ? ' · edited' : ''
+                    !isDeleted && message.is_edited ? ' · edited' : ''
                   }</div>`
                 : ''
             }

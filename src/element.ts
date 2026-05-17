@@ -110,9 +110,10 @@ function renderMessage(
   showReactionPicker = false,
 ): string {
   const isOwn = Boolean(currentUserId && message.sender_id === currentUserId);
-  const attachments = (message.attachments ?? []).map(renderAttachment).join('');
-  const edited = message.is_edited ? '<span class="message-edited">edited</span>' : '';
-  const reactions = (message.reactions ?? [])
+  const isDeleted = message.is_deleted === true;
+  const attachments = isDeleted ? '' : (message.attachments ?? []).map(renderAttachment).join('');
+  const edited = !isDeleted && message.is_edited ? '<span class="message-edited">edited</span>' : '';
+  const reactions = (isDeleted ? [] : (message.reactions ?? []))
     .map((reaction) => {
       const reacted = Boolean(currentUserId && reaction.user_ids.includes(currentUserId));
       return `
@@ -129,7 +130,7 @@ function renderMessage(
       `;
     })
     .join('');
-  const picker = showReactionPicker
+  const picker = !isDeleted && showReactionPicker
     ? `
       <div class="reaction-picker">
         ${REACTION_EMOJIS.map(
@@ -148,17 +149,25 @@ function renderMessage(
       </div>
     `
     : '';
+  const actionButton = isDeleted
+    ? ''
+    : `<button class="message-action" type="button" data-action="toggle-picker" data-message-id="${escapeHtml(message.id)}">React</button>`;
+  const contentHtml = isDeleted
+    ? '<div class="message-content"><em>Message deleted</em></div>'
+    : message.content
+      ? `<div class="message-content">${escapeHtml(message.content)}</div>`
+      : '';
 
   return `
     <div class="message ${isOwn ? 'message-own' : 'message-other'}">
       <div class="message-bubble">
-        ${message.content ? `<div class="message-content">${escapeHtml(message.content)}</div>` : ''}
+        ${contentHtml}
         ${attachments}
       </div>
       <div class="message-meta">
         <span>${new Date(message.created_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
         ${edited}
-        <button class="message-action" type="button" data-action="toggle-picker" data-message-id="${escapeHtml(message.id)}">React</button>
+        ${actionButton}
       </div>
       ${reactions ? `<div class="reactions">${reactions}</div>` : ''}
       ${picker}
