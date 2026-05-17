@@ -81,6 +81,7 @@ export interface ChatMessage {
   sender_agent_model?: string;
   attachments?: Attachment[];
   reactions?: ReactionSummary[];
+  is_deleted?: boolean;
   is_edited: boolean;
   created_at: string;
   thread_id?: string;

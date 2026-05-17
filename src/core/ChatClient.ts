@@ -62,6 +62,8 @@ import type {
   UploadCompleteResponse,
 } from '../types';
 
+const DELETED_MESSAGE_PLACEHOLDER = 'Message deleted';
+
 export class ChatClient extends EventEmitter<ChatEventMap> {
   private http: HttpTransport;
   private ws: WebSocketTransport;
@@ -390,6 +392,27 @@ export class ChatClient extends EventEmitter<ChatEventMap> {
     if (!target) return false;
     this.cache.removeMessage(conversationId, messageId);
     this.emit('message:deleted', { messageId, conversationId });
+    return true;
+  }
+
+  markMessageDeleted(conversationId: string, messageId: string): boolean {
+    const existing = this.cache.getMessage(conversationId, messageId);
+    if (!existing) return false;
+
+    this.cache.updateMessage(conversationId, {
+      ...existing,
+      content: DELETED_MESSAGE_PLACEHOLDER,
+      content_format: 'plain',
+      plain_text: DELETED_MESSAGE_PLACEHOLDER,
+      attachments: [],
+      reactions: [],
+      is_deleted: true,
+      is_edited: false,
+      is_pinned: false,
+      pinned_at: undefined,
+      message_type: 'text',
+    });
+
     return true;
   }
 
@@ -976,6 +999,7 @@ export class ChatClient extends EventEmitter<ChatEventMap> {
       sender_agent_model: payload.sender_agent_model as string | undefined,
       attachments: payload.attachments as Attachment[] | undefined,
       reactions: payload.reactions as ChatMessage['reactions'] | undefined,
+      is_deleted: payload.is_deleted as boolean | undefined,
       is_edited: Boolean(payload.is_edited ?? false),
       created_at:
         (payload.created_at as string) ??
@@ -1009,6 +1033,7 @@ export class ChatClient extends EventEmitter<ChatEventMap> {
       sender_agent_model: existing?.sender_agent_model,
       attachments: update.new_attachments ?? update.attachments ?? existing?.attachments,
       reactions: existing?.reactions,
+      is_deleted: existing?.is_deleted,
       is_edited: true,
       created_at:
         existing?.created_at ??
@@ -1150,7 +1175,7 @@ export class ChatClient extends EventEmitter<ChatEventMap> {
       case 'message_deleted': {
         const messageId = (payload as { message_id?: string }).message_id ?? (payload as { id?: string }).id;
         if (messageId) {
-          this.cache.removeMessage(conversationId, messageId as string);
+          this.markMessageDeleted(conversationId, messageId as string);
           this.emit('message:deleted', { messageId: messageId as string, conversationId });
         }
         break;

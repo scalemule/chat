@@ -228,4 +228,28 @@ describe('ChatMessageItem — rich HTML rendering', () => {
     expect(mention?.getAttribute('data-sm-user-id')).toBe('u1');
     expect(mention?.textContent).toBe('@Alice');
   });
+
+  it('renders a deleted placeholder instead of message content', () => {
+    const message = buildMessage({
+      content: 'should not render',
+      attachments: [
+        {
+          file_id: 'file-1',
+          file_name: 'passport.jpg',
+          file_size: 123,
+          mime_type: 'image/jpeg',
+          presigned_url: 'https://cdn.example/passport.jpg',
+        } as Attachment,
+      ],
+      is_deleted: true,
+    });
+
+    const { container } = render(
+      <ChatMessageItem message={message} currentUserId="user-1" />,
+    );
+
+    expect(screen.getByText('Message deleted')).toBeTruthy();
+    expect(screen.queryByText('should not render')).toBeNull();
+    expect(container.querySelector('img')).toBeNull();
+  });
 });

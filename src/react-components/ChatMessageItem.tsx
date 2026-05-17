@@ -732,11 +732,12 @@ export function ChatMessageItem({
     isOwnMessageProp !== undefined
       ? isOwnMessageProp
       : Boolean(currentUserId && message.sender_id === currentUserId);
+  const isDeleted = message.is_deleted === true;
 
   const displayName = profile?.display_name ?? 'User';
   const username = profile?.username;
   const avatarUrl = (profile && getAvatarUrl?.(profile)) ?? profile?.avatar_url;
-  const canReact = Boolean(onAddReaction || onRemoveReaction);
+  const canReact = !isDeleted && Boolean(onAddReaction || onRemoveReaction);
 
   function handleToggleReaction(emoji: string) {
     const hasReacted = message.reactions?.some(
@@ -795,6 +796,85 @@ export function ChatMessageItem({
     }
     setEditUploads([]);
     setEditing(false);
+  }
+
+  if (isDeleted) {
+    return (
+      <div
+        className={wrapperClassName}
+        style={{
+          display: 'flex',
+          justifyContent: isOwn ? 'flex-end' : 'flex-start',
+          padding: isGrouped ? '1px 16px' : '3px 16px',
+          position: 'relative',
+        }}
+      >
+        {!isOwn &&
+          (isGrouped ? (
+            <div
+              style={{
+                flexShrink: 0,
+                width: avatarSize,
+                marginRight: 10,
+              }}
+              aria-hidden="true"
+            />
+          ) : renderAvatar ? (
+            renderAvatar(profile, message)
+          ) : (
+            <div style={{ marginRight: 10, marginTop: 2, flexShrink: 0 }}>
+              <Avatar
+                name={displayName}
+                colorKey={message.sender_id}
+                src={avatarUrl}
+                size={avatarSize}
+                initialsMaxChars={1}
+              />
+            </div>
+          ))}
+
+        <div style={{ maxWidth: '75%', minWidth: 0 }}>
+          {!isOwn && !isGrouped && (
+            <div
+              style={{
+                fontSize: 12,
+                fontWeight: 600,
+                marginBottom: 4,
+                color: 'var(--sm-other-text, #111827)',
+              }}
+            >
+              {displayName}
+            </div>
+          )}
+          <div
+            style={{
+              borderRadius: 'var(--sm-border-radius, 16px)',
+              ...(isOwn
+                ? { borderBottomRightRadius: 6 }
+                : { borderBottomLeftRadius: 6 }),
+              padding: '8px 14px',
+              background: 'var(--sm-surface-muted, #f3f4f6)',
+              border: '1px solid var(--sm-border-color, #e5e7eb)',
+              color: 'var(--sm-muted-text, #6b7280)',
+              fontStyle: 'italic',
+            }}
+          >
+            Message deleted
+          </div>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: isOwn ? 'flex-end' : 'flex-start',
+              marginTop: 4,
+            }}
+          >
+            <span style={{ fontSize: 10, color: 'var(--sm-muted-text, #9ca3af)' }}>
+              {formatMessageTime(message.created_at)}
+            </span>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   // Snippet messages — render as a collapsible file-backed card.

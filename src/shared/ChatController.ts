@@ -149,6 +149,10 @@ export class ChatController extends EventEmitter<ChatControllerEvents> {
     if (result.error) {
       throw new Error(result.error.message);
     }
+    this.client.markMessageDeleted(this.conversationId, messageId);
+    this.patchState({
+      messages: [...this.client.getCachedMessages(this.conversationId)],
+    });
   }
 
   stageOptimisticMessage(message: ChatMessage): ChatMessage {

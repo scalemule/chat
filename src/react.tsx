@@ -293,10 +293,13 @@ export function useChat(conversationId?: string) {
       const result = await client.deleteMessage(messageId);
       if (result.error) {
         setError(result.error.message);
+      } else if (conversationId) {
+        client.markMessageDeleted(conversationId, messageId);
+        setMessages([...client.getCachedMessages(conversationId)]);
       }
       return result;
     },
-    [client],
+    [client, conversationId],
   );
 
   const addReaction = useCallback(

@@ -238,3 +238,53 @@ describe('ChatClient.dismissMessage', () => {
     expect(client.dismissMessage('conv-x', 'nope')).toBe(false);
   });
 });
+
+describe('ChatClient.markMessageDeleted', () => {
+  it('replaces cached content with a deleted placeholder', () => {
+    const client = createClient();
+    const conv = 'conv-mark-deleted';
+    const message: ChatMessage = {
+      id: 'msg-1',
+      content: 'passport scan',
+      content_format: 'html',
+      plain_text: 'passport scan',
+      message_type: 'image',
+      sender_id: 'user-2',
+      attachments: [
+        {
+          file_id: 'file-1',
+          file_name: 'passport.jpg',
+          file_size: 123,
+          mime_type: 'image/jpeg',
+          presigned_url: 'https://cdn.example/passport.jpg',
+        },
+      ],
+      reactions: [{ emoji: '😬', count: 1, user_ids: ['user-1'] }],
+      is_edited: true,
+      is_pinned: true,
+      pinned_at: '2026-04-17T00:01:00Z',
+      created_at: '2026-04-17T00:00:00Z',
+    };
+
+    client.stageOptimisticMessage(conv, message);
+
+    const updated = client.markMessageDeleted(conv, 'msg-1');
+    expect(updated).toBe(true);
+
+    expect(client.getCachedMessages(conv)).toEqual([
+      expect.objectContaining({
+        id: 'msg-1',
+        content: 'Message deleted',
+        content_format: 'plain',
+        plain_text: 'Message deleted',
+        message_type: 'text',
+        attachments: [],
+        reactions: [],
+        is_deleted: true,
+        is_edited: false,
+        is_pinned: false,
+        pinned_at: undefined,
+      }),
+    ]);
+  });
+});
