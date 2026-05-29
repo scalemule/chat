@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import type { Attachment, ApiResponse, ChatMessage } from '../types';
 import { ChatMessageItem } from './ChatMessageItem';
 import { defaultFormatDateLabel, isSameCalendarDay } from './dateLabel';
+import type { SystemMessageContext, SystemMessageProfile } from './systemMessages';
 
 interface UserProfile {
   display_name: string;
@@ -162,6 +163,14 @@ interface ChatMessageListProps {
    * `@scalemule/chat/embeds`. Forwarded to ChatMessageItem.
    */
   renderEmbeds?: (message: ChatMessage) => React.ReactNode;
+  /**
+   * Structured system-message renderer. Forwarded to ChatMessageItem.
+   * Receives pre-parsed translation key, params, sender info, and
+   * profiles so hosts can translate without parsing raw content strings.
+   */
+  renderSystemMessage?: (context: SystemMessageContext) => React.ReactNode;
+  /** Profile lookup for system-message actor names. Forwarded to ChatMessageItem. */
+  systemMessageProfiles?: Map<string, SystemMessageProfile>;
 }
 
 export function ChatMessageList({
@@ -204,6 +213,8 @@ export function ChatMessageList({
   onChannelMentionClick,
   linkifyPlainText,
   renderEmbeds,
+  renderSystemMessage,
+  systemMessageProfiles,
 }: ChatMessageListProps): React.JSX.Element {
   const resolveDateLabel = useCallback(
     (iso: string) =>
@@ -567,6 +578,8 @@ export function ChatMessageList({
                     renderAvatar={renderAvatar}
                     avatarSize={avatarSize}
                     getAvatarUrl={getAvatarUrl}
+                    renderSystemMessage={renderSystemMessage}
+                    systemMessageProfiles={systemMessageProfiles}
                   />
                 )}
               </div>

@@ -9,6 +9,8 @@ import { formatMessageTime } from './utils';
 import { linkify } from '../shared/linkify';
 import {
   defaultFormatSystemMessage,
+  parseSystemMessage,
+  type SystemMessageContext,
   type SystemMessageProfile,
 } from './systemMessages';
 
@@ -126,11 +128,33 @@ interface ChatMessageItemProps {
    * archived) and call events (started/ended). Hosts override for
    * locales or new event types. Receives the raw content string and a
    * profiles map for resolving `user_id` params.
+   *
+   * @deprecated Prefer `renderSystemMessage` which provides pre-parsed
+   * structured data instead of the raw pipe-delimited string.
    */
   formatSystemMessage?: (
     content: string,
     profiles: Map<string, SystemMessageProfile> | undefined,
   ) => string;
+  /**
+   * Structured system-message renderer. Receives the parsed translation
+   * key, params, sender info, and profiles so hosts can translate or
+   * customize without parsing the raw content string themselves.
+   *
+   * Takes precedence over `formatSystemMessage`. Return a ReactNode
+   * (JSX element or string) for full control over rendering.
+   *
+   * ```tsx
+   * renderSystemMessage={(ctx) => {
+   *   // ctx.parsed.key   = "system.call.started"
+   *   // ctx.parsed.params = { type: "audio" }
+   *   // ctx.senderName   = "John Adams"
+   *   // ctx.senderId     = "550e8400-..."
+   *   return <span>{t(ctx.parsed.key, { ...ctx.parsed.params, actor: ctx.senderName })}</span>;
+   * }}
+   * ```
+   */
+  renderSystemMessage?: (context: SystemMessageContext) => React.ReactNode;
   /**
    * Profile lookup for system-message actor names. Optional but
    * recommended when channel events are emitted with `user_id` params.
@@ -601,6 +625,7 @@ export function ChatMessageItem({
   onChannelMentionClick,
   linkifyPlainText = true,
   formatSystemMessage,
+  renderSystemMessage,
   systemMessageProfiles,
   renderEmbeds,
   avatarSize = 32,
@@ -948,6 +973,34 @@ export function ChatMessageItem({
 
   // System messages
   if (message.message_type === 'system') {
+    if (renderSystemMessage) {
+      const parsed = parseSystemMessage(message.content);
+      const senderProfile = systemMessageProfiles?.get(message.sender_id);
+      const senderName = senderProfile?.display_name
+        || (message.sender_id ? message.sender_id.slice(0, 8) : 'Someone');
+      const ctx: SystemMessageContext = {
+        parsed,
+        senderId: message.sender_id,
+        senderName,
+        createdAt: message.created_at,
+        profiles: systemMessageProfiles,
+      };
+      return (
+        <div
+          className="sm-system-message"
+          style={{
+            textAlign: 'center',
+            fontSize: 12,
+            color: 'var(--sm-muted-text, #6b7280)',
+            padding: '8px 0',
+            fontStyle: 'italic',
+          }}
+        >
+          {renderSystemMessage(ctx)}
+        </div>
+      );
+    }
+
     const displayText = formatSystemMessage
       ? formatSystemMessage(message.content, systemMessageProfiles)
       : defaultFormatSystemMessage(message.content, {
