@@ -33,6 +33,7 @@ export {
 } from './systemMessages';
 export type {
   ParsedSystemMessage,
+  SystemMessageContext,
   SystemMessageProfile,
   FormatSystemMessageOptions,
 } from './systemMessages';

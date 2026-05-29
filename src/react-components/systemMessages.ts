@@ -55,6 +55,19 @@ export function parseSystemMessage(content: string): ParsedSystemMessage {
   return { key, topic, event, params };
 }
 
+export interface SystemMessageContext {
+  /** The parsed translation key and parameters. */
+  parsed: ParsedSystemMessage;
+  /** UUID of the user who triggered the system event (e.g. who started the call). */
+  senderId: string;
+  /** Resolved display name for the sender, or a short ID fallback. */
+  senderName: string;
+  /** ISO-8601 timestamp of the message. */
+  createdAt: string;
+  /** Profile lookup map for resolving additional user IDs in params. */
+  profiles?: Map<string, SystemMessageProfile>;
+}
+
 export interface FormatSystemMessageOptions {
   profiles?: Map<string, SystemMessageProfile>;
 }
