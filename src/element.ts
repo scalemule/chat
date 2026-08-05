@@ -1,4 +1,5 @@
 import { ChatClient } from './core/ChatClient';
+import { validateAttachmentFile } from './shared/attachmentPolicy';
 import { ChatController, type ChatControllerState } from './shared/ChatController';
 import type { Attachment, ChatConfig, ChatMessage } from './types';
 
@@ -465,7 +466,7 @@ class ScaleMuleChatElement extends HTMLElement {
         <div class="typing" id="typing" aria-live="polite"></div>
         <div class="attachments" id="attachments" aria-live="polite"></div>
         <div class="input-area">
-          <input type="file" id="file-input" hidden multiple accept="image/*,video/*,audio/*" aria-label="Attach files" />
+          <input type="file" id="file-input" hidden multiple aria-label="Attach files" />
           <button class="attach-btn" id="attach" type="button" aria-label="Attach files">Attach</button>
           <textarea placeholder="Type a message..." id="input" aria-label="Message"></textarea>
           <button id="send" aria-label="Send message">Send</button>
@@ -610,6 +611,20 @@ class ScaleMuleChatElement extends HTMLElement {
       if (!this.controller) return;
 
       for (const file of Array.from(files)) {
+        const fileError = validateAttachmentFile(file);
+        if (fileError) {
+          this.pendingAttachments = [
+            ...this.pendingAttachments,
+            {
+              id: `${file.name}:${file.size}:${Date.now()}:rejected`,
+              fileName: file.name,
+              progress: 0,
+              error: fileError,
+            },
+          ];
+          renderPendingAttachments();
+          continue;
+        }
         const pendingId = `${file.name}:${file.size}:${Date.now()}:${Math.random().toString(36).slice(2)}`;
         this.pendingAttachments = [
           ...this.pendingAttachments,
