@@ -6,6 +6,7 @@
  *
  * The script auto-initializes by reading the data-api-key from its own <script> tag.
  */
+import { validateAttachmentFile } from '../shared/attachmentPolicy';
 import { ChatController, type ChatControllerState } from '../shared/ChatController';
 import { SupportClient } from '../support';
 import type { SupportConversation, SupportWidgetConfig, SupportWidgetPreChatField } from '../support';
@@ -36,22 +37,6 @@ interface PendingAttachment {
 }
 
 const REACTION_EMOJIS = ['👍', '❤️', '😂', '🎉', '😮', '👀'];
-
-const ATTACHMENT_SIZE_LIMITS: Record<string, number> = {
-  'image/': 10 * 1024 * 1024,  // 10 MB
-  'video/': 25 * 1024 * 1024,  // 25 MB
-  'audio/': 5 * 1024 * 1024,   // 5 MB
-};
-
-function validateFileSize(file: File): string | null {
-  for (const [prefix, limit] of Object.entries(ATTACHMENT_SIZE_LIMITS)) {
-    if (file.type.startsWith(prefix) && file.size > limit) {
-      const limitMB = limit / (1024 * 1024);
-      return `${file.name} exceeds ${limitMB}MB limit`;
-    }
-  }
-  return null;
-}
 
 const DEFAULT_WIDGET_CONFIG: SupportWidgetConfig = {
   title: 'Support',
@@ -444,7 +429,7 @@ class SupportWidget {
         </div>
         <div class="sm-upload-list" id="sm-prechat-uploads"></div>
         <div class="sm-prechat-actions">
-          <input type="file" id="sm-prechat-file-input" hidden multiple accept="image/*,video/*,audio/*" />
+          <input type="file" id="sm-prechat-file-input" hidden multiple />
           <button class="sm-attach-btn sm-prechat-attach" type="button" aria-label="Attach files">${ATTACH_ICON}</button>
           <button class="sm-submit-btn" id="sm-start-btn">Start Chat</button>
         </div>
@@ -481,7 +466,7 @@ class SupportWidget {
           <div class="sm-typing" id="sm-typing"></div>
           <div class="sm-upload-list" id="sm-upload-list"></div>
           <div class="sm-input-area">
-            <input type="file" id="sm-file-input" hidden multiple accept="image/*,video/*,audio/*" />
+            <input type="file" id="sm-file-input" hidden multiple />
             <button class="sm-attach-btn" id="sm-attach-btn" type="button" aria-label="Attach files">${ATTACH_ICON}</button>
             <textarea class="sm-input" id="sm-input" placeholder="Type a message..." rows="1"></textarea>
             <button class="sm-send-btn" id="sm-send-btn" type="button" aria-label="Send message">${SEND_ICON}</button>
@@ -1046,9 +1031,9 @@ class SupportWidget {
     }
 
     for (const file of files) {
-      const sizeError = validateFileSize(file);
-      if (sizeError) {
-        this.renderError(sizeError);
+      const fileError = validateAttachmentFile(file);
+      if (fileError) {
+        this.renderError(fileError);
         continue;
       }
 

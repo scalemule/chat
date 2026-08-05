@@ -25,6 +25,7 @@ function createClientStub() {
     sendMessage: vi.fn(async () => ({ data: {}, error: null })),
     editMessage: vi.fn(async () => ({ data: null, error: null })),
     deleteMessage: vi.fn(async () => ({ data: null, error: null })),
+    markMessageDeleted: vi.fn(),
     uploadAttachment: vi.fn(async () => ({ data: null, error: null })),
     refreshAttachmentUrl: vi.fn(),
     addReaction: vi.fn(async () => ({ data: null, error: null })),
