@@ -26,6 +26,7 @@ import type {
   SendMessageOptions,
   GetMessagesOptions,
   MessagesResponse,
+  UpdateChannelOptions,
 } from './types';
 
 // ============ Context ============
@@ -911,6 +912,13 @@ export function useChannels(options?: ListChannelsOptions) {
     [client],
   );
 
+  const updateChannel = useCallback(
+    async (channelId: string, opts: UpdateChannelOptions) => {
+      return client.updateChannel(channelId, opts);
+    },
+    [client],
+  );
+
   const joinChannel = useCallback(
     async (channelId: string) => {
       const result = await client.joinChannel(channelId);
@@ -927,7 +935,15 @@ export function useChannels(options?: ListChannelsOptions) {
     [client],
   );
 
-  return { channels, isLoading, refresh: fetchChannels, createChannel, joinChannel, leaveChannel };
+  return {
+    channels,
+    isLoading,
+    refresh: fetchChannels,
+    createChannel,
+    updateChannel,
+    joinChannel,
+    leaveChannel,
+  };
 }
 
 // ============ useSearch Hook ============
@@ -1241,6 +1257,7 @@ export type {
   ReadStatus,
   ReactionSummary,
   UnreadTotalResponse,
+  UpdateChannelOptions,
   ListConversationsOptions,
 } from './types';
 export type { ChatTheme } from './react-components';

@@ -11,8 +11,10 @@ const budgets = [
     // Bumped 78K -> 79K for 0.0.69 message pins (pinMessage / unpinMessage
     // / getPinnedMessages on ChatClient + new message_pinned/unpinned arms
     // in handleConversationEvent that update the message cache).
+    // Bumped 79K -> 80K for 0.0.72 channel updates. The 0.0.71 baseline
+    // was already 79.40K; updateChannel adds ~180 bytes minified.
     file: 'support-widget.global.js',
-    limit: 79_000,
+    limit: 80_000,
     label: 'Widget IIFE',
   },
   {
@@ -29,8 +31,10 @@ const budgets = [
   {
     // Bumped 50K -> 51K for 0.0.69 message pins (same surface bump as the
     // other ChatClient bundles).
+    // Bumped 51K -> 53K for 0.0.72 channel updates. The 0.0.71 baseline
+    // was already 51.74K; updateChannel adds ~180 bytes minified.
     file: 'chat.umd.global.js',
-    limit: 51_000,
+    limit: 53_000,
     label: 'UMD bundle',
   },
   {
@@ -76,7 +80,9 @@ const budgets = [
     // usePinnedMessages hook (+ pin event arm in handleConversationEvent
     // that updates the message cache so existing useChat consumers see
     // is_pinned without an extra subscribe).
-    limit: 258_000,
+    // Bumped 258K -> 264K for 0.0.72. The 0.0.71 baseline was already
+    // 261.58K; updateChannel + its useChannels wrapper add ~190 bytes.
+    limit: 264_000,
     label: 'React ESM',
   },
   {

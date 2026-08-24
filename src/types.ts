@@ -407,6 +407,13 @@ export interface CreateChannelOptions {
   description?: string;
 }
 
+export interface UpdateChannelOptions {
+  name?: string;
+  visibility?: 'public' | 'private';
+  /** Pass an empty string to clear the existing description. */
+  description?: string;
+}
+
 export interface ChannelListItem {
   id: string;
   name: string | null;
