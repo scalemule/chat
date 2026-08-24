@@ -62,4 +62,5 @@ export type {
   ReadStatus,
   SendMessageOptions,
   UnreadTotalResponse,
+  UpdateChannelOptions,
 } from './types';

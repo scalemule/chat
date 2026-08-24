@@ -119,7 +119,19 @@ The hook seeds from `listChannelInvitations()` and reacts to `channel:invitation
 ### Channel admin
 
 ```tsx
-import { ChannelEditModal, ChannelHeader } from '@scalemule/chat/react'
+import {
+  ChannelEditModal,
+  ChannelHeader,
+  useChannels,
+  type ChannelEditFormValues,
+} from '@scalemule/chat/react'
+
+const { updateChannel } = useChannels()
+
+async function saveChannel(values: ChannelEditFormValues) {
+  const result = await updateChannel(c.id, values)
+  if (result.error) throw new Error(result.error.message)
+}
 
 <ChannelHeader
   channelId={c.id}
@@ -133,7 +145,7 @@ import { ChannelEditModal, ChannelHeader } from '@scalemule/chat/react'
   open={editOpen}
   onClose={() => setEditOpen(false)}
   initial={{ name: c.name, description: c.description, visibility: c.visibility }}
-  onSave={async (v) => updateChannel(c.id, v)}
+  onSave={saveChannel}
   onArchive={() => archive(c.id)}
 />
 ```
@@ -607,7 +619,7 @@ Customize chip colors via `--sm-mention-bg`, `--sm-mention-hover-bg`, `--sm-ment
 import { useChannels } from '@scalemule/chat/react'
 
 function ChannelPicker() {
-  const { channels, createChannel, joinChannel, leaveChannel } = useChannels()
+  const { channels, createChannel, updateChannel, joinChannel, leaveChannel } = useChannels()
 
   return (
     <div>

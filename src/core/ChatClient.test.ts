@@ -233,6 +233,59 @@ describe('ChatClient named channels', () => {
     expect(JSON.parse(opts.body)).toEqual({ name: 'general', visibility: 'public', description: 'Main channel' })
   })
 
+  it('updateChannel sends a name-only PATCH and emits channel:changed after success', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () =>
+        Promise.resolve({
+          data: {
+            id: 'ch-1',
+            conversation_type: 'channel',
+            name: 'customer-success',
+            created_at: '2026-08-23T00:00:00Z',
+          },
+        }),
+    })
+    vi.stubGlobal('fetch', mockFetch)
+
+    const client = createClient()
+    const listener = vi.fn()
+    client.on('channel:changed', listener)
+
+    const result = await client.updateChannel('ch-1', { name: 'customer-success' })
+
+    expect(result.data?.name).toBe('customer-success')
+    expect(listener).toHaveBeenCalledTimes(1)
+    const [url, opts] = mockFetch.mock.calls[0]
+    expect(url).toBe('https://api.scalemule.test/v1/chat/channels/ch-1')
+    expect(opts.method).toBe('PATCH')
+    expect(JSON.parse(opts.body)).toEqual({ name: 'customer-success' })
+  })
+
+  it('updateChannel returns the API error without emitting channel:changed', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 403,
+      statusText: 'Forbidden',
+      json: () =>
+        Promise.resolve({
+          error: { code: 'forbidden', message: 'Only channel owners or admins can edit this channel' },
+        }),
+    })
+    vi.stubGlobal('fetch', mockFetch)
+
+    const client = createClient()
+    const listener = vi.fn()
+    client.on('channel:changed', listener)
+
+    const result = await client.updateChannel('ch-1', { name: 'not-allowed' })
+
+    expect(result.data).toBeNull()
+    expect(result.error?.status).toBe(403)
+    expect(listener).not.toHaveBeenCalled()
+  })
+
   it('listChannels builds query string from options', async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,

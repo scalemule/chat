@@ -60,6 +60,7 @@ import type {
   ChannelSettings,
   UnreadTotalResponse,
   UploadCompleteResponse,
+  UpdateChannelOptions,
 } from '../types';
 
 const DELETED_MESSAGE_PLACEHOLDER = 'Message deleted';
@@ -781,6 +782,25 @@ export class ChatClient extends EventEmitter<ChatEventMap> {
     const result = await this.http.post<Conversation>('/v1/chat/channels', options);
     if (result.data) {
       this.conversationTypes.set(result.data.id, 'channel');
+      this.emit('channel:changed');
+    }
+    return result;
+  }
+
+  /**
+   * Update a named channel. The server requires the caller to be a channel
+   * owner or admin and accepts any non-empty subset of the editable fields.
+   */
+  async updateChannel(
+    channelId: string,
+    options: UpdateChannelOptions,
+  ): Promise<ApiResponse<Conversation>> {
+    const result = await this.http.patch<Conversation>(
+      `/v1/chat/channels/${encodeURIComponent(channelId)}`,
+      options,
+    );
+    if (result.data) {
+      this.trackConversationType(result.data);
       this.emit('channel:changed');
     }
     return result;

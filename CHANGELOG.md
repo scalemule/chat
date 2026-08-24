@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.0.72 — 2026-08-23
+
+**Added: named-channel editing.**
+
+- `ChatClient.updateChannel(channelId, options)` sends `PATCH /v1/chat/channels/{id}` for name, visibility, and description edits.
+- `useChannels()` now exposes `updateChannel` for React consumers.
+- Successful edits emit the existing `channel:changed` event; failed edits return their API error without emitting a false-success refresh.
+- `UpdateChannelOptions` is exported from both the core and React entries.
+
 ## 0.0.68 — 2026-04-17
 
 **Added: opt-in client-side presence staleness threshold.**
